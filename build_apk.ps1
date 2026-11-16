@@ -5,7 +5,7 @@ npm install -D @capacitor/cli
 
 Write-Host "Vytvaram public adresar (potrebny pre Capacitor aj ked pouzivame Remote URL)..."
 mkdir -p public
-echo "Reson" > public/index.html
+echo "Antidote" > public/index.html
 
 Write-Host "Pridavam platformu Android..."
 npx cap add android

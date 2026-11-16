@@ -1,6 +1,6 @@
-# Agent Guidelines for Reson
+# Agent Guidelines for Antidote
 
-Reson is a next-generation cognitive resonance dating application built with React, TanStack Start, Supabase, and Capacitor for Android.
+Antidote is a next-generation anti-dopamine cognitive resonance dating application built with React, TanStack Start, Supabase, and Capacitor for Android.
 
 ## Architecture Overview
 - **Frontend**: React, TanStack Start, Tailwind CSS, Vite.

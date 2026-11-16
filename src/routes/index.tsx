@@ -109,13 +109,13 @@ import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Reson — Nájdi svoju kognitívnu rezonanciu" },
+      { title: "Antidote — Nájdi svoju kognitívnu rezonanciu" },
       {
         name: "description",
         content:
           "Zoznamovacia aplikácia bez swipovania. Overenie tváre a telefónom, párovanie cez 6-otázkový psychologický test, komunikácia výhradne cez hlasovky.",
       },
-      { property: "og:title", content: "Reson — Nájdi svoju kognitívnu rezonanciu" },
+      { property: "og:title", content: "Antidote — Nájdi svoju kognitívnu rezonanciu" },
       { property: "og:description", content: "Žiadne swipovanie. Iba psychológia." },
     ],
   }),
@@ -176,7 +176,7 @@ function AppSplash() {
         <span className="size-4 rounded-full bg-foreground/40 animate-ping" />
       </div>
       <p className="mt-6 font-mono text-[10px] tracking-[0.32em] text-foreground/45 uppercase">
-        RESON // SYSTÉM SA INICIALIZUJE
+        ANTIDOTE // SYSTÉM SA INICIALIZUJE
       </p>
     </div>
   );
@@ -776,7 +776,7 @@ function ResonApp() {
             `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=sk`,
             {
               headers: {
-                "User-Agent": "ResonApp/1.0",
+                "User-Agent": "AntidoteApp/1.0",
               },
             }
           );
@@ -1680,7 +1680,7 @@ function Logo() {
       <div className="grid place-items-center">
         <Wave size={48} />
       </div>
-      <span className="text-2xl font-light tracking-[0.3em]">RESON</span>
+      <span className="text-2xl font-light tracking-[0.3em]">ANTIDOTE</span>
     </div>
   );
 }
@@ -1727,11 +1727,11 @@ function Landing({
         {/* Terminal Header */}
         <div className="border border-cerebral/35 bg-cerebral/5 px-4 py-2 font-mono text-[10px] tracking-widest text-cerebral mb-4 uppercase flex items-center gap-2">
           <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-          <span>RESON // SECURE COGNITIVE</span>
+          <span>ANTIDOTE // SECURE COGNITIVE</span>
         </div>
 
         <h1 className="font-sans text-lg font-bold uppercase tracking-tighter text-foreground">
-          Reson
+          Antidote
         </h1>
         <div className="mt-4 text-xs font-medium leading-relaxed text-foreground/75 font-mono min-h-[75px]">
           <EncryptedText

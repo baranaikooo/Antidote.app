@@ -78,21 +78,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Reson — Nájdi svoju kognitívnu rezonanciu" },
+      { title: "Antidote — Nájdi svoju kognitívnu rezonanciu" },
       {
         name: "description",
         content:
           "Zoznamovacia aplikácia bez swipovania. Párovanie cez psychologický test a komunikácia výhradne cez hlasovky.",
       },
-      { name: "author", content: "Reson" },
-      { property: "og:title", content: "Reson — Nájdi svoju kognitívnu rezonanciu" },
+      { name: "author", content: "Antidote" },
+      { property: "og:title", content: "Antidote — Nájdi svoju kognitívnu rezonanciu" },
       {
         property: "og:description",
         content: "Zoznamovacia aplikácia bez swipovania. Žiadne swipovanie. Iba psychológia.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@ResonApp" },
+      { name: "twitter:site", content: "@AntidoteApp" },
       { name: "color-scheme", content: "light dark" },
     ],
     links: [
