@@ -1,5 +1,4 @@
-import { useHaptic } from "@/hooks/use-haptics";
-import { Sparkles, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
 interface IcebreakerDilemmaProps {
   similarity: number;
@@ -26,15 +25,13 @@ export function IcebreakerDilemma({
   userTopPriority,
   matchTopPriority,
 }: IcebreakerDilemmaProps) {
-  const haptic = useHaptic();
-
   // Generate dilemma content based on vectors
-  let dilemmaTitle = "Algoritmická Dilema";
+  let dilemmaTitle = "Otázka na prvú reakciu";
   let dilemmaText = "";
   let reason = "";
 
   if (userTopPriority === matchTopPriority && userTopPriority) {
-    dilemmaTitle = "Spoločná Základná Hodnota";
+    dilemmaTitle = "Spoločná hodnota";
     reason = `Oboja zdieľate rovnakú životnú prioritu: ${CATEGORY_NAMES[userTopPriority] || userTopPriority}.`;
 
     if (userTopPriority === "rodina") {
@@ -54,56 +51,48 @@ export function IcebreakerDilemma({
         "Sloboda je pre vás všetkým. Znamená pre vás sloboda vo vzťahu možnosť tráviť veľa času osamote bez vysvetľovania, alebo spoločné bezhraničné dobrodružstvá?";
     }
   } else if (complementarity > 0.75) {
-    dilemmaTitle = "Komplementárny Kontrast";
-    reason = "Zafungoval zákon príťažlivosti protikladov (Introvertná a Extrovertná polarita).";
+    dilemmaTitle = "Rozdiel, ktorý stojí za rozhovor";
+    reason = "Každý z vás čerpá energiu iným spôsobom.";
     dilemmaText =
       "Jeden z vás miluje nabíjanie batérií osamote, druhý čerpá energiu zo sociálneho ruchu. Ak by ste mali naplánovať ideálny víkend, kde by v sobotu večer bol veľký večierok a v nedeľu ticho v prírode, prežili by ste to v harmónii?";
   } else {
-    dilemmaTitle = "Kognitívne Zrkadlenie";
+    dilemmaTitle = "Podobný spôsob uvažovania";
     reason = `Vaša kognitívna zhoda je vysoká (${Math.round(similarity * 100)}%).`;
     dilemmaText =
       "Dostali ste možnosť zistiť presný dátum a okolnosti konca vášho vzťahu s vedomím, že to nemôžete zmeniť. Chceli by ste to vedieť, aby ste si viac vážili spoločný čas, alebo by to pre vás bolo prekliatím?";
   }
 
   return (
-    <div className="border border-foreground/20 bg-card p-6 relative overflow-hidden">
-      {/* Sparkle background element */}
-      <div className="absolute top-0 right-0 p-4 opacity-5">
-        <Sparkles className="size-12 text-foreground" />
-      </div>
-
-      <div className="flex items-center gap-2 mb-3">
-        <div className="border border-foreground/20 p-1.5 text-foreground bg-foreground/5">
-          <Sparkles className="size-4" />
-        </div>
-        <h4 className="font-mono font-bold text-sm tracking-wide text-foreground uppercase">
+    <div className="border border-foreground/25 bg-card p-5 relative overflow-hidden">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h4 className="font-display text-lg font-bold tracking-[-0.035em] text-foreground">
           {dilemmaTitle}
         </h4>
+        <span className="grid size-9 shrink-0 place-items-center rounded-full border border-foreground/20">
+          <MessageCircle className="size-4" />
+        </span>
       </div>
 
-      {/* Rationale text */}
-      <p className="text-[9px] tracking-wider text-foreground/45 uppercase font-mono mb-4 leading-relaxed">
-        // {reason}
+      <p className="mb-5 text-xs leading-relaxed text-foreground/50">
+        Prečo práve táto otázka: {reason}
       </p>
 
-      {/* Dilemma Question */}
-      <div className="bg-foreground/5 border border-foreground/10 p-5 mb-5">
-        <p className="text-xs font-medium leading-relaxed text-foreground/80 italic font-mono uppercase">
-          &ldquo;{dilemmaText}&rdquo;
+      <div className="border-y border-foreground/20 py-5 mb-5">
+        <p className="font-display text-xl font-semibold leading-snug tracking-[-0.025em] text-foreground">
+          {dilemmaText}
         </p>
       </div>
 
-      {/* Visual indicator of the icebreaker */}
-      <div className="flex items-center gap-3 text-[10px] text-foreground/45 font-mono uppercase">
+      <div className="flex items-center gap-3 text-xs text-foreground/45">
         <div className="flex -space-x-1">
-          <div className="size-5 border border-foreground bg-foreground text-[8px] flex items-center justify-center text-background font-mono font-bold">
+          <div className="size-6 rounded-full border border-foreground bg-foreground text-[8px] flex items-center justify-center text-background font-mono font-bold">
             {userStyle[0]}
           </div>
-          <div className="size-5 border border-foreground bg-foreground text-[8px] flex items-center justify-center text-background font-mono font-bold">
+          <div className="size-6 rounded-full border border-foreground bg-accent text-[8px] flex items-center justify-center text-accent-foreground font-mono font-bold">
             {matchStyle[0]}
           </div>
         </div>
-        <span>Odpovedzte hlasovou správou</span>
+        <span>Obaja odpovedáte bez toho, aby ste najprv počuli druhého.</span>
       </div>
     </div>
   );

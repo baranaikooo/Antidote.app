@@ -55,12 +55,9 @@ import {
   haversineKm,
 } from "@/lib/resonance";
 
-import { SonarScan } from "@/components/SonarScan";
 import { GoogleSignInButton, type GoogleProfile } from "@/components/GoogleSignInButton";
-import { EncryptedText } from "@/components/ui/encrypted-text";
 import { Blobs, Chip, PillButton, SoftCard, HandNote } from "@/components/Playful";
 import { useHaptic } from "@/hooks/use-haptics";
-import { useIsMobile } from "@/hooks/use-mobile";
 import {
   attachStreamToVideo,
   cameraErrorMessage,
@@ -100,8 +97,8 @@ import {
   COOKIES_BODY,
   CONTACT_BODY,
 } from "@/components/settings/LegalAndSettings";
-import { RadarChart } from "@/components/RadarChart";
 import { AssetDossier } from "@/components/AssetDossier";
+import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
@@ -152,7 +149,10 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
             "radial-gradient(circle, var(--cerebral-glow, rgba(212,131,123,0.25)), rgba(212,131,123,0.03) 60%, transparent 70%)",
         }}
       />
-      <span className="absolute rounded-full bg-foreground shadow-[0_0_6px_var(--cerebral)]" style={{ width: 12, height: 12 }} />
+      <span
+        className="absolute rounded-full bg-foreground shadow-[0_0_6px_var(--cerebral)]"
+        style={{ width: 12, height: 12 }}
+      />
     </div>
   );
 }
@@ -294,7 +294,9 @@ function clearOnboardingStorage(preserveActiveScreen = false) {
   localStorage.removeItem("reson:onboarding_previewE");
   localStorage.removeItem("reson:onboarding_hesitated");
   localStorage.removeItem("reson:onboarding_answers");
-  clearVideoBlobs().catch((err) => console.error("Failed to clear video blobs from IndexedDB:", err));
+  clearVideoBlobs().catch((err) =>
+    console.error("Failed to clear video blobs from IndexedDB:", err),
+  );
 }
 
 function AntidoteApp() {
@@ -308,7 +310,7 @@ function AntidoteApp() {
 
   const [screen, setScreen] = useState<Screen>("landing");
   const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
-  
+
   const [answers, setAnswers] = useState<Answers>(() => {
     if (typeof window === "undefined") return {};
     const saved = localStorage.getItem("reson:onboarding_answers");
@@ -331,7 +333,7 @@ function AntidoteApp() {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
-  
+
   const [activeConversationId, setActiveConversationId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("reson:activeConversationId");
@@ -538,7 +540,15 @@ function AntidoteApp() {
         if (existingProfile) {
           setProfile(existingProfile);
           const savedScreen = localStorage.getItem("reson:active_screen") as Screen;
-          const validMainScreens: Screen[] = ["chamber", "noOne", "messages", "settings", "profile-dossier", "thread", "autoMatch"];
+          const validMainScreens: Screen[] = [
+            "chamber",
+            "noOne",
+            "messages",
+            "settings",
+            "profile-dossier",
+            "thread",
+            "autoMatch",
+          ];
           if (savedScreen && validMainScreens.includes(savedScreen)) {
             setScreen(savedScreen);
           } else {
@@ -688,11 +698,13 @@ function AntidoteApp() {
         }
 
         if (shouldUpdate) {
-          console.info(`[Geolocation Stream] Location changed. Updating to: [Lat: ${latitude}, Lon: ${longitude}]`);
+          console.info(
+            `[Geolocation Stream] Location changed. Updating to: [Lat: ${latitude}, Lon: ${longitude}]`,
+          );
           lastSavedCoords = currentCoords;
 
           // Update local state reactively
-          setProfile((prev) => prev ? { ...prev, coords: currentCoords } : null);
+          setProfile((prev) => (prev ? { ...prev, coords: currentCoords } : null));
 
           // Update database asynchronously
           const { error } = await supabase
@@ -715,7 +727,7 @@ function AntidoteApp() {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0,
-      }
+      },
     );
 
     return () => {
@@ -744,13 +756,14 @@ function AntidoteApp() {
             if (!prev) return null;
             return {
               ...prev,
-              coords: p.latitude && p.longitude ? { lat: p.latitude, lon: p.longitude } : prev.coords,
+              coords:
+                p.latitude && p.longitude ? { lat: p.latitude, lon: p.longitude } : prev.coords,
               haptic_profile: p.haptic_profile || prev.haptic_profile,
               geo_density: p.geo_density || prev.geo_density,
               ui_speed: p.ui_speed || prev.ui_speed,
             };
           });
-        }
+        },
       )
       .subscribe();
 
@@ -778,7 +791,7 @@ function AntidoteApp() {
               headers: {
                 "User-Agent": "AntidoteApp/1.0",
               },
-            }
+            },
           );
           if (r.ok) {
             const data = await r.json();
@@ -822,7 +835,7 @@ function AntidoteApp() {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0,
-      }
+      },
     );
   }, [authUserId]);
 
@@ -866,7 +879,8 @@ function AntidoteApp() {
           avg_response_time: row.avg_response_time || 3.0,
           top_priority: row.top_priority || "",
           distanceKm: row.distance ? Math.round(row.distance * 100) : undefined,
-          coords: row.latitude && row.longitude ? { lat: row.latitude, lon: row.longitude } : undefined,
+          coords:
+            row.latitude && row.longitude ? { lat: row.latitude, lon: row.longitude } : undefined,
         }));
 
         setLiveCandidates(mapped);
@@ -1105,10 +1119,13 @@ function AntidoteApp() {
           initialName={googleProfile?.name.split(/\s+/)[0] ?? ""}
           onSubmit={async (p) => {
             haptic("success");
-            const targetId = authUserId || (await supabase.auth.getUser()).data.user?.id || "00000000-0000-0000-0000-000000000001";
+            const targetId =
+              authUserId ||
+              (await supabase.auth.getUser()).data.user?.id ||
+              "00000000-0000-0000-0000-000000000001";
             const newProfile: UserProfile = { ...p, id: targetId, livenessVerified: true };
             setProfile(newProfile);
-            
+
             // Persist profile to Supabase immediately so account is never lost on refresh
             if (targetId !== "00000000-0000-0000-0000-000000000001") {
               try {
@@ -1160,7 +1177,11 @@ function AntidoteApp() {
                   setProfile((prev) => (prev ? { ...prev, videoUrls: publicUrls } : null));
                   const currentProfile = profile || (await fetchUserProfile(targetUserId));
                   if (currentProfile) {
-                    await saveUserProfile(targetUserId, { ...currentProfile, videoUrls: publicUrls }, publicUrls);
+                    await saveUserProfile(
+                      targetUserId,
+                      { ...currentProfile, videoUrls: publicUrls },
+                      publicUrls,
+                    );
                   }
                   console.info("[Onboarding] Snippets successfully persisted to Supabase.");
                 }
@@ -1192,10 +1213,7 @@ function AntidoteApp() {
       )}
 
       {screen === "bankroll" && (
-        <div className="flex flex-col items-center">
-          <div className="mt-6 flex justify-center h-40 items-center">
-            <RadarChart conscientiousness={previewC} extraversion={previewE} size={165} />
-          </div>
+        <div>
           <ValueBankroll
             onSliderChange={(c, e) => {
               setPreviewC(c);
@@ -1252,7 +1270,9 @@ function AntidoteApp() {
               if (!profile) throw new Error("Profile not initialized");
 
               // Retrieve the absolute source of truth for the logged-in user ID to prevent RLS mismatches
-              const { data: { user: currentUser } } = await supabase.auth.getUser();
+              const {
+                data: { user: currentUser },
+              } = await supabase.auth.getUser();
               const targetUserId = currentUser?.id || authUserId;
 
               if (!targetUserId) {
@@ -1280,7 +1300,8 @@ function AntidoteApp() {
               if (targetUserId !== "00000000-0000-0000-0000-000000000001") {
                 if (updated.videoUrls && updated.videoUrls.length > 0) {
                   const uploadPromises = updated.videoUrls.map(async (url, idx) => {
-                    if (!url || !url.startsWith("blob:")) return { slot: idx + 1, url, error: null };
+                    if (!url || !url.startsWith("blob:"))
+                      return { slot: idx + 1, url, error: null };
                     try {
                       let blob = await getVideoBlob(`snippet_${idx + 1}`);
                       if (!blob) {
@@ -1291,14 +1312,20 @@ function AntidoteApp() {
                       return { slot: idx + 1, url: uploadRes.url, error: uploadRes.error };
                     } catch (fetchErr: any) {
                       console.error(`[Onboarding] Failed to upload snippet ${idx + 1}:`, fetchErr);
-                      return { slot: idx + 1, url: null, error: fetchErr.message || String(fetchErr) };
+                      return {
+                        slot: idx + 1,
+                        url: null,
+                        error: fetchErr.message || String(fetchErr),
+                      };
                     }
                   });
                   const results = await Promise.all(uploadPromises);
 
                   const failedUploads = results.filter((r) => r.url === null);
                   if (failedUploads.length > 0) {
-                    console.warn(`[Onboarding] ${failedUploads.length} video snippet uploads failed.`);
+                    console.warn(
+                      `[Onboarding] ${failedUploads.length} video snippet uploads failed.`,
+                    );
                     const firstErr = failedUploads[0].error || "Neznáma chyba";
                     alert(
                       `Niektoré videá sa nepodarilo nahrať. Budete ich môcť pridať neskôr vo vašom profile. Detail chyby: ${firstErr}`,
@@ -1412,7 +1439,7 @@ function AntidoteApp() {
           match={activeConversationMatch}
           myVideoUrl={livenessVideoUrl ?? undefined}
           user={profile}
-          onUpdateUser={(update) => setProfile(prev => prev ? { ...prev, ...update } : null)}
+          onUpdateUser={(update) => setProfile((prev) => (prev ? { ...prev, ...update } : null))}
           onBack={() => setScreen("messages")}
           onEnd={() => endConversation(activeConversation.id)}
           onUpdate={(patch) => updateConversation(activeConversation.id, patch)}
@@ -1490,9 +1517,7 @@ function useIsKeyboardOrInputActive() {
       const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
       ) {
         setIsActive(true);
       }
@@ -1503,9 +1528,7 @@ function useIsKeyboardOrInputActive() {
         const active = document.activeElement as HTMLElement | null;
         if (
           !active ||
-          (active.tagName !== "INPUT" &&
-            active.tagName !== "TEXTAREA" &&
-            !active.isContentEditable)
+          (active.tagName !== "INPUT" && active.tagName !== "TEXTAREA" && !active.isContentEditable)
         ) {
           setIsActive(false);
         }
@@ -1590,15 +1613,14 @@ function BottomNav({
         className="relative flex flex-1 flex-col items-center justify-center py-1.5 px-1.5 transition-all active:scale-90 cursor-pointer group"
       >
         {is && (
-          <span
-            className="absolute inset-0 ios-glass-item-active -z-10 transition-all duration-300"
-            style={{ borderRadius: "9999px" }}
-          />
+          <span className="absolute inset-x-2 bottom-0 h-[3px] bg-cerebral -z-10 transition-all duration-300" />
         )}
         <span className="relative flex items-center justify-center size-7">
           <span
             className={`transition-colors duration-200 ${
-              is ? "text-cerebral drop-shadow-[0_0_6px_var(--cerebral-glow)]" : "text-foreground/45 group-hover:text-foreground/75"
+              is
+                ? "text-cerebral drop-shadow-[0_0_6px_var(--cerebral-glow)]"
+                : "text-foreground/45 group-hover:text-foreground/75"
             }`}
           >
             {icon}
@@ -1625,15 +1647,10 @@ function BottomNav({
   return (
     <nav
       className={`fixed inset-x-0 bottom-5 z-40 px-4 flex justify-center pointer-events-none select-none transition-all duration-300 ${
-        isInputActive
-          ? "opacity-0 translate-y-16 pointer-events-none"
-          : "opacity-100 translate-y-0"
+        isInputActive ? "opacity-0 translate-y-16 pointer-events-none" : "opacity-100 translate-y-0"
       }`}
     >
-      <div
-        style={{ borderRadius: "9999px" }}
-        className="pointer-events-auto ios-liquid-glass flex items-center justify-around w-full max-w-[360px] px-2.5 py-1.5 transition-all"
-      >
+      <div className="pointer-events-auto editorial-dock flex items-center justify-around w-full max-w-[380px] px-2.5 py-1.5 transition-all">
         <Item
           id="home"
           icon={<Home className="size-5" />}
@@ -1650,7 +1667,12 @@ function BottomNav({
 
         {testDone && (
           <>
-            <Item id="profile" icon={<User className="size-5" />} label="Profil" onClick={onProfile} />
+            <Item
+              id="profile"
+              icon={<User className="size-5" />}
+              label="Profil"
+              onClick={onProfile}
+            />
             <Item
               id="settings"
               icon={<SettingsIcon className="size-5" />}
@@ -1675,14 +1697,7 @@ function BottomNav({
 }
 
 function Logo() {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="grid place-items-center">
-        <Wave size={48} />
-      </div>
-      <span className="text-2xl font-light tracking-[0.3em]">ANTIDOTE</span>
-    </div>
-  );
+  return <AntidoteLogo markClassName="h-9" />;
 }
 
 function PrimaryButton({
@@ -1709,59 +1724,68 @@ function PrimaryButton({
   );
 }
 
-function Landing({
-  onGoogle,
-}: {
-  onGoogle: (profile: GoogleProfile) => void;
-}) {
+function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   const haptic = useHaptic();
+  const [choice, setChoice] = useState<"travel" | "love" | null>(null);
+
+  const choose = (nextChoice: "travel" | "love") => {
+    haptic("medium");
+    setChoice(nextChoice);
+  };
+
   return (
-    <div className="relative flex min-h-[88vh] flex-col items-center justify-center px-4 text-center animate-fade-up overflow-hidden">
-      {/* Background Liquid Sonar */}
-      <div className="absolute inset-0 pointer-events-none grid place-items-center opacity-[0.06] dark:opacity-[0.03] overflow-hidden">
-        <div className="animate-liquid-sonar scale-[2] md:scale-[2.4]">
-          <Wave size={400} intense />
-        </div>
-      </div>
-      <div className="relative z-10 flex flex-col items-center max-w-sm w-full">
-        {/* Terminal Header */}
-        <div className="border border-cerebral/35 bg-cerebral/5 px-4 py-2 font-mono text-[10px] tracking-widest text-cerebral mb-4 uppercase flex items-center gap-2">
-          <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-          <span>ANTIDOTE // SECURE COGNITIVE</span>
-        </div>
+    <div className="relative flex min-h-[88vh] flex-col px-1 py-3 animate-fade-up">
+      <header className="flex items-center justify-between">
+        <AntidoteLogo markClassName="h-9" />
+        <span className="font-mono text-xs text-foreground/35">01</span>
+      </header>
 
-        <h1 className="font-sans text-lg font-bold uppercase tracking-tighter text-foreground">
-          Antidote
-        </h1>
-        <div className="mt-4 text-xs font-medium leading-relaxed text-foreground/75 font-mono min-h-[75px]">
-          <EncryptedText
-            text="SPOZNAJ DRUHÝCH SKÔR, NEŽ ICH UVIDÍŠ."
-            encryptedClassName="text-foreground/30"
-            revealedClassName="text-foreground font-bold"
-            revealDelayMs={40}
-          />
-          <span className="block mt-1 text-foreground/50">
-            <EncryptedText
-              text="ŽIADNE SWIPOVANIE. IBA HLAS."
-              encryptedClassName="text-foreground/20"
-              revealedClassName="text-foreground/70"
-              revealDelayMs={60}
-            />
-          </span>
-          <span className="block mt-3 text-[10px] text-foreground/35 uppercase tracking-wider">
-            // EV(Compatibility) = 0.6 * Similarity(depth, conscientiousness) + 0.4 *
-            Complementarity(extraversion)
-          </span>
+      <main className="my-auto py-10">
+        <div className="mb-8 max-w-sm">
+          <h1 className="font-display text-[clamp(2.7rem,12vw,4.6rem)] font-extrabold leading-[0.9] tracking-[-0.065em] text-foreground">
+            Čo by si radšej stratil/a na jeden rok?
+          </h1>
         </div>
 
-        <div className="mt-10 w-full">
-          <GoogleSignInButton onSuccess={onGoogle} />
+        <div className="grid gap-3">
+          <button
+            type="button"
+            onClick={() => choose("travel")}
+            className={`tactile-button flex min-h-24 items-center justify-between p-5 text-left ${
+              choice === "travel" ? "bg-cerebral text-white" : "bg-card text-foreground"
+            }`}
+          >
+            <span className="font-display text-xl font-bold leading-tight">Možnosť cestovať</span>
+            <span className="font-mono text-sm">A</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => choose("love")}
+            className={`tactile-button flex min-h-24 items-center justify-between p-5 text-left ${
+              choice === "love" ? "bg-accent text-accent-foreground" : "bg-card text-foreground"
+            }`}
+          >
+            <span className="font-display text-xl font-bold leading-tight">
+              Možnosť zamilovať sa
+            </span>
+            <span className="font-mono text-sm">B</span>
+          </button>
+        </div>
 
-          <div className="mt-5 text-[10px] font-mono tracking-wider text-foreground/40 uppercase">
-            // LEN OVERENÍ ĽUDIA · DECENTRALIZOVANÁ KVALITA
+        {choice && (
+          <div className="mt-8 animate-fade-up border-t border-foreground/30 pt-6">
+            <p className="font-display text-2xl font-semibold leading-tight tracking-[-0.035em]">
+              Toto nebola náhodná otázka.
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-foreground/60">
+              Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
+            </p>
+            <div className="mt-6">
+              <GoogleSignInButton onSuccess={onGoogle} />
+            </div>
           </div>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
   );
 }
@@ -1799,7 +1823,9 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
   const [errMsg, setErrMsg] = useState("");
   const [faceModel, setFaceModel] = useState<any>(null);
   const [modelLoading, setModelLoading] = useState(true);
-  const [challengeStep, setChallengeStep] = useState<"center" | "turn_right" | "turn_left" | "done" | "idle">("idle");
+  const [challengeStep, setChallengeStep] = useState<
+    "center" | "turn_right" | "turn_left" | "done" | "idle"
+  >("idle");
 
   const updateChallengeStep = (val: "center" | "turn_right" | "turn_left" | "done" | "idle") => {
     challengeStepRef.current = val;
@@ -2073,7 +2099,9 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
                       strokeWidth="1.5"
                       strokeDasharray="4 3"
                       className={`transition-colors duration-300 ${
-                        challengeStep === "center" ? "text-green-500 animate-pulse" : "text-foreground/40"
+                        challengeStep === "center"
+                          ? "text-green-500 animate-pulse"
+                          : "text-foreground/40"
                       }`}
                     />
                   </svg>
@@ -2085,13 +2113,31 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
                     [ BIOMETRICKÝ SKEN ]
                   </div>
                   <div className="flex flex-col gap-0 text-left text-foreground/75 uppercase font-mono">
-                    <div className={challengeStep === "center" ? "text-green-400 font-bold" : "text-foreground/45"}>
+                    <div
+                      className={
+                        challengeStep === "center"
+                          ? "text-green-400 font-bold"
+                          : "text-foreground/45"
+                      }
+                    >
                       {challengeStep === "center" ? "● " : "○ "}1. Pozri do kamery
                     </div>
-                    <div className={challengeStep === "turn_right" ? "text-green-400 font-bold" : "text-foreground/45"}>
+                    <div
+                      className={
+                        challengeStep === "turn_right"
+                          ? "text-green-400 font-bold"
+                          : "text-foreground/45"
+                      }
+                    >
                       {challengeStep === "turn_right" ? "● " : "○ "}2. Otoč hlavu doprava
                     </div>
-                    <div className={challengeStep === "turn_left" ? "text-green-400 font-bold" : "text-foreground/45"}>
+                    <div
+                      className={
+                        challengeStep === "turn_left"
+                          ? "text-green-400 font-bold"
+                          : "text-foreground/45"
+                      }
+                    >
                       {challengeStep === "turn_left" ? "● " : "○ "}3. Otoč hlavu doľava
                     </div>
                   </div>
@@ -2147,7 +2193,8 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
         <p className="font-mono text-[10px] tracking-widest text-foreground/50 uppercase mb-3">
           {phase === "idle" && "[ NEAKTÍVNY ]"}
           {phase === "countdown" && "[ PRIPRAV SA ]"}
-          {phase === "recording" && `[ ${challengeStep === "center" ? "KROK 1: CENTROVANIE" : challengeStep === "turn_right" ? "KROK 2: OTOČENIE VPRAVO" : "KROK 3: OTOČENIE VĽAVO"} ]`}
+          {phase === "recording" &&
+            `[ ${challengeStep === "center" ? "KROK 1: CENTROVANIE" : challengeStep === "turn_right" ? "KROK 2: OTOČENIE VPRAVO" : "KROK 3: OTOČENIE VĽAVO"} ]`}
           {phase === "verifying" && "[ VERIFIKÁCIA ]"}
           {phase === "ready" && "[ PRIPRAVENÝ ]"}
           {phase === "error" && "[ CHYBA OVERENIA ]"}
@@ -2241,65 +2288,25 @@ function MatchCard({
   initiatedMatchIds,
   onSelectMatch,
 }: MatchCardProps) {
-  const [dragX, setDragX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const startX = useRef(0);
   const haptic = useHaptic();
-
-  const handleStart = (clientX: number) => {
-    startX.current = clientX;
-    setIsDragging(true);
-  };
-
-  const handleMove = (clientX: number) => {
-    if (!isDragging) return;
-    const diff = clientX - startX.current;
-    const clampedDiff = Math.max(-140, Math.min(140, diff));
-    setDragX(clampedDiff);
-  };
-
-  const handleEnd = () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-
-    if (dragX < -100) {
-      haptic("warning");
-      // Snap back on release
-      setDragX(0);
-    } else {
-      setDragX(0);
-    }
-  };
+  const sharedPriority =
+    profile.topPriority && match.top_priority && profile.topPriority === match.top_priority;
 
   return (
-    <div
-      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
-      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
-      onTouchEnd={handleEnd}
-      onMouseDown={(e) => handleStart(e.clientX)}
-      onMouseMove={(e) => {
-        if (e.buttons === 1) handleMove(e.clientX);
-      }}
-      onMouseUp={handleEnd}
-      onMouseLeave={handleEnd}
-      style={{
-        transform: `translate3d(${dragX}px, 0, 0) translateZ(0)`,
-        transition: isDragging
-          ? "none"
-          : "transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-        cursor: isDragging ? "grabbing" : "grab",
-        touchAction: "pan-y",
-      }}
-      className="border border-foreground/10 bg-card p-6 relative overflow-hidden hover:border-foreground/30 select-none will-change-transform"
-    >
-      {/* Match Score Badge */}
-      <div className="absolute top-4 right-4 bg-cerebral/10 border border-cerebral/30 px-2.5 py-1 font-mono text-[10px] font-bold text-cerebral tracking-widest pointer-events-none">
-        ZHODA {Math.round(match.score)}%
-      </div>
-
-      <div className="flex gap-4 items-start mb-6 pointer-events-none">
-        {/* Blurred video avatar with CCTV aesthetics */}
-        <div className="relative size-16 shrink-0 overflow-hidden border border-foreground/25 rounded-none bg-black">
+    <article className="editorial-panel relative overflow-hidden p-5 sm:p-6">
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="editorial-kicker text-cerebral">Spojenie dňa</p>
+          <h3 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.055em]">
+            {match.name}
+            <span className="ml-2 text-base font-medium text-foreground/50">{match.age}</span>
+          </h3>
+          <p className="mt-1 text-xs text-foreground/55">
+            {match.city}
+            {match.distanceKm !== undefined && ` · ${Math.round(match.distanceKm)} km`}
+          </p>
+        </div>
+        <div className="relative size-20 shrink-0 overflow-hidden rounded-full border-2 border-foreground bg-black">
           {match.videoUrls && match.videoUrls.length > 0 ? (
             <video
               src={match.videoUrls[0]}
@@ -2307,7 +2314,7 @@ function MatchCard({
               loop
               muted
               playsInline
-              className="size-full object-contain bg-black blur-[5px]"
+              className="size-full object-cover bg-black blur-[6px] scale-110"
               style={{ transform: "scaleX(-1)" }}
             />
           ) : (
@@ -2317,79 +2324,42 @@ function MatchCard({
               className="size-full object-cover blur-md scale-125"
             />
           )}
-          {/* CCTV Overlay Indicator */}
-          <div className="absolute top-0.5 left-0.5 flex items-center gap-0.5 bg-black/75 px-1 py-0.5 border border-white/5">
-            <span className="size-1 animate-pulse rounded-full bg-cerebral" />
-            <span className="font-mono text-[6px] tracking-tighter text-cerebral">LIVE</span>
+        </div>
+      </div>
+
+      <div className="border-y border-foreground/25 py-5">
+        <p className="font-display text-xl font-semibold leading-snug tracking-[-0.03em]">
+          {sharedPriority
+            ? `Obaja dávate na prvé miesto hodnotu „${profile.topPriority}“.`
+            : similarityPct >= 75
+              ? "Rozmýšľate podobne, ale energiu do vzťahu prinášate iným spôsobom."
+              : "Nezhodnete sa vo všetkom — a práve tam môže vzniknúť dobrý rozhovor."}
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-foreground/60">{match.bio}</p>
+      </div>
+
+      <div className="my-5 grid grid-cols-2 divide-x divide-foreground/25 border-y border-foreground/25">
+        <div className="py-4 pr-4">
+          <p className="editorial-kicker text-foreground/45">Spoločný rytmus</p>
+          <p className="mt-2 font-display text-lg font-bold">{similarityPct}% podobnosť</p>
+          <div className="mt-3 flex gap-1">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <span
+                key={index}
+                className={`h-2 flex-1 ${index < Math.round(similarityPct / 20) ? "bg-cerebral" : "bg-foreground/10"}`}
+              />
+            ))}
           </div>
         </div>
-        <div className="min-w-0 pr-16">
-          <h3 className="text-sm font-bold text-foreground leading-tight">
-            {match.name},{" "}
-            <span className="text-foreground/60 font-light">{match.age}</span>
-          </h3>
-          <p className="font-mono text-[10px] tracking-widest text-foreground/45 uppercase mt-0.5 flex flex-wrap items-center gap-1.5">
-            <span>{match.city}</span>
-            {match.distanceKm !== undefined && (
-              <>
-                <span>•</span>
-                <span>{Math.round(match.distanceKm)} km</span>
-              </>
-            )}
-            {match.isAutoExpanded && (
-              <span className="bg-amber-500/15 border border-amber-500/30 px-1 py-0.5 text-[8px] font-bold text-amber-600 dark:text-amber-500 rounded-none tracking-normal">
-                [ROZŠÍRENÝ OKRUH]
-              </span>
-            )}
+        <div className="py-4 pl-4">
+          <p className="editorial-kicker text-foreground/45">Napätie rozhovoru</p>
+          <p className="mt-2 text-sm font-semibold leading-snug">{extLabel}</p>
+          <p className="mt-1 text-xs text-foreground/50">
+            {isSecureMatch ? "Pokojný základ" : attachmentLabel}
           </p>
         </div>
       </div>
 
-      {/* Micro-bio */}
-      <p className="text-xs text-foreground/70 leading-relaxed mb-6 italic bg-foreground/[0.02] border border-foreground/10 p-3 font-mono pointer-events-none">
-        &ldquo;{match.bio}&rdquo;
-      </p>
-
-      {/* Compatibility Metrics */}
-      <div className="space-y-3.5 mb-6 border-t border-foreground/10 pt-5 pointer-events-none">
-        {/* Similarity metric */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] uppercase font-mono tracking-wider text-foreground/50">
-            <span>Kognitívna zhoda</span>
-            <span className="text-cerebral font-bold">{similarityPct}%</span>
-          </div>
-          <div className="h-[3px] w-full bg-foreground/10 overflow-hidden">
-            <div
-              className="h-full bg-cerebral transition-all duration-500"
-              style={{ width: `${similarityPct}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Complementarity metric */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] uppercase font-mono tracking-wider text-foreground/50">
-            <span>Energia</span>
-            <span className="text-foreground font-bold">OPTIMÁLNA</span>
-          </div>
-          <p className="text-[10px] text-foreground/45 font-mono">{extLabel}</p>
-        </div>
-
-        {/* Attachment style metric */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] uppercase font-mono tracking-wider text-foreground/50">
-            <span>Vzťahová väzba</span>
-            <span
-              className={`${isSecureMatch ? "text-foreground" : "text-foreground/70"} font-bold`}
-            >
-              {isSecureMatch ? "KOMPATIBILNÁ" : "ŠTANDARDNÁ"}
-            </span>
-          </div>
-          <p className="text-[10px] text-foreground/45 font-mono">{attachmentLabel}</p>
-        </div>
-      </div>
-
-      {/* Action button */}
       <button
         type="button"
         onClick={(e) => {
@@ -2397,16 +2367,14 @@ function MatchCard({
           haptic("medium");
           onSelectMatch(match.id);
         }}
-        className="w-full flex items-center justify-center gap-2 bg-foreground text-background font-mono font-bold py-4 active:scale-[0.99] transition-all text-sm tracking-widest uppercase hover:bg-cerebral hover:text-white cursor-pointer"
+        className="tactile-button w-full flex items-center justify-between gap-2 bg-foreground px-5 py-4 text-background cursor-pointer"
       >
-        <MessageCircle className="size-4" />
-        <span>
-          {initiatedMatchIds?.has(match.id)
-            ? "Pokračovať v hlasovom čete"
-            : "Vstúpiť do hlasového četu"}
+        <span className="font-display text-base font-bold">
+          {initiatedMatchIds?.has(match.id) ? "Pokračovať v rozhovore" : "Odpovedať hlasom"}
         </span>
+        <Mic className="size-5" />
       </button>
-    </div>
+    </article>
   );
 }
 
@@ -2435,20 +2403,13 @@ function Dashboard({
   const availableMatches = matches.slice(0, 3); // limit to 3 curated daily matches
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-8 animate-fade-up relative overflow-hidden">
-      {/* Background Liquid Sonar */}
-      <div className="absolute inset-0 pointer-events-none grid place-items-center opacity-[0.06] dark:opacity-[0.03] overflow-hidden">
-        <div className="animate-liquid-sonar scale-[1.8] md:scale-[2.2]">
-          <Wave size={400} intense />
-        </div>
-      </div>
-
+    <div className="mx-auto w-full max-w-md px-1 py-6 animate-fade-up relative">
       {/* Top Header */}
       <div className="mb-8 flex items-center justify-between">
         <Logo />
         <div className="flex items-center gap-1.5 font-mono text-xs tracking-widest text-foreground/45">
           <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-          <span>DASHBOARD</span>
+          <span>DNES</span>
         </div>
       </div>
 
@@ -2506,15 +2467,13 @@ function Dashboard({
       </div>
 
       <div className="space-y-2 mb-8">
-        <p className="font-mono text-[10px] tracking-widest text-cerebral uppercase flex items-center gap-1.5">
-          <span className="size-1 rounded-full bg-cerebral" />
-          <span>// Tvoje dnešné spojenia</span>
-        </p>
-        <h2 className="font-sans text-lg font-bold tracking-tight text-foreground leading-tight uppercase">
-          Algoritmus pre teba vybral
+        <p className="editorial-kicker text-cerebral">Tvoje dnešné spojenia</p>
+        <h2 className="font-display text-4xl font-extrabold tracking-[-0.06em] text-foreground leading-[0.95]">
+          Menej ľudí. Viac dôvodov začať hovoriť.
         </h2>
-        <p className="text-xs text-foreground/50 leading-relaxed font-mono">
-          Profily s najvyššou kompatibilitou vybrané na základe tvojej kognitívnej rezonancie.
+        <p className="text-sm text-foreground/55 leading-relaxed">
+          Tri kurátorované spojenia denne. Pri každom uvidíš, čo vás spája a kde sa oplatí
+          nesúhlasiť.
         </p>
       </div>
 
@@ -2650,65 +2609,68 @@ function Test({ onComplete }: { onComplete: (a: FullAnswers) => void }) {
 
   return (
     <div className="animate-screen-in">
-      <div className="mb-5 flex items-center justify-between">
-        <span className="font-mono text-xs tracking-widest text-foreground/45">
-          {String(idx + 1).padStart(2, "0")} / 06
-        </span>
-        <span className="font-mono text-[10px] tracking-widest text-foreground/45">
-          {phase === "read" ? "ČÍTAJ · DILEMA" : "VYBER · A alebo B"}
-        </span>
-        <span
-          className={`font-mono text-xs tracking-widest font-bold ${danger ? "text-red-500" : "text-foreground"}`}
-        >
-          {timeLeft}s
-        </span>
+      <div className="mb-8 flex items-end justify-between border-b border-foreground/25 pb-3">
+        <div>
+          <p className="editorial-kicker text-cerebral">Dilema</p>
+          <p className="mt-1 font-display text-2xl font-bold tracking-[-0.05em]">
+            {String(idx + 1).padStart(2, "0")} <span className="text-foreground/30">/ 06</span>
+          </p>
+        </div>
+        <div className="text-right">
+          <span className="editorial-kicker text-foreground/45">
+            {phase === "read" ? "Najprv iba čítaj" : "Teraz sa rozhodni"}
+          </span>
+          <p className={`mt-1 font-mono text-sm font-semibold ${danger ? "text-cerebral" : ""}`}>
+            {timeLeft} sek.
+          </p>
+        </div>
       </div>
 
-      <div className="mb-3 h-[3px] w-full overflow-hidden bg-foreground/10">
-        <div
-          className="h-full transition-all duration-500 bg-foreground"
-          style={{ width: `${((idx + 1) / scenarios.length) * 100}%` }}
-        />
+      <div className="mb-8 flex gap-1.5" aria-label={`Otázka ${idx + 1} zo ${scenarios.length}`}>
+        {scenarios.map((_, step) => (
+          <span
+            key={step}
+            className={`h-2 flex-1 transition-colors ${step <= idx ? "bg-cerebral" : "bg-foreground/10"}`}
+          />
+        ))}
       </div>
 
-      {/* Phase countdown bar */}
-      <div className="mb-6 h-[6px] w-full overflow-hidden bg-foreground/10">
+      <div className="mb-6 h-1 w-full overflow-hidden bg-foreground/10">
         <div
-          className={`h-full transition-all duration-1000 ease-linear ${danger ? "bg-red-500" : "bg-foreground"}`}
+          className={`h-full transition-all duration-1000 ease-linear ${danger ? "bg-cerebral" : "bg-accent"}`}
           style={{ width: `${pct * 100}%` }}
         />
       </div>
 
-      <div className="bento-card-glow p-7">
-        <p
-          className="font-sans text-sm font-bold leading-relaxed text-foreground/95 uppercase"
-          style={{ letterSpacing: "-0.005em" }}
-        >
+      <div className="min-h-52 border-y-2 border-foreground py-8">
+        <p className="font-display text-[clamp(1.8rem,8vw,2.8rem)] font-bold leading-[1.02] tracking-[-0.055em] text-foreground">
           {s.text}
         </p>
       </div>
 
       {phase === "read" ? (
-        <p className="mt-6 text-center font-mono text-[10px] tracking-widest text-foreground/45 uppercase">
-          MOŽNOSTI SA ODOMKNÚ O {timeLeft}s
-        </p>
+        <div className="mt-6 flex items-center gap-3 text-foreground/50">
+          <span className="size-2 animate-pulse rounded-full bg-cerebral" />
+          <p className="text-sm">Nechaj prvú reakciu prejsť. Možnosti sa objavia o {timeLeft}s.</p>
+        </div>
       ) : (
-        <div className="mt-5 grid gap-3 animate-fade-up">
+        <div className="mt-6 grid gap-4 animate-fade-up">
           {(["a", "b"] as const).map((k) => (
             <button
               key={k}
               onClick={() => pick(k.toUpperCase() as Answer)}
-              className="group border border-foreground/10 bg-foreground/[0.02] p-5 text-left transition-all active:scale-[0.98] hover:border-foreground/30 hover:bg-foreground/5 cursor-pointer"
+              className={`tactile-button group p-5 text-left cursor-pointer ${
+                k === "a"
+                  ? "bg-card text-foreground hover:bg-cerebral hover:text-white"
+                  : "bg-card text-foreground hover:bg-accent hover:text-accent-foreground"
+              }`}
             >
-              <div className="mb-2 flex items-center gap-3">
-                <span className="grid size-7 place-items-center font-mono text-xs font-bold text-background bg-foreground">
+              <div className="flex items-start gap-4">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full border border-current font-mono text-xs font-bold">
                   {k.toUpperCase()}
                 </span>
-                <div className="h-px flex-1 bg-foreground/10" />
+                <p className="pt-1 text-base font-medium leading-snug">{s[k]}</p>
               </div>
-              <p className="text-sm font-medium leading-relaxed text-foreground/80 group-hover:text-foreground">
-                {s[k]}
-              </p>
             </button>
           ))}
         </div>
@@ -2727,31 +2689,35 @@ function Processing({
   archetype: Archetype;
   onDone: () => void;
 }) {
-  void archetype;
-  const isMobile = useIsMobile();
-  const scanSize = isMobile ? 240 : 360;
-  const seedNum = useMemo(() => {
-    const s = JSON.stringify(seed);
-    let h = 2166136261 >>> 0;
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-  }, [seed]);
+  void seed;
   useEffect(() => {
     const t = setTimeout(onDone, 3600);
     return () => clearTimeout(t);
   }, [onDone]);
 
   return (
-    <div className="flex min-h-[72vh] flex-col items-center justify-center px-4 text-center sm:min-h-[80vh]">
-      <SonarScan size={scanSize} seed={seedNum} period={2200} />
-      <p className="mt-7 font-mono text-[10px] tracking-[0.32em] text-foreground/45 sm:mt-10">
-        SKENUJEM REZONANČNÉ POLE
-      </p>
-      <p className="mt-2 font-mono text-[10px] tracking-[0.28em] text-foreground/30">
-        HĽADÁM KOGNITÍVNE PROFILY
+    <div className="flex min-h-[72vh] flex-col justify-center px-1 sm:min-h-[80vh]">
+      <p className="editorial-kicker text-cerebral">Tvoj profil je hotový</p>
+      <h2 className="mt-4 max-w-lg font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.065em] sm:text-6xl">
+        Nie si skóre. Si spôsob, akým sa rozhoduješ.
+      </h2>
+      <div className="mt-10 border-y border-foreground/30 py-5">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm text-foreground/55">Tvoj konverzačný archetyp</span>
+          <span className="font-display text-xl font-bold text-right">{archetype.label}</span>
+        </div>
+      </div>
+      <div className="mt-8 flex gap-2" aria-label="Pripravujem tvoje spojenia">
+        {[0, 1, 2, 3, 4].map((step) => (
+          <span
+            key={step}
+            className="h-3 flex-1 animate-pulse bg-cerebral"
+            style={{ animationDelay: `${step * 140}ms` }}
+          />
+        ))}
+      </div>
+      <p className="mt-4 text-sm text-foreground/50">
+        Vyberáme ľudí, s ktorými má zmysel začať rozhovor.
       </p>
     </div>
   );
@@ -2767,10 +2733,7 @@ function ProfileForm({
 }) {
   const haptic = useHaptic();
   const [step, setStep] = useState<
-    | "SYSTEM_IDENTIFICATION"
-    | "TEMPORAL_MATRIX"
-    | "AGE_VERIFICATION"
-    | "MARKET_ALIGNMENT"
+    "SYSTEM_IDENTIFICATION" | "TEMPORAL_MATRIX" | "AGE_VERIFICATION" | "MARKET_ALIGNMENT"
   >(() => {
     if (typeof window === "undefined") return "SYSTEM_IDENTIFICATION";
     return (localStorage.getItem("reson:profile_step") as any) || "SYSTEM_IDENTIFICATION";
@@ -2878,7 +2841,7 @@ function ProfileForm({
   };
 
   return (
-    <div 
+    <div
       className={`relative flex min-h-[88vh] flex-col items-center justify-center px-4 text-center transition-colors duration-100 ${
         errorFlash ? "bg-red-950/40 border-2 border-red-500" : ""
       }`}
@@ -2889,8 +2852,8 @@ function ProfileForm({
       </div>
 
       {step === "SYSTEM_IDENTIFICATION" && (
-        <form 
-          key="step-1" 
+        <form
+          key="step-1"
           onSubmit={(e) => {
             e.preventDefault();
             if (isNameValid) {
@@ -2944,8 +2907,8 @@ function ProfileForm({
       )}
 
       {step === "TEMPORAL_MATRIX" && (
-        <form 
-          key="step-2" 
+        <form
+          key="step-2"
           onSubmit={(e) => {
             e.preventDefault();
             if (isDateValid) {
@@ -3009,8 +2972,8 @@ function ProfileForm({
       )}
 
       {step === "AGE_VERIFICATION" && (
-        <form 
-          key="step-3" 
+        <form
+          key="step-3"
           onSubmit={(e) => {
             e.preventDefault();
             if (isAgeValid) {
@@ -3034,7 +2997,9 @@ function ProfileForm({
 
           <div className="text-left space-y-4">
             <div className="border-2 border-foreground p-4 bg-foreground/5 font-mono text-center">
-              <p className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">// TVOJ VEK</p>
+              <p className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">
+                // TVOJ VEK
+              </p>
               <div className="text-lg font-bold tracking-tight text-foreground uppercase">
                 TVOJ VEK: [ {age ?? "?"} ]
               </div>
@@ -3070,8 +3035,8 @@ function ProfileForm({
       )}
 
       {step === "MARKET_ALIGNMENT" && (
-        <form 
-          key="step-4" 
+        <form
+          key="step-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (isAlignmentValid) {
@@ -3118,11 +3083,13 @@ function ProfileForm({
                 JA SOM
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {([
-                  { value: "male", label: "MUŽ" },
-                  { value: "female", label: "ŽENA" },
-                  { value: "other", label: "NEBINÁRNY" },
-                ] as const).map((g) => (
+                {(
+                  [
+                    { value: "male", label: "MUŽ" },
+                    { value: "female", label: "ŽENA" },
+                    { value: "other", label: "NEBINÁRNY" },
+                  ] as const
+                ).map((g) => (
                   <button
                     key={g.value}
                     type="button"
@@ -3148,11 +3115,13 @@ function ProfileForm({
                 HĽADÁM
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {([
-                  { value: "male", label: "MUŽOV" },
-                  { value: "female", label: "ŽENY" },
-                  { value: "all", label: "VŠETKÝCH" },
-                ] as const).map((t) => (
+                {(
+                  [
+                    { value: "male", label: "MUŽOV" },
+                    { value: "female", label: "ŽENY" },
+                    { value: "all", label: "VŠETKÝCH" },
+                  ] as const
+                ).map((t) => (
                   <button
                     key={t.value}
                     type="button"
@@ -3224,20 +3193,26 @@ function AutoMatch({
     return () => clearTimeout(t);
   }, [onReady, haptic]);
   return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center text-center animate-fade-up">
-      <Wave size={220} intense />
-      <div className="mt-8 flex items-center justify-center gap-2">
-        <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-        <p className="font-mono text-xs tracking-widest text-foreground/75 uppercase">
-          ALGORITMUS HĽADÁ TVOJU REZONANCIU
-        </p>
+    <div className="flex min-h-[70vh] flex-col justify-center animate-fade-up">
+      <p className="editorial-kicker text-cerebral">Pripravujeme priestor</p>
+      <h2 className="mt-4 font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.065em]">
+        Dobrý rozhovor potrebuje chvíľu ticha.
+      </h2>
+      <div className="my-10 flex h-24 items-end gap-2" aria-hidden>
+        {[42, 78, 56, 92, 65, 35, 74, 48, 84, 58, 30, 68].map((height, index) => (
+          <span
+            key={index}
+            className="flex-1 animate-pulse bg-accent"
+            style={{ height: `${height}%`, animationDelay: `${index * 70}ms` }}
+          />
+        ))}
       </div>
-      <p className="mt-4 text-sm font-light text-foreground/60 font-mono">
+      <p className="border-t border-foreground/30 pt-5 text-base text-foreground/65">
         {hasNext
           ? isInitiated
-            ? `Pokračujem v hlasovom čete s ${nextName ?? "tvojím partnerom"}…`
-            : `Pripravujem priestor s ${nextName ?? "tvojím partnerom"}…`
-          : "Hľadám ďalej…"}
+            ? `Vraciame ťa do rozhovoru s ${nextName ?? "tvojím partnerom"}.`
+            : `Otvárame hlasový priestor s ${nextName ?? "novým človekom"}.`
+          : "Dnes tu zatiaľ nie je nové spojenie."}
       </p>
     </div>
   );

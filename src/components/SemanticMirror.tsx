@@ -1,99 +1,91 @@
-import { useState, useEffect } from "react";
-import { useHaptic } from "@/hooks/use-haptics";
+import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
+
+import { useHaptic } from "@/hooks/use-haptics";
 
 interface SemanticMirrorProps {
   onDone: (cognitiveDepth: number) => void;
 }
 
-const METAPHORS_POOL = [
+const PROMPTS_POOL = [
   {
-    text: "Láska nie je prístav, v ktorom kotvíme, ale...",
+    text: "Dobré ticho medzi dvoma ľuďmi znamená, že...",
     options: [
-      { text: "...búrka, ktorú sa učíme milovať.", weight: 0.4 },
-      { text: "...neznámy oceán, ktorý spoločne mapujeme bez kompasu.", weight: 1.0 },
-      { text: "...lístok na cestu, ktorá nemá žiadny konečný cieľ.", weight: 0.7 },
+      { text: "nikto z nás práve nemusí nič dokazovať ani zachraňovať konverzáciu.", weight: 1.0 },
+      { text: "obaja sme unavení, ale je nám spolu príjemne v jednej miestnosti.", weight: 0.7 },
+      {
+        text: "radšej sa hneď opýtam, nad čím druhý premýšľa, nech nevznikne neistota.",
+        weight: 0.4,
+      },
     ],
   },
   {
-    text: "Ticho medzi dvoma ľuďmi je buď...",
+    text: "Keď sa s niekým blízkym nezhodnem v dôležitej veci...",
     options: [
-      { text: "...prázdnota, ktorú treba vyplniť hlukom slov.", weight: 0.3 },
+      { text: "najprv chcem pochopiť, ako k tomu dospel, aj keď s ním nesúhlasím.", weight: 1.0 },
+      { text: "potrebujem chvíľu odstup, aby som nepovedal niečo z prvej emócie.", weight: 0.75 },
       {
-        text: "...most postavený z nevypovedaných myšlienok, ktorému obaja rozumejú.",
+        text: "radšej to rýchlo uzavriem kompromisom, nech medzi nami nezostane dusno.",
+        weight: 0.4,
+      },
+    ],
+  },
+  {
+    text: "Sloboda vo vzťahu pre mňa vyzerá tak, že...",
+    options: [
+      { text: "môžem sa meniť bez strachu, že ma druhý prestane spoznávať.", weight: 1.0 },
+      {
+        text: "máme každý aj vlastný svet, ku ktorému sa netreba neustále pýtať na povolenie.",
+        weight: 0.75,
+      },
+      {
+        text: "nič si zbytočne neplánujeme dopredu a nechávame veciam voľný priebeh.",
+        weight: 0.4,
+      },
+    ],
+  },
+  {
+    text: "Človeka spoznám najlepšie vtedy, keď...",
+    options: [
+      { text: "vidím, ako sa správa, keď mu niečo nevyjde podľa predstáv.", weight: 1.0 },
+      {
+        text: "sa spolu rozprávame neskoro večer bez toho, aby niekto pozeral na hodinky.",
+        weight: 0.8,
+      },
+      { text: "zistím, aký má vkus, humor a tempo bežného dňa.", weight: 0.45 },
+    ],
+  },
+  {
+    text: "Pocit domova pri druhom človeku vzniká, keď...",
+    options: [
+      { text: "pred ním nemusím filtrovať ani to, v čom si práve nie som istý/á.", weight: 1.0 },
+      { text: "viem, že sa na neho dá spoľahnúť aj v úplne obyčajný utorok.", weight: 0.75 },
+      { text: "si rozumieme bez dlhého vysvetľovania a máme podobné zvyky.", weight: 0.45 },
+    ],
+  },
+  {
+    text: "Keď sa na sebe niečo snažím zmeniť...",
+    options: [
+      {
+        text: "väčšinou to ide pomaly, ale všímam si, prečo sa vraciam k starým zvykom.",
         weight: 1.0,
       },
-      { text: "...bezpečné útočisko, kde slová strácajú svoju váhu.", weight: 0.8 },
-    ],
-  },
-  {
-    text: "Zrkadlo nám neukazuje to, kým sme, ale...",
-    options: [
-      { text: "...len povrch, ktorý chce vidieť svet.", weight: 0.4 },
-      { text: "...mozaiku našich minulých jaziev a budúcich nádejí.", weight: 1.0 },
-      { text: "...odraz človeka, ktorého sa bojíme spoznať.", weight: 0.8 },
-    ],
-  },
-  {
-    text: "Sloboda nie je robiť to, čo chceme, ale...",
-    options: [
-      { text: "...nebyť nútený robiť to, čo nechceme.", weight: 0.8 },
-      { text: "...chápať hranice svojho vlastného väzenia a prekračovať ich.", weight: 1.0 },
-      { text: "...mať možnosť vybrať si svoje vlastné závislosti.", weight: 0.5 },
-    ],
-  },
-  {
-    text: "Domov nie je miesto, kde sme sa narodili, ale...",
-    options: [
-      { text: "...priestor, kde môžeme byť slabí bez strachu.", weight: 1.0 },
-      { text: "...adresa, ktorú píšeme na balíky z ciest.", weight: 0.4 },
-      { text: "...ľudia, ktorí si všimnú, keď tam nie sme.", weight: 0.7 },
-    ],
-  },
-  {
-    text: "Čas nie je rieka, ktorá tečie jedným smerom, ale...",
-    options: [
-      { text: "...archív okamihov, v ktorých žijeme opakovane.", weight: 0.9 },
-      { text: "...lineárne pravítko, ktoré meria naše starnutie.", weight: 0.3 },
-      { text: "...sieť ciest, kde každé rozhodnutie vytvára nový vesmír.", weight: 1.0 },
-    ],
-  },
-  {
-    text: "Porozumieť druhému znamená...",
-    options: [
-      { text: "...vedieť preložiť jeho mlčanie do vlastného jazyka.", weight: 1.0 },
-      { text: "...súhlasím so všetkým, čo hovorí a robí.", weight: 0.3 },
-      { text: "...prijať skutočnosť, že ho nikdy úplne nespoznáme.", weight: 0.8 },
-    ],
-  },
-  {
-    text: "Dôvera je ako papier, ktorý...",
-    options: [
-      { text: "...ak raz pokrčíš, už nikdy nebude úplne hladký.", weight: 0.7 },
-      { text: "...sa ľahko spáli, ale popol z neho zostáva navždy.", weight: 1.0 },
-      { text: "...slúži len na zapisovanie dočasných sľubov.", weight: 0.4 },
-    ],
-  },
-  {
-    text: "Zmena je jediná konštanta, ktorá...",
-    options: [
-      { text: "...nás núti rásť, aj keď sa bránime zubami-nechtami.", weight: 0.8 },
-      { text: "...nás neustále vyzlieka z našich starých identít.", weight: 1.0 },
-      { text: "...iba prináša chaos do našich naplánovaných životov.", weight: 0.5 },
+      { text: "pomôže mi, keď mám pri sebe niekoho, kto mi nastaví úprimné zrkadlo.", weight: 0.8 },
+      { text: "najlepšie mi funguje rázny reštart a nové prostredie.", weight: 0.45 },
     ],
   },
 ];
 
 export function SemanticMirror({ onDone }: SemanticMirrorProps) {
   const haptic = useHaptic();
-  const [metaphors, setMetaphors] = useState<typeof METAPHORS_POOL>([]);
+  const [prompts, setPrompts] = useState<typeof PROMPTS_POOL>([]);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    const shuffled = [...METAPHORS_POOL].sort(() => 0.5 - Math.random());
-    setMetaphors(shuffled.slice(0, 3));
+    const shuffled = [...PROMPTS_POOL].sort(() => 0.5 - Math.random());
+    setPrompts(shuffled.slice(0, 3));
   }, []);
 
   const handleSelect = (idx: number) => {
@@ -102,93 +94,101 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
   };
 
   const handleNext = () => {
-    if (selectedIdx === null || metaphors.length === 0) return;
+    if (selectedIdx === null || prompts.length === 0) return;
 
     haptic("medium");
-    const weight = metaphors[step].options[selectedIdx].weight;
+    const weight = prompts[step].options[selectedIdx].weight;
     const newAnswers = [...answers, weight];
     setAnswers(newAnswers);
 
-    if (step < metaphors.length - 1) {
+    if (step < prompts.length - 1) {
       setStep(step + 1);
       setSelectedIdx(null);
     } else {
-      const avgDepth = newAnswers.reduce((a, b) => a + b, 0) / metaphors.length;
+      const avgDepth = newAnswers.reduce((a, b) => a + b, 0) / prompts.length;
       onDone(avgDepth);
     }
   };
 
-  if (metaphors.length === 0) {
+  if (prompts.length === 0) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <div className="size-8 animate-spin border-2 border-foreground border-t-transparent" />
+        <div className="size-7 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
       </div>
     );
   }
 
-  const currentMetaphor = metaphors[step];
+  const current = prompts[step];
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-8 animate-fade-up">
-      {/* Step Indicator */}
-      <div className="flex items-center justify-between text-xs tracking-widest text-foreground/50 uppercase font-mono mb-4">
-        <span>Kvíz osobnosti (1. časť)</span>
-        <span>
-          {step + 1} / {metaphors.length}
-        </span>
+    <div className="mx-auto w-full max-w-md px-1 py-6 animate-fade-up">
+      <header className="mb-6 flex items-end justify-between border-b border-foreground/25 pb-4">
+        <div>
+          <p className="editorial-kicker text-cerebral">Spôsob uvažovania · 01</p>
+          <p className="mt-1 font-display text-2xl font-bold tracking-[-0.05em]">
+            {String(step + 1).padStart(2, "0")}{" "}
+            <span className="text-foreground/30">/ {String(prompts.length).padStart(2, "0")}</span>
+          </p>
+        </div>
+        <span className="text-xs text-foreground/50">Vyber, čo ti je najbližšie</span>
+      </header>
+
+      <div className="mb-8 flex gap-1.5" aria-hidden>
+        {prompts.map((_, idx) => (
+          <span
+            key={idx}
+            className={`h-2 flex-1 transition-colors ${
+              idx <= step ? "bg-cerebral" : "bg-foreground/10"
+            }`}
+          />
+        ))}
       </div>
 
-      {/* Progress Bar */}
-      <div className="h-1.5 w-full bg-foreground/10 overflow-hidden mb-8">
-        <div
-          className="h-full bg-cerebral transition-all duration-300"
-          style={{ width: `${((step + 1) / metaphors.length) * 100}%` }}
-        />
-      </div>
-
-      {/* Main card */}
-      <div className="border border-foreground/20 bg-card p-6 relative overflow-hidden mb-5">
-        <p className="font-mono text-xs tracking-wider text-foreground/60 uppercase mb-2">
-          // Dokonči vetu podľa svojho pocitu
-        </p>
-        <h3 className="font-sans text-sm font-bold leading-relaxed text-foreground uppercase">
-          &ldquo;{currentMetaphor.text}&rdquo;
+      <div className="mb-7 border-y-2 border-foreground py-7">
+        <h3 className="font-display text-[clamp(1.75rem,7vw,2.5rem)] font-bold leading-[1.04] tracking-[-0.05em] text-foreground">
+          {current.text}
         </h3>
       </div>
 
-      {/* Options List */}
-      <div className="space-y-2.5">
-        {currentMetaphor.options.map((opt, idx) => {
+      <div className="space-y-3">
+        {current.options.map((opt, idx) => {
           const isSelected = selectedIdx === idx;
+          const letter = String.fromCharCode(65 + idx);
           return (
             <button
               key={idx}
               type="button"
               onClick={() => handleSelect(idx)}
-              className={`w-full text-left border px-5 py-3.5 transition-all duration-200 active:scale-[0.98] cursor-pointer ${
-                isSelected
-                  ? "border-cerebral bg-cerebral/10 text-foreground font-bold"
-                  : "border-foreground/10 bg-foreground/[0.02] text-foreground/75 hover:bg-foreground/5"
+              className={`tactile-button flex w-full items-start gap-3.5 p-4 text-left cursor-pointer ${
+                isSelected ? "bg-cerebral text-white" : "bg-card text-foreground"
               }`}
             >
-              <p className="text-[13px] font-bold leading-relaxed">{opt.text}</p>
+              <span
+                className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border font-mono text-xs font-bold ${
+                  isSelected
+                    ? "border-white/70 bg-white/15 text-white"
+                    : "border-foreground/30 text-foreground/70"
+                }`}
+              >
+                {letter}
+              </span>
+              <span className="text-sm font-medium leading-relaxed">{opt.text}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Next Button */}
-      <div className="mt-6">
-        <button
-          type="button"
-          disabled={selectedIdx === null}
-          onClick={handleNext}
-          className="w-full flex items-center justify-center gap-2 bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 disabled:opacity-20 active:scale-[0.99] transition-all cursor-pointer"
-        >
-          <span>{step === metaphors.length - 1 ? "DOKONČIŤ KVÍZ" : "ĎALŠIA OTÁZKA"}</span>
-          <ArrowRight className="size-4" />
-        </button>
-      </div>
+      <button
+        type="button"
+        disabled={selectedIdx === null}
+        onClick={handleNext}
+        className="tactile-button mt-6 flex w-full items-center justify-between bg-foreground px-5 py-4 text-background disabled:pointer-events-none disabled:opacity-25 cursor-pointer"
+      >
+        <span className="font-display text-base font-bold">
+          {step === prompts.length - 1 ? "Pokračovať k prioritám" : "Ďalšia situácia"}
+        </span>
+        <ArrowRight className="size-5" />
+      </button>
     </div>
   );
 }

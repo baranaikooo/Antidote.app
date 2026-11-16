@@ -1,80 +1,70 @@
+import { ArrowRight, X } from "lucide-react";
+
 import { useHaptic } from "@/hooks/use-haptics";
-import { Key, Trash2, HelpCircle } from "lucide-react";
 
 interface BlindVoteProps {
   onVote: (vote: "unlock" | "cancel") => void;
+  matchName?: string;
 }
 
-export function BlindVote({ onVote }: BlindVoteProps) {
+export function BlindVote({ onVote, matchName }: BlindVoteProps) {
   const haptic = useHaptic();
 
   const handleVote = (vote: "unlock" | "cancel") => {
-    if (vote === "unlock") {
-      haptic("success");
-    } else {
-      haptic("heavy");
-    }
+    haptic(vote === "unlock" ? "success" : "warning");
     onVote(vote);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fade-in">
-      <div className="w-full max-w-md border border-foreground/20 bg-card p-8 shadow-2xl space-y-6 relative overflow-hidden">
-        {/* Top Warning Icon */}
-        <div className="mx-auto w-12 h-12 bg-red-500/10 flex items-center justify-center text-red-500">
-          <HelpCircle className="size-6 animate-pulse" />
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-fade-in">
+      <div className="night-radio w-full max-w-md border-2 border-foreground p-6 sm:p-7 shadow-[6px_6px_0_rgba(244,239,229,0.9)]">
+        <p className="editorial-kicker text-cerebral">Tri kolá sú za vami</p>
+        <h3 className="mt-3 font-display text-3xl font-extrabold leading-[0.98] tracking-[-0.05em] text-foreground">
+          {matchName ? `Chcete sa s ${matchName} spoznať ďalej?` : "Chcete sa spoznať ďalej?"}
+        </h3>
+        <p className="mt-3 text-sm leading-relaxed text-foreground/65">
+          Každý z vás sa teraz rozhodne samostatne, bez toho aby videl voľbu druhého.
+        </p>
 
-        {/* Text Details */}
-        <div className="text-center space-y-2">
-          <h3 className="font-sans font-bold text-lg tracking-tight text-foreground uppercase">
-            Prisoner's Dilemma
-          </h3>
-          <p className="font-mono text-xs tracking-widest text-red-500 uppercase font-bold">
-            Slepé hlasovanie o budúcnosti
-          </p>
-          <p className="text-xs text-foreground/60 leading-relaxed pt-2 font-mono uppercase">
-            Dosiahli ste 3-minútovú hranicu (180s) hlasovej komunikácie. Čet bol dočasne
-            zablokovaný. Obaja musíte nezávisle (naslepo) rozhodnúť:
-          </p>
-        </div>
-
-        {/* Rules visual list */}
-        <div className="bg-foreground/5 border border-foreground/10 p-4 text-left space-y-2 font-mono text-xs">
-          <div className="flex gap-2.5 items-start">
-            <span className="text-foreground font-bold text-xs pt-0.5">✓</span>
-            <p className="text-foreground/75 leading-relaxed">
-              Ak **obaja** zvolíte *Odomknúť*, profilová fotografia/video sa zaostria a povolí sa
-              neobmedzený textový čet.
+        <div className="my-6 space-y-3 border-y border-foreground/20 py-5 text-sm">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-cerebral font-mono text-[10px] font-bold text-white">
+              1
+            </span>
+            <p className="leading-relaxed text-foreground/80">
+              Ak sa pre pokračovanie rozhodnete{" "}
+              <strong className="font-semibold text-foreground">obaja</strong>, odomkne sa čisté
+              video aj otvorená konverzácia.
             </p>
           </div>
-          <div className="flex gap-2.5 items-start">
-            <span className="text-red-500 font-bold text-xs pt-0.5">✗</span>
-            <p className="text-foreground/75 leading-relaxed">
-              Ak **čo i len jeden** zvolí *Zrušiť*, match sa okamžite a navždy vymaže pre oboch
-              používateľov.
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-foreground/30 font-mono text-[10px] text-foreground/65">
+              2
+            </span>
+            <p className="leading-relaxed text-foreground/65">
+              Ak sa čo i len jeden rozhodne skončiť, rozhovor sa pokojne uzavrie a nezostane po ňom
+              história.
             </p>
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-col gap-3">
           <button
             type="button"
             onClick={() => handleVote("unlock")}
-            className="w-full flex items-center justify-center gap-3 bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 active:scale-[0.99] transition-all cursor-pointer"
+            className="tactile-button flex w-full items-center justify-between bg-cerebral px-5 py-4 text-white cursor-pointer"
           >
-            <Key className="size-4" />
-            <span>ODOMKNÚŤ PROFIL (COOPERATE)</span>
+            <span className="font-display text-base font-bold">Chcem pokračovať</span>
+            <ArrowRight className="size-5" />
           </button>
 
           <button
             type="button"
             onClick={() => handleVote("cancel")}
-            className="w-full flex items-center justify-center gap-3 border border-red-500/30 bg-red-500/5 text-red-500 font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-red-500/10 active:scale-[0.99] transition-all cursor-pointer"
+            className="flex w-full items-center justify-between border border-foreground/25 bg-transparent px-5 py-3.5 text-sm font-medium text-foreground/70 transition-colors hover:border-foreground/50 hover:text-foreground cursor-pointer"
           >
-            <Trash2 className="size-4" />
-            <span>ZRUŠIŤ MATCH (DEFECT)</span>
+            <span>Ukončiť rozhovor</span>
+            <X className="size-4" />
           </button>
         </div>
       </div>
