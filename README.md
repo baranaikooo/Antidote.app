@@ -1,8 +1,8 @@
-# Reson
+# Antidote
 
 **No swiping. Just psychology.**
 
-Reson is a next-generation dating and matching application focused on cognitive resonance, deep psychological alignment, and authentic interactions. It replaces superficial swiping with a 6-question psychometric test, voice-only communication, and strict liveness verification.
+Antidote is a next-generation anti-dopamine dating and matching application focused on cognitive resonance, deep psychological alignment, and authentic interactions. It replaces superficial swiping with a psychometric test, voice-only communication, and strict liveness verification.
 
 ## 🌟 Key Features
 
@@ -22,7 +22,7 @@ Reson is a next-generation dating and matching application focused on cognitive 
 
 ## 🧠 The Psychology Algorithm
 
-Reson abandons the traditional "looks-first" matching approach. Instead, the engine calculates compatibility based on a multi-dimensional psychological profile:
+Antidote abandons the traditional "looks-first" matching approach. Instead, the engine calculates compatibility based on a multi-dimensional psychological profile:
 
 - **Cognitive Depth**: Assessed through interactions and response complexity.
 - **Personality Traits**: Measured via standard metrics like Conscientiousness and Extraversion.

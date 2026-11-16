@@ -2,9 +2,9 @@ import { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.reson.app",
-  appName: "Reson",
+  appName: "Antidote",
   webDir: ".vercel/output/static", // Fallback local directory, but we will use the live server
-  overrideUserAgent: "ResonMobile",
+  overrideUserAgent: "AntidoteMobile",
   server: {
     url: "https://resonapp.vercel.app/",
     cleartext: true,

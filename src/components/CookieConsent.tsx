@@ -100,7 +100,7 @@ export function CookieConsent() {
               Tvoje súkromie, tvoja voľba
             </h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Používame cookies, aby Reson fungoval hladko. Voliteľné nám pomáhajú zlepšovať
+              Používame cookies, aby Antidote fungoval hladko. Voliteľné nám pomáhajú zlepšovať
               zážitok.
             </p>
           </div>

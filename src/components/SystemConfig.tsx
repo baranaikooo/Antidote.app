@@ -282,7 +282,7 @@ export function SystemConfig({
             NASTAVENIA ÚČTU
           </h1>
         </div>
-        <span className="font-mono text-xs tracking-widest text-cerebral font-bold">RESON v0.9</span>
+        <span className="font-mono text-xs tracking-widest text-cerebral font-bold">ANTIDOTE v0.9</span>
       </div>
 
       {/* Hardware Protocols */}

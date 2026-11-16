@@ -54,7 +54,7 @@ export const TERMS_BODY: Array<{ h: string; p: string[] }> = [
   {
     h: "1. O službe",
     p: [
-      "Reson je aplikácia na zoznamovanie založené na psychologickej rezonancii. Namiesto swipovania ťa páruje cez krátky test a hlasovú konverzáciu.",
+      "Antidote je aplikácia na zoznamovanie založené na psychologickej rezonancii. Namiesto swipovania ťa páruje cez krátky test a hlasovú konverzáciu.",
       "Používaním aplikácie potvrdzuješ, že máš aspoň 16 rokov a že údaje o sebe poskytuješ pravdivo.",
     ],
   },
@@ -98,7 +98,7 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
   {
     h: "1. Kto sme",
     p: [
-      "Prevádzkovateľom služby Reson je tím vývojárov so sídlom v Slovenskej republike. V zmysle Nariadenia (EÚ) 2016/679 (GDPR) sme prevádzkovateľom tvojich osobných údajov.",
+      "Prevádzkovateľom služby Antidote je tím vývojárov so sídlom v Slovenskej republike. V zmysle Nariadenia (EÚ) 2016/679 (GDPR) sme prevádzkovateľom tvojich osobných údajov.",
     ],
   },
   {
@@ -163,12 +163,12 @@ export const CONTACT_BODY: Array<{ h: string; p: string[] }> = [
   {
     h: "Napíš nám",
     p: [
-      "Pre otázky, sťažnosti a uplatnenie GDPR práv: hello@reson.app",
+      "Pre otázky, sťažnosti a uplatnenie GDPR práv: hello@antidote.app",
       "Odpovedáme v pracovných dňoch zvyčajne do 48 hodín.",
     ],
   },
   {
     h: "Bezpečnostné incidenty",
-    p: ["Ak narazíš na bezpečnostnú chybu, prosím nahlás ju na: security@reson.app"],
+    p: ["Ak narazíš na bezpečnostnú chybu, prosím nahlás ju na: security@antidote.app"],
   },
 ];
