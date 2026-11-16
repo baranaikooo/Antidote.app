@@ -1,4 +1,4 @@
-package com.reson.app;
+package com.antidote.app;
 
 import com.getcapacitor.BridgeActivity;
 

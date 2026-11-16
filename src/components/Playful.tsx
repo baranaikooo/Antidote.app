@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /* ============================================================
- * Reson — shared "playful" UI primitives
+ * Antidote — shared "playful" UI primitives
  * Strict Brutalist design: monochrome, monospace, sharp edges.
  * ========================================================= */
 
