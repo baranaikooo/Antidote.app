@@ -41,9 +41,9 @@
   --color-vc-lavender: #ffffff;
   --color-vc-lilac: #ffffff;
   --color-vc-pink: var(--cerebral);
-  --font-display: "Inter", "Helvetica Neue", system-ui, sans-serif;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 :root {
@@ -69,13 +69,13 @@
   --border: #000000;
   --input: #ffffff;
   --ring: #000000;
-  --cerebral: #C4736C;
+  --cerebral: #c4736c;
   --cerebral-muted: rgba(196, 115, 108, 0.12);
   --cerebral-border: rgba(196, 115, 108, 0.35);
   --cerebral-glow: rgba(196, 115, 108, 0.22);
-  --resonance: #C4736C;
+  --resonance: #c4736c;
   --resonance-glow: rgba(196, 115, 108, 0.25);
-  --violet-accent: #C4736C;
+  --violet-accent: #c4736c;
   --gradient-primary: linear-gradient(0deg, #000000, #000000);
   --gradient-glow: linear-gradient(0deg, #000000, #000000);
   --gradient-soft: linear-gradient(0deg, #f0f0f0, #f0f0f0);
@@ -105,13 +105,13 @@
     --border: #ffffff;
     --input: #111111;
     --ring: #ffffff;
-    --cerebral: #D4837B;
+    --cerebral: #d4837b;
     --cerebral-muted: rgba(212, 131, 123, 0.16);
-    --cerebral-border: rgba(212, 131, 123, 0.40);
+    --cerebral-border: rgba(212, 131, 123, 0.4);
     --cerebral-glow: rgba(212, 131, 123, 0.28);
-    --resonance: #D4837B;
-    --resonance-glow: rgba(212, 131, 123, 0.30);
-    --violet-accent: #D4837B;
+    --resonance: #d4837b;
+    --resonance-glow: rgba(212, 131, 123, 0.3);
+    --violet-accent: #d4837b;
     --gradient-primary: linear-gradient(0deg, #ffffff, #ffffff);
     --gradient-glow: linear-gradient(0deg, #ffffff, #ffffff);
     --gradient-soft: linear-gradient(0deg, #111111, #111111);
@@ -141,13 +141,13 @@
   --border: #000000;
   --input: #ffffff;
   --ring: #000000;
-  --cerebral: #C4736C;
+  --cerebral: #c4736c;
   --cerebral-muted: rgba(196, 115, 108, 0.12);
   --cerebral-border: rgba(196, 115, 108, 0.35);
   --cerebral-glow: rgba(196, 115, 108, 0.22);
-  --resonance: #C4736C;
+  --resonance: #c4736c;
   --resonance-glow: rgba(196, 115, 108, 0.25);
-  --violet-accent: #C4736C;
+  --violet-accent: #c4736c;
   --gradient-primary: linear-gradient(0deg, #000000, #000000);
   --gradient-glow: linear-gradient(0deg, #000000, #000000);
   --gradient-soft: linear-gradient(0deg, #f0f0f0, #f0f0f0);
@@ -176,13 +176,13 @@
   --border: #ffffff;
   --input: #111111;
   --ring: #ffffff;
-  --cerebral: #D4837B;
+  --cerebral: #d4837b;
   --cerebral-muted: rgba(212, 131, 123, 0.16);
-  --cerebral-border: rgba(212, 131, 123, 0.40);
+  --cerebral-border: rgba(212, 131, 123, 0.4);
   --cerebral-glow: rgba(212, 131, 123, 0.28);
-  --resonance: #D4837B;
-  --resonance-glow: rgba(212, 131, 123, 0.30);
-  --violet-accent: #D4837B;
+  --resonance: #d4837b;
+  --resonance-glow: rgba(212, 131, 123, 0.3);
+  --violet-accent: #d4837b;
   --gradient-primary: linear-gradient(0deg, #ffffff, #ffffff);
   --gradient-glow: linear-gradient(0deg, #ffffff, #ffffff);
   --gradient-soft: linear-gradient(0deg, #111111, #111111);
@@ -193,7 +193,6 @@
 @layer base {
   * {
     border-color: var(--color-border);
-    border-radius: 0px !important;
   }
   html,
   body {
@@ -208,6 +207,20 @@
   }
   body {
     position: relative;
+    background-image:
+      radial-gradient(
+        circle at 15% 10%,
+        color-mix(in srgb, var(--cerebral) 7%, transparent) 0 1px,
+        transparent 1.5px
+      ),
+      radial-gradient(
+        circle at 80% 70%,
+        color-mix(in srgb, var(--foreground) 4%, transparent) 0 1px,
+        transparent 1.2px
+      );
+    background-size:
+      23px 23px,
+      31px 31px;
   }
   #root {
     height: 100dvh;
@@ -347,7 +360,8 @@
 }
 
 @keyframes liquid-sonar {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1) translateZ(0);
     opacity: 0.4;
   }
@@ -444,4 +458,157 @@ html.dark .ios-glass-item-active {
 html.light .ios-glass-item-active {
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Antidote editorial playground: warm, tactile, and interaction-led. */
+:root,
+.light,
+html.light {
+  --background: #f2efe7;
+  --foreground: #171713;
+  --card: #faf8f1;
+  --card-foreground: #171713;
+  --popover: #faf8f1;
+  --popover-foreground: #171713;
+  --primary: #ef4b32;
+  --primary-foreground: #fffaf1;
+  --secondary: #ddd8cc;
+  --secondary-foreground: #171713;
+  --muted: #e8e4da;
+  --muted-foreground: #6b685f;
+  --accent: #3159d6;
+  --accent-foreground: #ffffff;
+  --border: #171713;
+  --input: #faf8f1;
+  --ring: #ef4b32;
+  --cerebral: #ef4b32;
+  --cerebral-muted: rgba(239, 75, 50, 0.1);
+  --cerebral-border: rgba(239, 75, 50, 0.42);
+  --cerebral-glow: rgba(239, 75, 50, 0.18);
+  --resonance: #3159d6;
+  --resonance-glow: rgba(49, 89, 214, 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #101722;
+    --foreground: #f4efe5;
+    --card: #172131;
+    --card-foreground: #f4efe5;
+    --popover: #172131;
+    --popover-foreground: #f4efe5;
+    --primary: #ff6b4f;
+    --primary-foreground: #101722;
+    --secondary: #233147;
+    --secondary-foreground: #f4efe5;
+    --muted: #1b283b;
+    --muted-foreground: #a8b0bc;
+    --accent: #82a2ff;
+    --accent-foreground: #101722;
+    --border: #f4efe5;
+    --input: #172131;
+    --ring: #ff6b4f;
+    --cerebral: #ff6b4f;
+    --cerebral-muted: rgba(255, 107, 79, 0.12);
+    --cerebral-border: rgba(255, 107, 79, 0.48);
+    --cerebral-glow: rgba(255, 107, 79, 0.2);
+    --resonance: #82a2ff;
+    --resonance-glow: rgba(130, 162, 255, 0.18);
+  }
+}
+
+.dark,
+html.dark {
+  --background: #101722;
+  --foreground: #f4efe5;
+  --card: #172131;
+  --card-foreground: #f4efe5;
+  --popover: #172131;
+  --popover-foreground: #f4efe5;
+  --primary: #ff6b4f;
+  --primary-foreground: #101722;
+  --secondary: #233147;
+  --secondary-foreground: #f4efe5;
+  --muted: #1b283b;
+  --muted-foreground: #a8b0bc;
+  --accent: #82a2ff;
+  --accent-foreground: #101722;
+  --border: #f4efe5;
+  --input: #172131;
+  --ring: #ff6b4f;
+  --cerebral: #ff6b4f;
+  --cerebral-muted: rgba(255, 107, 79, 0.12);
+  --cerebral-border: rgba(255, 107, 79, 0.48);
+  --cerebral-glow: rgba(255, 107, 79, 0.2);
+  --resonance: #82a2ff;
+  --resonance-glow: rgba(130, 162, 255, 0.18);
+}
+
+.editorial-panel {
+  border: 1.5px solid color-mix(in srgb, var(--foreground) 86%, transparent);
+  background: var(--card);
+  box-shadow: 5px 5px 0 color-mix(in srgb, var(--foreground) 88%, transparent);
+}
+
+.tactile-button {
+  border: 1.5px solid var(--foreground);
+  box-shadow: 3px 3px 0 var(--foreground);
+  transform: translate(0, 0);
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.tactile-button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--foreground);
+}
+
+.tactile-button:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--foreground);
+}
+
+.editorial-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.editorial-dock {
+  border: 1.5px solid color-mix(in srgb, var(--foreground) 76%, transparent);
+  background: color-mix(in srgb, var(--background) 92%, transparent);
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--foreground) 86%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.night-radio {
+  --background: #101722;
+  --foreground: #f4efe5;
+  --card: #172131;
+  --card-foreground: #f4efe5;
+  --muted: #1b283b;
+  --muted-foreground: #a8b0bc;
+  --border: #f4efe5;
+  --cerebral: #ff6b4f;
+  --cerebral-glow: rgba(255, 107, 79, 0.2);
+  --accent: #82a2ff;
+  background: linear-gradient(180deg, rgba(130, 162, 255, 0.06), transparent 42%), #101722;
+  color: #f4efe5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

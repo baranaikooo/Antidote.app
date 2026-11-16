@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
-import { X, MessageCircle, ChevronRight, Mic, Play, Pause } from "lucide-react";
-import { UserProfile, RankedMatch, Conversation, ChatMessage } from "@/lib/resonance";
+import { useState, useRef, useEffect } from "react";
+import { ArrowRight, X } from "lucide-react";
+import { UserProfile, RankedMatch } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
 import { IcebreakerDilemma } from "@/components/IcebreakerDilemma";
 import { BlindVote } from "@/components/BlindVote";
@@ -12,57 +12,29 @@ import {
   getOrCreateMatch,
   submitBlindVote,
   uploadVoiceMessageBlob,
-  getSignedMediaUrl
+  getSignedMediaUrl,
 } from "@/lib/supabase";
 
-// Since Wave is heavily used, let's just create a quick local copy of it for Chamber since we can't easily extract it without creating another file and updating all its usages.
-function Wave({ size = 280, intense = false }: { size?: number; intense?: boolean }) {
-  return (
-    <div
-      className="relative grid place-items-center animate-fade-in"
-      style={{ width: size, height: size }}
-    >
-      <div
-        className="absolute rounded-full"
-        style={{
-          width: size,
-          height: size,
-          background:
-            "radial-gradient(circle, var(--cerebral-glow, rgba(212,131,123,0.25)), rgba(212,131,123,0.03) 60%, transparent 70%)",
-        }}
-      />
-      {Array.from({ length: intense ? 4 : 2 }).map((_, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full border mix-blend-screen"
-          style={{
-            borderColor: "var(--cerebral-border, currentColor)",
-            width: size * (0.4 + i * 0.15),
-            height: size * (0.4 + i * 0.15),
-            animation: `spin ${8 + i * 2}s linear infinite${i % 2 === 0 ? " reverse" : ""}`,
-            borderRadius:
-              i % 2 === 0
-                ? "40% 60% 70% 30% / 40% 50% 60% 50%"
-                : "60% 40% 30% 70% / 60% 30% 70% 40%",
-          }}
-        />
-      ))}
-      <div
-        className="absolute rounded-full bg-foreground shadow-[0_0_6px_var(--cerebral)]"
-        style={{
-          width: size * 0.32,
-          height: size * 0.32,
-          background:
-            "radial-gradient(circle, var(--cerebral-glow, rgba(212,131,123,0.25)), rgba(212,131,123,0.03) 60%, transparent 70%)",
-        }}
-      />
-    </div>
-  );
-}
-
-const BLUR_START = 24;
-const BLUR_STEP = 3;
 const MAX_REC_SECONDS = 60;
+const PEAK_BINS = 24;
+
+function normalizePeaks(samples: number[]): number[] {
+  if (samples.length === 0) {
+    return Array.from({ length: PEAK_BINS }, (_, i) =>
+      Math.min(0.95, Math.max(0.2, 0.35 + Math.abs(Math.sin(i * 0.7)) * 0.5)),
+    );
+  }
+  const maxAmp = Math.max(0.08, ...samples);
+  return Array.from({ length: PEAK_BINS }, (_, bin) => {
+    const start = Math.floor((bin / PEAK_BINS) * samples.length);
+    const end = Math.max(start + 1, Math.floor(((bin + 1) / PEAK_BINS) * samples.length));
+    let peak = 0;
+    for (let i = start; i < end && i < samples.length; i++) {
+      if (samples[i] > peak) peak = samples[i];
+    }
+    return Math.min(1, Math.max(0.18, peak / maxAmp));
+  });
+}
 
 export function Chamber({
   user,
@@ -84,12 +56,21 @@ export function Chamber({
   const [playing, setPlaying] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [recLen, setRecLen] = useState(0);
+  const [liveLevel, setLiveLevel] = useState(0);
+  const [draftVoice, setDraftVoice] = useState<{
+    blob: Blob;
+    url: string;
+    duration: number;
+    peaks: number[];
+  } | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
   const [stage, setStage] = useState<
     "voice" | "blindVote" | "waiting" | "result-no" | "result-yes"
   >("voice");
+  const [unblurred, setUnblurred] = useState(false);
   const [myChoice, setMyChoice] = useState<"unlock" | "cancel" | null>(null);
   const [theirChoice, setTheirChoice] = useState<"unlock" | "cancel" | null>(null);
+  void theirChoice;
   const [supabaseMatchId, setSupabaseMatchId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -112,12 +93,12 @@ export function Chamber({
           console.error("[Chamber] Fetching messages error:", error);
         } else if (dbMessages && active) {
           const resolved = await Promise.all(
-            dbMessages.map(async (m: any) => ({
+            dbMessages.map(async (m: any): Promise<VoiceMsg> => ({
               id: m.id,
               from: m.sender_id === user.id ? "me" : "them",
               duration: m.duration || 0,
               audioUrl: await getSignedMediaUrl("voice-messages", m.media_url),
-            }))
+            })),
           );
           if (active) {
             setMessages(resolved);
@@ -150,8 +131,8 @@ export function Chamber({
                     },
                   ];
                 });
-               }
-            }
+              }
+            },
           )
           .subscribe();
       } catch (err) {
@@ -173,14 +154,64 @@ export function Chamber({
 
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const meterRafRef = useRef<number | null>(null);
+  const peakSamplesRef = useRef<number[]>([]);
+  const draftUrlRef = useRef<string | null>(null);
   const recStartRef = useRef<number>(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingStopRef = useRef<Promise<void> | null>(null);
   const cancelledRef = useRef(false);
 
+  useEffect(() => {
+    draftUrlRef.current = draftVoice?.url ?? null;
+  }, [draftVoice]);
+
+  useEffect(() => {
+    if (stage !== "result-yes") {
+      setUnblurred(false);
+      return;
+    }
+    const t = setTimeout(() => setUnblurred(true), 120);
+    return () => clearTimeout(t);
+  }, [stage]);
+
+  function stopAudioMeter() {
+    if (meterRafRef.current !== null) {
+      cancelAnimationFrame(meterRafRef.current);
+      meterRafRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      void audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+    setLiveLevel(0);
+  }
+
   // Voice progress details
   const totalVoiceDuration = messages.reduce((sum, msg) => sum + msg.duration, 0);
   const progressPct = Math.min(100, Math.round((totalVoiceDuration / 180) * 100));
+  const roundIndex = Math.min(2, Math.floor(totalVoiceDuration / 60));
+  const secondsInRound = Math.min(60, totalVoiceDuration - roundIndex * 60);
+  const roundSecondsLeft = Math.max(0, 60 - secondsInRound);
+  const rounds = [
+    {
+      label: "Prvá reakcia",
+      prompt: "Odpovedz bez stratégie. Čo ti napadlo ako prvé a prečo?",
+      helper: "Obaja začínate rovnakou otázkou.",
+    },
+    {
+      label: "Počúvaj a reaguj",
+      prompt: `Vyber jednu myšlienku od ${match.name} a povedz, čo v tebe otvorila.`,
+      helper: "Nesnaž sa presvedčiť. Skús najprv porozumieť.",
+    },
+    {
+      label: "Tvoja otázka",
+      prompt: `Polož ${match.name} jednu otázku, ktorú by si na bežnom rande neodložil/a na neskôr.`,
+      helper: "Jedna konkrétna otázka je lepšia než ďalšie predstavenie sa.",
+    },
+  ] as const;
+  const currentRound = rounds[roundIndex];
 
   // Clamped progressive blur: reduces from 40px down to minimum 15px before Unlock
   const blurPx = Math.max(15, 40 * (1.0 - totalVoiceDuration / 180));
@@ -197,8 +228,14 @@ export function Chamber({
   useEffect(() => {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
+      stopAudioMeter();
+      if (draftUrlRef.current && draftUrlRef.current.startsWith("blob:")) {
+        URL.revokeObjectURL(draftUrlRef.current);
+      }
       try {
-        mediaRecRef.current?.state !== "inactive" && mediaRecRef.current?.stop();
+        if (mediaRecRef.current && mediaRecRef.current.state !== "inactive") {
+          mediaRecRef.current.stop();
+        }
       } catch {
         /* ignore */
       }
@@ -236,8 +273,10 @@ export function Chamber({
 
     pendingStopRef.current = null;
     cancelledRef.current = false;
+    peakSamplesRef.current = [];
     setMicError(null);
     setRecLen(0);
+    setPlaying(null);
     setRecording(true);
     recStartRef.current = performance.now();
 
@@ -264,6 +303,40 @@ export function Chamber({
       });
       micStreamRef.current = stream;
 
+      try {
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          audioCtxRef.current = ctx;
+          const source = ctx.createMediaStreamSource(stream);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          const data = new Uint8Array(analyser.frequencyBinCount);
+          let lastSampleAt = 0;
+          const sampleLoop = (now: number) => {
+            analyser.getByteTimeDomainData(data);
+            let sumSq = 0;
+            for (let i = 0; i < data.length; i++) {
+              const centered = (data[i] - 128) / 128;
+              sumSq += centered * centered;
+            }
+            const rms = Math.min(1, Math.sqrt(sumSq / data.length) * 3.4);
+            setLiveLevel(rms);
+            if (now - lastSampleAt >= 90) {
+              peakSamplesRef.current.push(rms);
+              lastSampleAt = now;
+            }
+            meterRafRef.current = requestAnimationFrame(sampleLoop);
+          };
+          meterRafRef.current = requestAnimationFrame(sampleLoop);
+        }
+      } catch {
+        /* fallback if Web Audio API is unavailable */
+      }
+
       const mime = pickMime() || "audio/webm";
       const rec = createMediaRecorder(stream, mime, "audio");
       mediaRecRef.current = rec;
@@ -275,6 +348,7 @@ export function Chamber({
 
       const stopPromise = new Promise<void>((resolve) => {
         rec.onstop = () => {
+          stopAudioMeter();
           if (tickRef.current) {
             clearInterval(tickRef.current);
             tickRef.current = null;
@@ -302,21 +376,15 @@ export function Chamber({
           }
 
           const dur = Math.min(MAX_REC_SECONDS, Math.round(elapsed));
-          const msgId = `msg-${Date.now()}`;
           const url = URL.createObjectURL(blob);
+          const peaks = normalizePeaks(peakSamplesRef.current);
 
-          setMessages((prev) => [...prev, { id: msgId, from: "me", duration: dur, audioUrl: url }]);
-
-          if (supabaseMatchId) {
-            uploadVoiceMessageBlob(supabaseMatchId, user.id!, blob, dur)
-              .then((dbMsg) => {
-                setMessages((prev) => prev.map((m) => m.id === msgId ? { ...m, id: dbMsg.id } : m));
-              })
-              .catch((err) => {
-                console.error("[Chamber] Failed to upload voice message:", err);
-                setMicError("Chyba synchronizácie správy so serverom.");
-              });
-          }
+          setDraftVoice((prev) => {
+            if (prev?.url && prev.url.startsWith("blob:")) {
+              URL.revokeObjectURL(prev.url);
+            }
+            return { blob, url, duration: dur, peaks };
+          });
           resolve();
         };
       });
@@ -328,8 +396,9 @@ export function Chamber({
         const sec = (performance.now() - recStartRef.current) / 1000;
         setRecLen(sec);
         if (sec >= MAX_REC_SECONDS) stopRec(true);
-      }, 1000);
+      }, 250);
     } catch (err) {
+      stopAudioMeter();
       console.error("[voice] start recording failed:", err);
       const e = err as Error;
       if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
@@ -347,6 +416,7 @@ export function Chamber({
     if (!recording) return;
     cancelledRef.current = !commit;
     setRecording(false);
+    stopAudioMeter();
     if (tickRef.current) {
       clearInterval(tickRef.current);
       tickRef.current = null;
@@ -366,32 +436,94 @@ export function Chamber({
     mediaRecRef.current = null;
   }
 
+  function discardDraftVoice() {
+    setDraftVoice((prev) => {
+      if (prev?.url && prev.url.startsWith("blob:")) {
+        URL.revokeObjectURL(prev.url);
+      }
+      return null;
+    });
+  }
+
+  function sendDraftVoice() {
+    if (!draftVoice) return;
+    const { blob, url, duration, peaks } = draftVoice;
+    const msgId = `msg-${Date.now()}`;
+    setDraftVoice(null);
+    setMessages((prev) => [...prev, { id: msgId, from: "me", duration, audioUrl: url, peaks }]);
+
+    if (supabaseMatchId) {
+      uploadVoiceMessageBlob(supabaseMatchId, user.id!, blob, duration)
+        .then((dbMsg) => {
+          setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, id: dbMsg.id } : m)));
+        })
+        .catch((err) => {
+          console.error("[Chamber] Failed to upload voice message:", err);
+          setMicError("Chyba synchronizácie správy so serverom.");
+        });
+    }
+  }
+
   return (
-    <div className="animate-fade-up">
+    <div className="-mx-5 min-h-[100dvh] night-radio px-5 py-2 animate-fade-up">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <span className="text-xs tracking-widest text-foreground/70">
-          {match.name.toUpperCase()} <span className="text-foreground/40">· {match.age}</span>
-        </span>
-        <span className="text-xs tracking-widest text-foreground/40 font-mono">
-          HLASOVÁ KOMUNIKÁCIA
-        </span>
+      <div className="mb-8 flex items-end justify-between border-b border-foreground/25 pb-4">
+        <div>
+          <p className="text-xs font-medium text-cerebral">Hlasový rozhovor</p>
+          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.055em]">
+            {match.name}
+            <span className="ml-2 text-base font-medium text-foreground/40">{match.age}</span>
+          </h1>
+        </div>
+        <span className="text-xs text-foreground/65">Kolo {roundIndex + 1} z 3</span>
       </div>
 
-      {/* Progress & Blurry Profile Frame */}
-      <div className="mb-6 border border-foreground/10 bg-foreground/[0.02] p-5">
+      <div className="mb-6 grid grid-cols-3 border-y border-foreground/20">
+        {rounds.map((round, index) => {
+          const complete = totalVoiceDuration >= (index + 1) * 60;
+          const active = index === roundIndex && stage === "voice";
+          return (
+            <div
+              key={round.label}
+              className={`relative px-2 py-4 text-center ${
+                index > 0 ? "border-l border-foreground/20" : ""
+              } ${active ? "bg-foreground/[0.06]" : ""}`}
+            >
+              <span
+                className={`mx-auto mb-2 grid size-6 place-items-center rounded-full border font-mono text-[10px] ${
+                  complete
+                    ? "border-cerebral bg-cerebral text-white"
+                    : active
+                      ? "border-accent bg-accent text-accent-foreground"
+                      : "border-foreground/20 text-foreground/35"
+                }`}
+              >
+                {complete ? "✓" : index + 1}
+              </span>
+              <span
+                className={`block text-[10px] leading-tight ${
+                  active ? "font-semibold text-foreground" : "text-foreground/40"
+                }`}
+              >
+                {round.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Round progress & blurry profile frame */}
+      <div className="mb-6 border-y border-foreground/20 py-5">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[10px] tracking-widest text-foreground/40">
-              SPOLOČNÁ REZONANCIA
+            <p className="editorial-kicker text-cerebral">
+              Kolo {roundIndex + 1} · {currentRound.label}
             </p>
-            <p className="mt-1 text-sm font-light text-foreground/80">
-              Nahrajte {180 - totalVoiceDuration > 0 ? `${180 - totalVoiceDuration}s` : "0s"} audia
-              pre odomknutie a voľbu.
-            </p>
+            <p className="mt-1 text-sm text-foreground/75">{currentRound.helper}</p>
           </div>
-          <span className="font-mono text-[10px] tracking-widest text-foreground shrink-0 font-bold">
-            {totalVoiceDuration}s / 180s
+          <span className="font-display text-lg text-foreground shrink-0 font-bold">
+            {roundSecondsLeft}
+            <span className="text-sm text-foreground/35"> s</span>
           </span>
         </div>
         <div className="mt-4 flex items-center gap-3">
@@ -440,49 +572,90 @@ export function Chamber({
               </div>
             </div>
           )}
-          <div className="ml-auto h-[4px] flex-1 overflow-hidden bg-foreground/5">
-            <div
-              className="h-full transition-all duration-500 bg-cerebral"
-              style={{ width: `${progressPct}%` }}
-            />
+          <div className="ml-auto flex h-14 flex-1 items-center gap-1 overflow-hidden">
+            {Array.from({ length: 14 }).map((_, index) => {
+              const barThreshold = ((index + 1) / 14) * 100;
+              const height = 26 + ((index * 29) % 68);
+              return (
+                <span
+                  key={index}
+                  className={`flex-1 transition-colors duration-500 ${
+                    progressPct >= barThreshold ? "bg-cerebral" : "bg-foreground/10"
+                  }`}
+                  style={{ height: `${height}%` }}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Icebreaker Dilemma Card */}
       <div className="mb-6">
-        <IcebreakerDilemma
-          similarity={
-            1.0 -
-            Math.sqrt(
-              Math.pow((user.cognitiveDepth ?? 0.5) - match.cognitive_depth, 2) +
-                Math.pow((user.conscientiousness ?? 0.5) - match.conscientiousness, 2),
-            ) /
-              Math.sqrt(2.0)
-          }
-          complementarity={Math.max(
-            0,
-            1.0 -
-              Math.min(
-                1.0,
-                Math.max(
-                  0.0,
-                  (user.extraversion ?? 0.5) + match.extraversion < 1.0
-                    ? 0.5 * (1.0 - ((user.extraversion ?? 0.5) + match.extraversion))
-                    : 1.0 * ((user.extraversion ?? 0.5) + match.extraversion - 1.0),
-                ),
-              ),
-          )}
-          userStyle={user.attachmentStyle ?? "Secure"}
-          matchStyle={match.attachment_style}
-          userTopPriority={user.topPriority ?? "rodina"}
-          matchTopPriority={match.top_priority}
-        />
+        <p className="editorial-kicker text-accent">
+          {roundIndex === 0 ? "Otázka pre vás oboch" : `Zadanie pre kolo ${roundIndex + 1}`}
+        </p>
+        <p className="mt-2 font-display text-2xl font-semibold leading-tight tracking-[-0.04em]">
+          {currentRound.prompt}
+        </p>
       </div>
 
-      {/* Wave Visualizer */}
-      <div className="grid place-items-center py-6">
-        <Wave size={180} intense={recording || playing !== null} />
+      {/* Icebreaker Dilemma Card */}
+      {roundIndex === 0 ? (
+        <div className="mb-6">
+          <IcebreakerDilemma
+            similarity={
+              1.0 -
+              Math.sqrt(
+                Math.pow((user.cognitiveDepth ?? 0.5) - match.cognitive_depth, 2) +
+                  Math.pow((user.conscientiousness ?? 0.5) - match.conscientiousness, 2),
+              ) /
+                Math.sqrt(2.0)
+            }
+            complementarity={Math.max(
+              0,
+              1.0 -
+                Math.min(
+                  1.0,
+                  Math.max(
+                    0.0,
+                    (user.extraversion ?? 0.5) + match.extraversion < 1.0
+                      ? 0.5 * (1.0 - ((user.extraversion ?? 0.5) + match.extraversion))
+                      : 1.0 * ((user.extraversion ?? 0.5) + match.extraversion - 1.0),
+                  ),
+                ),
+            )}
+            userStyle={user.attachmentStyle ?? "Secure"}
+            matchStyle={match.attachment_style}
+            userTopPriority={user.topPriority ?? "rodina"}
+            matchTopPriority={match.top_priority}
+          />
+        </div>
+      ) : (
+        <div className="mb-6 flex items-start gap-4 border border-foreground/20 bg-foreground/[0.04] p-5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent font-mono text-sm font-bold text-accent-foreground">
+            {roundIndex + 1}
+          </span>
+          <div>
+            <p className="font-display text-lg font-bold">{currentRound.label}</p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground/55">
+              Po vypočutí hlasovky nahraj jednu sústredenú odpoveď. Nemusíš vyplniť celý čas.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="my-6 flex h-16 items-center justify-center gap-1.5 border-y border-foreground/15" aria-hidden="true">
+        {Array.from({ length: 21 }).map((_, index) => {
+          const distance = Math.abs(10 - index);
+          const height = recording ? Math.max(10, liveLevel * (85 - distance * 4)) : 12;
+          return (
+            <div
+              key={index}
+              className={`w-1 rounded-full transition-[height] duration-100 ${recording ? "bg-cerebral" : "bg-foreground/20"}`}
+              style={{ height: `${height}%` }}
+            />
+          );
+        })}
       </div>
 
       {micError && (
@@ -515,20 +688,33 @@ export function Chamber({
 
       {stage === "voice" && (
         <>
-          <div className="h-40" aria-hidden />
+          <div className="h-56" aria-hidden />
           <RecordButton
             recording={recording}
             recLen={recLen}
+            liveLevel={liveLevel}
+            draft={
+              draftVoice
+                ? {
+                    url: draftVoice.url,
+                    duration: draftVoice.duration,
+                    peaks: draftVoice.peaks,
+                  }
+                : null
+            }
             disabled={false}
             onStart={startRec}
             onCommit={() => stopRec(true)}
             onCancel={() => stopRec(false)}
+            onSendDraft={sendDraftVoice}
+            onDiscardDraft={discardDraftVoice}
           />
         </>
       )}
 
       {stage === "blindVote" && (
         <BlindVote
+          matchName={match.name}
           onVote={async (vote) => {
             haptic(vote === "unlock" ? "success" : "warning");
             setMyChoice(vote);
@@ -544,7 +730,7 @@ export function Chamber({
 
                 if (vote === "unlock" && partnerChoice === "unlock") {
                   haptic("success");
-                  onSuccess(0);
+                  setStage("result-yes");
                 } else {
                   haptic("warning");
                   setStage("result-no");
@@ -567,7 +753,7 @@ export function Chamber({
 
               if (partnerVotes) {
                 setTheirChoice(partnerVotes.vote as "unlock" | "cancel");
-                
+
                 if (partnerVotes.vote === "cancel" || vote === "cancel") {
                   await supabase
                     .from("matches")
@@ -597,11 +783,12 @@ export function Chamber({
                       setStage("result-no");
                     } else if (updatedMatch.is_unlocked) {
                       haptic("success");
-                      onSuccess(0);
+                      setStage("result-yes");
                     }
-                  }
+                  },
                 )
                 .subscribe();
+              void matchChannel;
 
               // Also check immediately if already unlocked by Postgres trigger
               const { data: currentMatch } = await supabase
@@ -616,7 +803,7 @@ export function Chamber({
                   setStage("result-no");
                 } else if (currentMatch.is_unlocked) {
                   haptic("success");
-                  onSuccess(0);
+                  setStage("result-yes");
                 }
               }
             } catch (err) {
@@ -629,45 +816,125 @@ export function Chamber({
       )}
 
       {stage === "waiting" && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-background/90 backdrop-blur-md p-6">
-          <div className="w-full max-w-md border border-foreground/10 bg-card p-10 text-center animate-fade-up">
-            <Wave size={140} intense />
-            <h3 className="mt-6 text-lg font-light tracking-wider uppercase">
-              Vyhodnocovanie voľby
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-6 backdrop-blur-md">
+          <div className="night-radio w-full max-w-md border-2 border-foreground p-8 animate-fade-up">
+            <p className="editorial-kicker text-accent">Slepá voľba odoslaná</p>
+            <h3 className="mt-3 font-display text-3xl font-extrabold tracking-[-0.05em]">
+              Čakáme na {match.name}
             </h3>
-            <p className="mt-3 text-sm text-foreground/60 font-light">
-              Tvoj hlas:{" "}
-              <span className="text-foreground font-bold">
-                {myChoice === "unlock" ? "ODOMKNÚŤ" : "ZRUŠIŤ"}
+            <div className="my-6 flex h-12 items-end gap-1.5" aria-hidden>
+              {[35, 62, 48, 80, 52, 70, 40, 88, 56, 44].map((h, idx) => (
+                <span
+                  key={idx}
+                  className="flex-1 animate-pulse bg-cerebral"
+                  style={{ height: `${h}%`, animationDelay: `${idx * 90}ms` }}
+                />
+              ))}
+            </div>
+            <p className="text-sm text-foreground/65">
+              Tvoja voľba:{" "}
+              <span className="font-semibold text-foreground">
+                {myChoice === "unlock" ? "Chcem pokračovať" : "Ukončiť rozhovor"}
               </span>
-            </p>
-            <p className="mt-2 text-xs text-foreground/40 font-light">
-              Čaká sa na rozhodnutie od {match.name}…
             </p>
           </div>
         </div>
       )}
 
-      {stage === "result-no" && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-background/95 backdrop-blur-md p-6">
-          <div className="w-full max-w-md border border-foreground/10 bg-card p-10 text-center animate-fade-up">
-            <X className="mx-auto size-12 text-foreground mb-4" />
-            <h3 className="text-xl font-light tracking-wider text-foreground">
-              SPÁROVANIE ZLYHALO
+      {stage === "result-yes" && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-5 backdrop-blur-md">
+          <div className="night-radio w-full max-w-md border-2 border-foreground p-6 sm:p-7 animate-fade-up shadow-[6px_6px_0_rgba(244,239,229,0.9)]">
+            <p className="editorial-kicker text-cerebral">Obojstranná zhoda</p>
+            <h3 className="mt-2 font-display text-3xl font-extrabold leading-tight tracking-[-0.05em]">
+              Obaja chcete pokračovať.
             </h3>
-            <p className="mt-4 text-sm text-foreground/60 font-light leading-relaxed">
-              {myChoice === "cancel"
-                ? "Rozhodol/a si sa nepokračovať a match zrušiť."
-                : `${match.name} sa rozhodol/a nepokračovať v komunikácii.`}
+            <p className="mt-2 text-sm text-foreground/65">
+              Obraz sa vyostruje a otvára sa váš spoločný priestor bez časového limitu.
             </p>
-            <p className="mt-2 text-xs text-foreground/45 font-light">
-              Tento match bol permanentne odstránený. Žiadna história, žiadne stopy.
+
+            <div className="my-6 flex items-center gap-4 border-y border-foreground/20 py-5">
+              <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-2 border-foreground bg-black">
+                {match.videoUrls && match.videoUrls.length > 0 ? (
+                  <video
+                    src={match.videoUrls[0]}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="size-full object-cover"
+                    style={{
+                      transform: "scaleX(-1)",
+                      filter: unblurred ? "blur(0px)" : "blur(16px)",
+                      transition: "filter 950ms cubic-bezier(0.16, 1, 0.3, 1)",
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={match.img}
+                    alt={match.name}
+                    className="size-full object-cover"
+                    style={{
+                      filter: unblurred ? "blur(0px)" : "blur(16px)",
+                      transform: unblurred ? "scale(1)" : "scale(1.12)",
+                      transition:
+                        "filter 950ms cubic-bezier(0.16, 1, 0.3, 1), transform 950ms ease",
+                    }}
+                  />
+                )}
+              </div>
+              <div>
+                <p className="font-display text-2xl font-bold tracking-[-0.04em]">
+                  {match.name}
+                  <span className="ml-2 text-base font-normal text-foreground/50">{match.age}</span>
+                </p>
+                <p className="mt-1 text-xs text-foreground/60">{match.city}</p>
+              </div>
+            </div>
+
+            {match.bio && (
+              <blockquote className="mb-6 border-l-2 border-cerebral pl-4 text-sm leading-relaxed text-foreground/80">
+                {match.bio}
+              </blockquote>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                haptic("success");
+                onSuccess(0);
+              }}
+              className="tactile-button flex w-full items-center justify-between bg-cerebral px-5 py-4 text-white cursor-pointer"
+            >
+              <span className="font-display text-base font-bold">Otvoriť spoločný rozhovor</span>
+              <ArrowRight className="size-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {stage === "result-no" && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-6 backdrop-blur-md">
+          <div className="night-radio w-full max-w-md border-2 border-foreground p-7 animate-fade-up">
+            <div className="mb-4 inline-grid size-10 place-items-center rounded-full border border-foreground/30">
+              <X className="size-5 text-foreground" />
+            </div>
+            <h3 className="font-display text-2xl font-bold tracking-[-0.04em] text-foreground">
+              Rozhovor sa tu končí
+            </h3>
+            <p className="mt-3 text-sm leading-relaxed text-foreground/70">
+              {myChoice === "cancel"
+                ? "Rozhodol/a si sa nepokračovať. Spojenie sme pokojne uzavreli."
+                : `${match.name} sa tentoraz rozhodol/a nepokračovať.`}
+            </p>
+            <p className="mt-2 text-xs text-foreground/45">
+              Niekedy stačia tri minúty na to, aby ste mali obaja jasno — bez ghostingu.
             </p>
             <button
+              type="button"
               onClick={onDiscard}
-              className="mt-8 w-full bg-foreground/5 border border-foreground/10 py-4 text-xs font-bold tracking-[0.2em] text-foreground hover:bg-foreground/10 transition-all uppercase"
+              className="tactile-button mt-7 w-full bg-foreground px-5 py-4 font-display text-sm font-bold text-background cursor-pointer"
             >
-              Späť na Dashboard
+              Vrátiť sa k dnešným spojeniam
             </button>
           </div>
         </div>
