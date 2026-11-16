@@ -653,41 +653,40 @@ export async function uploadVoiceMessageBlob(
   matchId: string,
   senderId: string,
   blob: Blob,
-  duration: number
+  duration: number,
+  messageId: string,
 ): Promise<any> {
-  try {
-    await supabase.storage.createBucket("voice-messages", { public: false });
-  } catch (e) {
-    // Ignore error
-  }
-
-  const messageId = `msg_${Date.now()}`;
   const fileName = `matches/${matchId}/${messageId}.wav`;
+
+  const findSavedMessage = async () => {
+    const { data, error } = await supabase.from("messages").select("*")
+      .eq("id", messageId).eq("match_id", matchId).eq("sender_id", senderId).maybeSingle();
+    if (error) throw error;
+    return data;
+  };
+
+  const saved = await findSavedMessage();
+  if (saved) return saved;
 
   const { data, error: uploadError } = await supabase.storage
     .from("voice-messages")
     .upload(fileName, blob, {
       contentType: blob.type || "audio/wav",
-      upsert: true,
+      upsert: false,
     });
 
-  if (uploadError) {
+  if (uploadError && String(uploadError.statusCode) !== "409") {
     console.error("[uploadVoiceMessageBlob] Upload failed:", uploadError);
     throw uploadError;
   }
-
-  const { data: signedData, error: signError } = await supabase.storage
-    .from("voice-messages")
-    .createSignedUrl(data.path, 60 * 60 * 24 * 7);
-
-  const mediaUrl = signedData?.signedUrl || data.path;
 
   const { data: dbData, error: dbError } = await supabase
     .from("messages")
     .insert({
       match_id: matchId,
       sender_id: senderId,
-      media_url: mediaUrl,
+      id: messageId,
+      media_url: data?.path || fileName,
       duration,
       message_text: null,
     })
@@ -695,6 +694,8 @@ export async function uploadVoiceMessageBlob(
     .single();
 
   if (dbError) {
+    const existing = await findSavedMessage();
+    if (existing) return existing;
     console.error("[uploadVoiceMessageBlob] Error saving message row:", dbError);
     throw dbError;
   }

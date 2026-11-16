@@ -58,12 +58,17 @@ export function Chamber({
   const [recLen, setRecLen] = useState(0);
   const [liveLevel, setLiveLevel] = useState(0);
   const [draftVoice, setDraftVoice] = useState<{
+    id: string;
     blob: Blob;
     url: string;
     duration: number;
     peaks: number[];
   } | null>(null);
   const [micError, setMicError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+  const [connectionError, setConnectionError] = useState(false);
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [stage, setStage] = useState<
     "voice" | "blindVote" | "waiting" | "result-no" | "result-yes"
   >("voice");
@@ -81,8 +86,6 @@ export function Chamber({
       try {
         const result = await getOrCreateMatch(user.id!, match.id, match.score);
         if (!active) return;
-        setSupabaseMatchId(result.id);
-
         const { data: dbMessages, error } = await supabase
           .from("messages")
           .select("*")
@@ -90,7 +93,7 @@ export function Chamber({
           .order("created_at", { ascending: true });
 
         if (error) {
-          console.error("[Chamber] Fetching messages error:", error);
+          throw error;
         } else if (dbMessages && active) {
           const resolved = await Promise.all(
             dbMessages.map(async (m: any): Promise<VoiceMsg> => ({
@@ -135,13 +138,17 @@ export function Chamber({
             },
           )
           .subscribe();
+        if (active) setSupabaseMatchId(result.id);
       } catch (err) {
         console.error("[Chamber] Init match failed:", err);
+        if (active) setConnectionError(true);
       }
     }
 
     if (user.id && match.id && !user.id.startsWith("00000000")) {
       initMatch();
+    } else {
+      setConnectionError(true);
     }
 
     return () => {
@@ -150,7 +157,7 @@ export function Chamber({
         supabase.removeChannel(channel);
       }
     };
-  }, [user.id, match.id]);
+  }, [user.id, match.id, connectionAttempt]);
 
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
@@ -218,11 +225,11 @@ export function Chamber({
 
   // Check if cumulative voice limit of 180s is reached
   useEffect(() => {
-    if (totalVoiceDuration >= 180 && stage === "voice") {
+    if (totalVoiceDuration >= 180 && stage === "voice" && !draftVoice && !recording && !sending) {
       haptic("warning");
       setStage("blindVote");
     }
-  }, [totalVoiceDuration, stage, haptic]);
+  }, [totalVoiceDuration, stage, haptic, draftVoice, recording, sending]);
 
   // Cleanup mic + object URLs on unmount.
   useEffect(() => {
@@ -257,7 +264,7 @@ export function Chamber({
   }
 
   async function startRec() {
-    if (stage !== "voice" || recording) return;
+    if (stage !== "voice" || recording || !supabaseMatchId || sendingRef.current) return;
     if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       const msg = "Tento prehliadač nepodporuje nahrávanie z mikrofónu.";
       console.warn("[voice]", msg);
@@ -383,7 +390,7 @@ export function Chamber({
             if (prev?.url && prev.url.startsWith("blob:")) {
               URL.revokeObjectURL(prev.url);
             }
-            return { blob, url, duration: dur, peaks };
+            return { id: crypto.randomUUID(), blob, url, duration: dur, peaks };
           });
           resolve();
         };
@@ -445,22 +452,24 @@ export function Chamber({
     });
   }
 
-  function sendDraftVoice() {
-    if (!draftVoice) return;
-    const { blob, url, duration, peaks } = draftVoice;
-    const msgId = `msg-${Date.now()}`;
-    setDraftVoice(null);
-    setMessages((prev) => [...prev, { id: msgId, from: "me", duration, audioUrl: url, peaks }]);
-
-    if (supabaseMatchId) {
-      uploadVoiceMessageBlob(supabaseMatchId, user.id!, blob, duration)
-        .then((dbMsg) => {
-          setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, id: dbMsg.id } : m)));
-        })
-        .catch((err) => {
-          console.error("[Chamber] Failed to upload voice message:", err);
-          setMicError("Chyba synchronizácie správy so serverom.");
-        });
+  async function sendDraftVoice() {
+    if (!draftVoice || !supabaseMatchId || !user.id || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
+    setMicError(null);
+    const { id, blob, url, duration, peaks } = draftVoice;
+    try {
+      const dbMsg = await uploadVoiceMessageBlob(supabaseMatchId, user.id, blob, duration, id);
+      setMessages((prev) => prev.some((message) => message.id === dbMsg.id)
+        ? prev
+        : [...prev, { id: dbMsg.id, from: "me", duration, audioUrl: url, peaks }]);
+      setDraftVoice(null);
+    } catch (err) {
+      console.error("[Chamber] Failed to upload voice message:", err);
+      setMicError("Správu sa nepodarilo odoslať. Nahrávka zostala pripravená, skús to znova.");
+    } finally {
+      sendingRef.current = false;
+      setSending(false);
     }
   }
 
@@ -670,6 +679,16 @@ export function Chamber({
         </div>
       )}
 
+      {!supabaseMatchId && (
+        <div role="status" className="mb-3 border border-foreground/25 px-4 py-3 text-sm text-foreground/80">
+          {connectionError ? "Nepodarilo sa pripojiť rozhovor." : "Pripájame rozhovor…"}
+          {connectionError && <button type="button" className="ml-2 underline" onClick={() => {
+            setConnectionError(false);
+            setConnectionAttempt((attempt) => attempt + 1);
+          }}>Skúsiť znova</button>}
+        </div>
+      )}
+
       {/* Voice Messages Bubbles */}
       <div className="space-y-3 py-2">
         {messages.map((m) => (
@@ -702,7 +721,8 @@ export function Chamber({
                   }
                 : null
             }
-            disabled={false}
+            disabled={!supabaseMatchId || sending}
+            sending={sending}
             onStart={startRec}
             onCommit={() => stopRec(true)}
             onCancel={() => stopRec(false)}
