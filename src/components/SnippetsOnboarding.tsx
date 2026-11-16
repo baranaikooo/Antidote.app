@@ -267,15 +267,14 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
     <div className="max-w-md mx-auto p-6 bg-background min-h-screen flex flex-col justify-between animate-fade-in font-mono">
       {/* Title */}
       <div className="space-y-4 mb-6">
-        <div className="text-[10px] tracking-widest text-cerebral/90 uppercase flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-cerebral animate-pulse" />
-          <span>FÁZA 0.5: MULTIPLE LIVE SNIPPETS</span>
+        <div className="text-xs font-medium text-cerebral">
+          Tvoj profil
         </div>
-        <h2 className="font-sans text-sm font-bold tracking-tight text-foreground uppercase leading-none">
-          Pridajte video slučku
+        <h2 className="font-display text-3xl font-bold tracking-tight text-foreground leading-tight">
+          Pridaj krátke video
         </h2>
-        <p className="text-xs text-foreground/75 leading-relaxed font-sans font-medium">
-          Pre overenie identity a algoritmický náhľad na trh je vyžadované nahrať aspoň 1 krátke 3-sekundové video (priamo cez kameru v aplikácii alebo výberom z galérie zariadenia). Môžete pridať celkovo až 4 video slučky.
+        <p className="text-sm text-foreground/75 leading-relaxed font-sans">
+          Pridaj aspoň jedno trojsekundové video, najviac štyri. Môžeš ho nahrať kamerou alebo vybrať z galérie. Pri nahrávaní ťa zariadenie požiada o prístup ku kamere.
         </p>
       </div>
 
@@ -395,13 +394,13 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
           }`}
         >
           {isSubmitting
-            ? "[ UKLADÁM SNIPPET DO DATABÁZY... ]"
+            ? "Ukladám video…"
             : snippets.filter(Boolean).length === 0
-            ? "[ NAHRAJTE ASPOŇ 1 SNIPPET PRE POKRAČOVANIE ]"
-            : `[ POKRAČOVAŤ K SEMANTICKÉMU ZRKADLU (${snippets.filter(Boolean).length}/4) ]`}
+            ? "Pridaj aspoň jedno video"
+            : `Pokračovať (${snippets.filter(Boolean).length}/4)`}
         </button>
         <p className="text-[9px] text-muted-foreground text-center uppercase">
-          Všetky nahraté videá sa predvádzajú bez zvuku (muted).
+          Videá sa prehrávajú bez zvuku.
         </p>
       </div>
 
@@ -410,7 +409,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex flex-col justify-center items-center p-4">
           <div className="w-full max-w-sm border border-foreground/20 bg-card p-6 rounded-none relative animate-fade-up">
             <div className="mb-4 text-[9px] tracking-widest text-red-500 font-bold uppercase animate-pulse">
-              [ CCTV CAMERA RECORDER INTERFACE ]
+              Nahrávanie videa
             </div>
 
             <div className="relative aspect-[3/4] w-full border border-foreground/20 rounded-none bg-black overflow-hidden mb-6">

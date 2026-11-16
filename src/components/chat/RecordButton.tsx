@@ -227,7 +227,7 @@ export function RecordButton({
             </div>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="flex flex-col items-center gap-2 text-center">
             <button
               type="button"
               disabled={disabled}
@@ -235,13 +235,14 @@ export function RecordButton({
                 haptic("tap");
                 onStart();
               }}
-              className="tactile-button flex w-full items-center justify-between bg-cerebral px-5 py-4 text-white disabled:opacity-35 cursor-pointer"
+              aria-label="Nahrať hlasovú odpoveď"
+              className="grid size-16 place-items-center rounded-full bg-cerebral text-white transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cerebral disabled:opacity-35 cursor-pointer"
             >
-              <span className="font-display text-base font-bold">Nahrať hlasovú odpoveď</span>
-              <Mic className="size-5" />
+              <Mic className="size-6" aria-hidden="true" />
             </button>
-            <p className="text-center text-[11px] text-foreground/45">
-              Pred odoslaním si nahrávku môžeš vypočuť alebo nahrať znova.
+            <p className="font-display text-sm font-semibold">Nahrať odpoveď</p>
+            <p className="max-w-xs text-xs leading-relaxed text-foreground/70">
+              Povolíš mikrofón a pred odoslaním si môžeš nahrávku vypočuť.
             </p>
           </div>
         )}

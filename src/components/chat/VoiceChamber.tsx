@@ -469,16 +469,13 @@ export function Chamber({
       {/* Header */}
       <div className="mb-8 flex items-end justify-between border-b border-foreground/25 pb-4">
         <div>
-          <p className="editorial-kicker text-cerebral">Night Radio · súkromná frekvencia</p>
+          <p className="text-xs font-medium text-cerebral">Hlasový rozhovor</p>
           <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.055em]">
             {match.name}
             <span className="ml-2 text-base font-medium text-foreground/40">{match.age}</span>
           </h1>
         </div>
-        <span className="flex items-center gap-2 text-[10px] text-foreground/50 font-mono uppercase tracking-wider">
-          <span className="size-2 animate-pulse rounded-full bg-cerebral" />
-          naživo
-        </span>
+        <span className="text-xs text-foreground/65">Kolo {roundIndex + 1} z 3</span>
       </div>
 
       <div className="mb-6 grid grid-cols-3 border-y border-foreground/20">
@@ -647,22 +644,15 @@ export function Chamber({
         </div>
       )}
 
-      {/* Voice-reactive radio dial */}
-      <div className="my-8 flex h-32 items-center justify-center gap-1.5 border-y border-foreground/15">
+      <div className="my-6 flex h-16 items-center justify-center gap-1.5 border-y border-foreground/15" aria-hidden="true">
         {Array.from({ length: 21 }).map((_, index) => {
           const distance = Math.abs(10 - index);
-          const active = recording || playing !== null;
-          const height = Math.max(14, 88 - distance * 7);
+          const height = recording ? Math.max(10, liveLevel * (85 - distance * 4)) : 12;
           return (
             <div
               key={index}
-              className={`w-1.5 transition-all duration-300 ${
-                active ? "animate-pulse bg-cerebral" : "bg-accent/35"
-              }`}
-              style={{
-                height: `${active ? height : Math.max(10, height * 0.45)}%`,
-                animationDelay: `${index * 45}ms`,
-              }}
+              className={`w-1 rounded-full transition-[height] duration-100 ${recording ? "bg-cerebral" : "bg-foreground/20"}`}
+              style={{ height: `${height}%` }}
             />
           );
         })}
@@ -698,7 +688,7 @@ export function Chamber({
 
       {stage === "voice" && (
         <>
-          <div className="h-48" aria-hidden />
+          <div className="h-56" aria-hidden />
           <RecordButton
             recording={recording}
             recLen={recLen}
@@ -900,6 +890,12 @@ export function Chamber({
                 <p className="mt-1 text-xs text-foreground/60">{match.city}</p>
               </div>
             </div>
+
+            {match.bio && (
+              <blockquote className="mb-6 border-l-2 border-cerebral pl-4 text-sm leading-relaxed text-foreground/80">
+                {match.bio}
+              </blockquote>
+            )}
 
             <button
               type="button"

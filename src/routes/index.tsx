@@ -1742,7 +1742,7 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
 
       <main className="my-auto py-10">
         <div className="mb-8 max-w-sm">
-          <h1 className="font-display text-[clamp(2.7rem,12vw,4.6rem)] font-extrabold leading-[0.9] tracking-[-0.065em] text-foreground">
+          <h1 className="font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em] text-foreground">
             Čo by si radšej stratil/a na jeden rok?
           </h1>
         </div>
@@ -2068,11 +2068,12 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center text-center animate-fade-up">
       <div className="border border-foreground/20 p-6 max-w-sm w-full bg-card flex flex-col items-center">
-        <h2 className="font-mono text-sm tracking-widest uppercase font-bold text-foreground mb-2">
-          LIVE SNIPPET
+        <p className="mb-3 text-xs font-medium text-foreground/65">Overenie profilu</p>
+        <h2 className="font-display text-2xl font-bold tracking-tight text-foreground mb-2">
+          Najprv krátke overenie
         </h2>
-        <p className="text-xs text-foreground/60 leading-relaxed mb-4">
-          Krátky video-snippet, ktorý slúži ako verifikácia vašej reálnej identity.
+        <p className="text-sm text-foreground/75 leading-relaxed mb-4">
+          Kameru použijeme na krátke video a overenie, že si skutočná osoba. Po spustení ťa prehliadač požiada o prístup ku kamere.
         </p>
 
         <div className="relative my-4 grid place-items-center">
@@ -2243,24 +2244,22 @@ function Briefing({ onBegin }: { onBegin: () => void }) {
     <div className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 text-center animate-fade-up">
       <div className="border border-foreground/20 p-6 max-w-sm w-full bg-card flex flex-col items-center">
         <div className="font-mono text-[10px] tracking-widest text-foreground/50 uppercase mb-3">
-          // PSYCHOMETRICKÁ KALIBRÁCIA · ~2 MIN
+          Otázky · približne 2 minúty
         </div>
         <h2 className="font-sans text-sm font-bold uppercase tracking-tight text-foreground mb-3">
-          Kalibrácia profilu
+          Poďme sa trochu spoznať
         </h2>
         <p className="text-xs leading-relaxed text-foreground/80 mb-5">
-          Prejdi 3 zážitkovými testami: dopĺňanie metafor, alokácia životných hodnôt a reakcia na
-          náhlu konfliktnú situáciu.
+          Čakajú ťa otázky o vzťahoch, hodnotách a o tom, ako sa rozhoduješ.
         </p>
         <p className="text-[10px] leading-relaxed text-foreground/50 font-mono mb-6 uppercase">
-          Tento proces vypočíta tvoju rezonančnú kompatibilitu na základe psychologického
-          očakávania.
+          Odpovedaj tak, ako to cítiš. Neexistujú správne odpovede.
         </p>
         <button
           onClick={onBegin}
           className="w-full bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 transition-all cursor-pointer"
         >
-          ZAČAŤ KALIBRÁCIU
+          ZAČAŤ OTÁZKY
         </button>
       </div>
     </div>
@@ -2296,12 +2295,12 @@ function MatchCard({
     <article className="editorial-panel relative overflow-hidden p-5 sm:p-6">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <p className="editorial-kicker text-cerebral">Spojenie dňa</p>
-          <h3 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.055em]">
+          <p className="text-xs font-semibold text-cerebral">Možné spojenie</p>
+          <h3 className="mt-2 font-display text-[clamp(2rem,8vw,3rem)] font-extrabold leading-none tracking-[-0.055em]">
             {match.name}
             <span className="ml-2 text-base font-medium text-foreground/50">{match.age}</span>
           </h3>
-          <p className="mt-1 text-xs text-foreground/55">
+          <p className="mt-2 text-sm text-foreground/70">
             {match.city}
             {match.distanceKm !== undefined && ` · ${Math.round(match.distanceKm)} km`}
           </p>
@@ -2331,16 +2330,14 @@ function MatchCard({
         <p className="font-display text-xl font-semibold leading-snug tracking-[-0.03em]">
           {sharedPriority
             ? `Obaja dávate na prvé miesto hodnotu „${profile.topPriority}“.`
-            : similarityPct >= 75
-              ? "Rozmýšľate podobne, ale energiu do vzťahu prinášate iným spôsobom."
-              : "Nezhodnete sa vo všetkom — a práve tam môže vzniknúť dobrý rozhovor."}
+            : `Vaše odpovede sa podobajú na ${similarityPct} %.`}
         </p>
         <p className="mt-2 text-sm leading-relaxed text-foreground/60">{match.bio}</p>
       </div>
 
       <div className="my-5 grid grid-cols-2 divide-x divide-foreground/25 border-y border-foreground/25">
         <div className="py-4 pr-4">
-          <p className="editorial-kicker text-foreground/45">Spoločný rytmus</p>
+          <p className="text-xs font-medium text-foreground/65">Podobnosť odpovedí</p>
           <p className="mt-2 font-display text-lg font-bold">{similarityPct}% podobnosť</p>
           <div className="mt-3 flex gap-1">
             {Array.from({ length: 5 }).map((_, index) => (
@@ -2352,7 +2349,7 @@ function MatchCard({
           </div>
         </div>
         <div className="py-4 pl-4">
-          <p className="editorial-kicker text-foreground/45">Napätie rozhovoru</p>
+          <p className="text-xs font-medium text-foreground/65">Povaha spojenia</p>
           <p className="mt-2 text-sm font-semibold leading-snug">{extLabel}</p>
           <p className="mt-1 text-xs text-foreground/50">
             {isSecureMatch ? "Pokojný základ" : attachmentLabel}
@@ -3280,13 +3277,11 @@ function MessagesList({
       </div>
 
       {conversations.length === 0 ? (
-        <div className="border border-foreground/10 bg-foreground/[0.02] p-10 text-center">
-          <MessageCircle className="mx-auto size-10 text-foreground/30" />
-          <p className="mt-4 text-sm font-light text-foreground/60">
-            Zatiaľ žiadne uložené konverzácie.
-          </p>
-          <p className="mt-2 text-xs text-foreground/40">
-            Po úspešnom hlasovom priestore sa tu objaví textový dialóg.
+        <div className="border-y border-foreground/25 py-10">
+          <MessageCircle className="size-7 text-cerebral" aria-hidden="true" />
+          <h2 className="mt-5 font-display text-3xl font-bold tracking-tight">Zatiaľ tu máš pokoj.</h2>
+          <p className="mt-3 max-w-xs text-sm leading-relaxed text-foreground/70">
+            Keď sa obaja rozhodnete pokračovať, váš rozhovor nájdeš tu.
           </p>
         </div>
       ) : (
@@ -3327,10 +3322,11 @@ function MessagesList({
                       <span className="size-2 rounded-full bg-cerebral shadow-[0_0_6px_var(--cerebral)] animate-pulse" />
                     )}
                   </div>
-                  <p className="mt-1 truncate text-sm font-light text-foreground/60">
-                    {last
-                      ? (last.from === "me" ? "Ty: " : "") + last.text
-                      : "Nový dialóg — napíš prvú správu."}
+                  <p className="mt-1 flex items-center gap-2 text-sm text-foreground/70">
+                    {last?.media?.kind === "audio" && <span aria-hidden="true" className="text-cerebral">▂▅▃▆▂</span>}
+                    <span className="truncate">{last
+                      ? (last.from === "me" ? "Ty: " : "") + (last.text || (last.media?.kind === "audio" ? "Hlasová správa" : "Médiá"))
+                      : "Napíš prvú správu."}</span>
                   </p>
                 </div>
                 <ChevronRight className="size-5 shrink-0 text-foreground/30 group-hover:text-foreground" />
@@ -3344,7 +3340,7 @@ function MessagesList({
         onClick={onFindNew}
         className="mt-8 w-full border border-cerebral/40 bg-cerebral/5 py-4 text-sm tracking-[0.3em] text-foreground hover:bg-cerebral hover:text-white transition-all cursor-pointer font-mono font-bold"
       >
-        NÁJSŤ ĎALŠIU REZONANCIU
+        OBJAVIŤ SPOJENIE
       </button>
     </div>
   );
