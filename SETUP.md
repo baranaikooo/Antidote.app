@@ -1,4 +1,4 @@
-# Reson - Setup Guide
+# Antidote - Setup Guide
 
 ## Prerequisites
 

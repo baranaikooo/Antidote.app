@@ -1,4 +1,4 @@
-// All Reson domain logic + content in one place.
+// All Antidote domain logic + content in one place.
 // Simple Slovak, no jargon.
 
 import { loadBanditState, saveBanditState } from "./supabase";

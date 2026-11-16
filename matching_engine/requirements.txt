@@ -1,4 +1,4 @@
-# Reson EV Matchmaking Engine - Python Dependencies
+# Antidote EV Matchmaking Engine - Python Dependencies
 # ================================================
 # Core
 fastapi>=0.115.0

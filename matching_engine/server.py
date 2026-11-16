@@ -16,7 +16,7 @@ from matching_engine.calibration import get_calibration_multiplier
 
 # Initialize FastAPI App
 app = FastAPI(
-    title="Reson EV Matchmaking API",
+    title="Antidote EV Matchmaking API",
     description="Python FastAPI backend serving psychometric Expected Value matchmaking calculation.",
     version="1.0.0"
 )

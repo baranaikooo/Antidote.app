@@ -14,12 +14,16 @@ export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
 
 const checkIsNative = () => {
   if (typeof window === "undefined") return false;
-  return Capacitor.isNativePlatform() || window.navigator?.userAgent?.includes("ResonMobile");
+  return (
+    Capacitor.isNativePlatform() ||
+    window.navigator?.userAgent?.includes("AntidoteMobile") ||
+    window.navigator?.userAgent?.includes("ResonMobile")
+  );
 };
 
 if (checkIsNative()) {
   App.addListener("appUrlOpen", (event) => {
-    if (event.url.includes("reson://auth")) {
+    if (event.url.includes("antidote://auth") || event.url.includes("reson://auth")) {
       const hashPos = event.url.indexOf("#");
       if (hashPos !== -1) {
         const hashParams = new URLSearchParams(event.url.substring(hashPos + 1));
@@ -115,8 +119,10 @@ export type AuthError = {
 export async function signInWithGoogle() {
   const isNative =
     typeof window !== "undefined" &&
-    (Capacitor.isNativePlatform() || window.navigator?.userAgent?.includes("ResonMobile"));
-  const redirectTo = isNative ? "reson://auth" : window.location.origin;
+    (Capacitor.isNativePlatform() ||
+      window.navigator?.userAgent?.includes("AntidoteMobile") ||
+      window.navigator?.userAgent?.includes("ResonMobile"));
+  const redirectTo = isNative ? "antidote://auth" : window.location.origin;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

@@ -1,2 +1,2 @@
-# Reson Matching Engine
+# Antidote Matching Engine
 # Psychometric Expected Value (EV) computation package

@@ -119,7 +119,7 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Žiadne swipovanie. Iba psychológia." },
     ],
   }),
-  component: ResonApp,
+  component: AntidoteApp,
 });
 
 // ============ Shared UI ============
@@ -297,7 +297,7 @@ function clearOnboardingStorage(preserveActiveScreen = false) {
   clearVideoBlobs().catch((err) => console.error("Failed to clear video blobs from IndexedDB:", err));
 }
 
-function ResonApp() {
+function AntidoteApp() {
   const [theme, setTheme] = useTheme();
   const themeLoadedRef = useRef(false);
   const themeRef = useRef(theme);

@@ -1,5 +1,5 @@
 """
-Integration tests for the FastAPI Reson EV Matchmaking API.
+Integration tests for the FastAPI Antidote EV Matchmaking API.
 Uses httpx async test client with mocked Supabase responses.
 """
 import pytest
