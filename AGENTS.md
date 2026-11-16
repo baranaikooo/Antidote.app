@@ -9,7 +9,7 @@ Antidote is a next-generation anti-dopamine cognitive resonance dating applicati
   - Authentication via Google OAuth and Supabase Auth.
   - Database functions enforce strict RLS and cascading deletion on `delete_own_user()`.
 - **Mobile**: Capacitor Android with hardware permissions for camera, microphone, and network state.
-- **Production Hosting**: Vercel (`https://resonapp.vercel.app`).
+- **Production Hosting**: Vercel (`https://antidotesk.vercel.app`).
 
 ## Development Rules
 - Maintain linear git history. Changes must be committed and pushed through Pull Requests to `main`.
