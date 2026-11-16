@@ -22,6 +22,7 @@ export function RecordButton({
   liveLevel = 0,
   draft = null,
   disabled,
+  sending = false,
   onStart,
   onCommit,
   onCancel,
@@ -33,6 +34,7 @@ export function RecordButton({
   liveLevel?: number;
   draft?: VoiceDraft | null;
   disabled: boolean;
+  sending?: boolean;
   onStart: () => void;
   onCommit: () => void;
   onCancel: () => void;
@@ -142,12 +144,13 @@ export function RecordButton({
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
+                disabled={sending}
                 onClick={() => {
                   haptic("warning");
                   previewAudioRef.current?.pause();
                   onDiscardDraft?.();
                 }}
-                className="flex items-center justify-center gap-2 border border-foreground/25 bg-transparent px-4 py-3.5 text-sm font-medium text-foreground/80 transition-colors hover:border-foreground/50 hover:text-foreground cursor-pointer"
+                className="flex items-center justify-center gap-2 border border-foreground/25 bg-transparent px-4 py-3.5 text-sm font-medium text-foreground/80 transition-colors hover:border-foreground/50 hover:text-foreground disabled:opacity-40 cursor-pointer"
               >
                 <RotateCcw className="size-4" />
                 <span>Nahrať znova</span>
@@ -155,14 +158,15 @@ export function RecordButton({
 
               <button
                 type="button"
+                disabled={disabled}
                 onClick={() => {
                   haptic("send");
                   previewAudioRef.current?.pause();
                   onSendDraft?.();
                 }}
-                className="tactile-button flex items-center justify-center gap-2 bg-cerebral px-4 py-3.5 font-display text-sm font-bold text-white cursor-pointer"
+                className="tactile-button flex items-center justify-center gap-2 bg-cerebral px-4 py-3.5 font-display text-sm font-bold text-white disabled:opacity-40 cursor-pointer"
               >
-                <span>Odoslať</span>
+                <span>{sending ? "Odosielam…" : "Odoslať"}</span>
                 <Send className="size-4" />
               </button>
             </div>
