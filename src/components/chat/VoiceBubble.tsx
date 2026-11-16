@@ -52,6 +52,50 @@ export function VoiceBubble({
   const [currentSec, setCurrentSec] = useState(0);
   const [speed, setSpeed] = useState<1 | 1.25>(1);
   const [listened, setListened] = useState(Boolean(msg.read));
+  const [decodedPeaks, setDecodedPeaks] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    try {
+      setListened(Boolean(msg.read) || localStorage.getItem(`antidote:voice-listened:${msg.id}`) === "true");
+    } catch {
+      setListened(Boolean(msg.read));
+    }
+  }, [msg.id, msg.read]);
+
+  useEffect(() => {
+    setDecodedPeaks(null);
+    if (msg.peaks?.length || !msg.audioUrl) return;
+    const AudioContextClass = window.AudioContext;
+    if (!AudioContextClass) return;
+    const controller = new AbortController();
+    const context = new AudioContextClass();
+
+    async function readWaveform() {
+      try {
+        const response = await fetch(msg.audioUrl!, { signal: controller.signal });
+        if (!response.ok) return;
+        const buffer = await context.decodeAudioData(await response.arrayBuffer());
+        if (controller.signal.aborted) return;
+        const samples = buffer.getChannelData(0);
+        const peaks = Array.from({ length: BAR_COUNT }, (_, index) => {
+          const start = Math.floor((index * samples.length) / BAR_COUNT);
+          const end = Math.floor(((index + 1) * samples.length) / BAR_COUNT);
+          let peak = 0;
+          for (let i = start; i < end; i++) peak = Math.max(peak, Math.abs(samples[i]));
+          return peak;
+        });
+        const maximum = Math.max(0.08, ...peaks);
+        setDecodedPeaks(peaks.map((peak) => Math.max(0.16, peak / maximum)));
+      } catch {
+        // Keep the existing fallback waveform when decoding is unavailable.
+      } finally {
+        void context.close().catch(() => {});
+      }
+    }
+
+    void readWaveform();
+    return () => controller.abort();
+  }, [msg.audioUrl, msg.peaks]);
 
   const bars = useMemo(() => {
     if (msg.peaks && msg.peaks.length > 0) {
@@ -64,8 +108,8 @@ export function VoiceBubble({
         return Math.min(1, Math.max(0.16, msg.peaks![sourceIdx] ?? 0.3));
       });
     }
-    return buildFallbackPeaks(msg.id, msg.duration);
-  }, [msg.id, msg.duration, msg.peaks]);
+    return decodedPeaks ?? buildFallbackPeaks(msg.id, msg.duration);
+  }, [msg.id, msg.duration, msg.peaks, decodedPeaks]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -138,9 +182,22 @@ export function VoiceBubble({
 
           <div className="min-w-0 flex-1">
             <div
-              className="flex h-8 items-center gap-[3px]"
+              className="flex h-8 touch-none items-center gap-[3px]"
               role="group"
               aria-label="Priebeh hlasovej správy"
+              onPointerDown={(event) => {
+                if (!canPlay) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                const bounds = event.currentTarget.getBoundingClientRect();
+                const index = Math.floor(((event.clientX - bounds.left) / bounds.width) * BAR_COUNT);
+                handleScrub(Math.max(0, Math.min(BAR_COUNT - 1, index)));
+              }}
+              onPointerMove={(event) => {
+                if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+                const bounds = event.currentTarget.getBoundingClientRect();
+                const index = Math.floor(((event.clientX - bounds.left) / bounds.width) * BAR_COUNT);
+                handleScrub(Math.max(0, Math.min(BAR_COUNT - 1, index)));
+              }}
             >
               {bars.map((amp, i) => {
                 const ratio = (i + 1) / BAR_COUNT;
@@ -150,7 +207,9 @@ export function VoiceBubble({
                     key={i}
                     type="button"
                     disabled={!canPlay}
-                    onClick={() => handleScrub(i)}
+                    onClick={(event) => {
+                      if (event.detail === 0) handleScrub(i);
+                    }}
                     aria-label={`Posunúť na ${Math.round(ratio * 100)} %`}
                     className="group flex h-full flex-1 items-center justify-center cursor-pointer disabled:cursor-default"
                   >
@@ -210,6 +269,13 @@ export function VoiceBubble({
               setProgress(1);
               setCurrentSec(0);
               setListened(true);
+              if (!mine) {
+                try {
+                  localStorage.setItem(`antidote:voice-listened:${msg.id}`, "true");
+                } catch {
+                  // Playback remains available when local storage is disabled.
+                }
+              }
               if (audioRef.current) {
                 audioRef.current.currentTime = 0;
               }
