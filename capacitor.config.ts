@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: ".vercel/output/static", // Fallback local directory, but we will use the live server
   overrideUserAgent: "AntidoteMobile",
   server: {
-    url: "https://resonapp.vercel.app/",
+    url: "https://antidotesk.vercel.app/",
     cleartext: true,
   },
 };
