@@ -497,7 +497,6 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
   const primaryMarker = `[${attachmentStyleSlovak}]`;
   const decisionLatency = `${(user.avgResponseTime || 2.45).toFixed(2)}s`;
   const redemptionQuota = `${user.redemptionQuota ?? 0}`;
-  const closureRate = "85%";
   const cognitiveDepth = `${(user.cognitiveDepth || 0.55).toFixed(2)}`;
   const conscientiousness = `${(user.conscientiousness || 0.5).toFixed(2)}`;
   const extraversion = `${(user.extraversion || 0.5).toFixed(2)}`;
@@ -505,49 +504,31 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
   return (
     <>
-      <div className="animate-fade-up pb-32">
-      {/* Header */}
-      <div className="mb-8 border-b border-foreground/25 pb-6">
-        <p className="editorial-kicker text-foreground/70">Tvoj profil · {user.name}</p>
-        <h1 className="mt-3 font-display text-4xl font-extrabold leading-none tracking-[-0.06em]">
-          Tvoja osobnosť
-        </h1>
-      </div>
+      <div className="personal-screen animate-fade-up pb-32">
+      <header className="mb-6 pt-2">
+        <p className="personal-eyebrow">Tvoj profil</p>
+        <h1 className="mt-2 font-display text-4xl font-bold tracking-[-0.045em]">Ahoj, {user.name}.</h1>
+        <p className="mt-2 text-base leading-relaxed text-foreground/65">Tu môžeš ukázať, kto si a koho chceš spoznať.</p>
+      </header>
 
-      {/* Blur Preview Toggle */}
-      <div className="mb-6 border border-foreground/10 bg-card p-4 rounded-none flex items-center justify-between">
-        <span className="font-sans text-xs tracking-wide text-muted-foreground uppercase">
-          Ukážka pre ostatných
-        </span>
-        <button
-          onClick={() => {
-            haptic("tap");
-            setIsPreviewBlurred(!isPreviewBlurred);
-          }}
-          className={`flex items-center gap-1.5 border px-3 py-1.5 font-sans text-xs tracking-wide uppercase transition-all rounded-none font-bold ${
-            isPreviewBlurred
-              ? "border-amber-500 bg-amber-500/10 text-amber-500"
-              : "border-foreground bg-foreground text-background"
-          }`}
-        >
-          {isPreviewBlurred ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-          {isPreviewBlurred ? "[ ROZMAZANÝ PROFIL ]" : "[ ODOMKNUTÝ PROFIL ]"}
+      <div className="personal-card mb-5 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="min-w-0"><p className="font-display text-lg font-bold">Pohľad ostatných</p><p className="mt-1 text-sm leading-relaxed text-foreground/65">Pozri si videá tak, ako sa zobrazujú pri zoznámení.</p></div>
+        <button type="button" aria-pressed={isPreviewBlurred} onClick={() => { haptic("tap"); setIsPreviewBlurred(!isPreviewBlurred); }} className="personal-action flex shrink-0 items-center gap-2">
+          {isPreviewBlurred ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {isPreviewBlurred ? "Rozmazané" : "Odhalené"}
         </button>
       </div>
 
       {/* CCTV Live Snippets Grid (respects preview blur toggle) */}
       <div className="mb-6">
-        <p className="mb-3 font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
-          <span className="size-1 rounded-full bg-cerebral" />
-          <span>Moje videá (3-sekundové slučky)</span>
-        </p>
+        <div className="mb-4"><h2 className="font-display text-2xl font-bold tracking-tight">Tvoje momenty</h2><p className="mt-1 text-sm text-foreground/65">Krátke videá, cez ktoré ťa ostatní spoznajú.</p></div>
         <div className="grid grid-cols-2 gap-3">
           {Array.from({ length: 4 }).map((_, idx) => {
             const url = snippets[idx];
             return (
               <div
                 key={idx}
-                className="relative aspect-[3/4] w-full border border-foreground/20 rounded-none bg-black overflow-hidden group"
+                className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl border border-foreground/10 bg-card group"
               >
                 {url ? (
                   <>
@@ -580,17 +561,18 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                     </div>
                     <button
                       onClick={() => deleteSnippet(idx)}
-                      className="absolute top-1.5 right-1.5 bg-red-600/90 text-white p-1.5 rounded-none border border-red-500 hover:bg-red-700 transition-all opacity-90 active:scale-95 z-10"
+                      aria-label={`Odstrániť video ${idx + 1}`}
+                      className="absolute right-2 top-2 z-10 grid size-10 place-items-center rounded-full bg-black/70 text-white transition-transform active:scale-95"
                     >
                       <X className="size-3.5" />
                     </button>
                   </>
                 ) : (
-                  <div className="size-full flex flex-col justify-center items-center p-2 bg-card">
+                  <div className="size-full flex flex-col justify-center items-center p-3 bg-card">
                     <div className="flex gap-2">
                       <button
                         onClick={() => startRecording(idx)}
-                        className="p-2 border border-foreground/10 hover:border-foreground/30 hover:bg-foreground/5 transition-all text-foreground rounded-none bg-card"
+                        className="grid size-12 place-items-center rounded-full bg-foreground/10 text-foreground transition-transform active:scale-95"
                         title="Nahrať kamerou"
                       >
                         <Camera className="size-4" />
@@ -603,8 +585,8 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                         <Upload className="size-4" />
                       </button>
                     </div>
-                    <span className="mt-1.5 font-sans text-xs text-foreground/60 uppercase">
-                      SLOT {idx + 1} (MAX 3s)
+                    <span className="mt-3 text-center text-sm text-foreground/65">
+                      Video {idx + 1} · 3 sekundy
                     </span>
                   </div>
                 )}
@@ -623,16 +605,13 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
       </div>
 
       {/* Market Parameters (Moved from settings to DNA section) */}
-      <div className="mb-6 border border-foreground/10 bg-card p-5 rounded-none space-y-4">
-        <p className="font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
-          <span className="size-1 rounded-full bg-cerebral" />
-          <span>PARAMETRE TRHU (TRHOVÉ FILTRE)</span>
-        </p>
+      <div className="personal-card mb-5 space-y-4">
+        <div><h2 className="font-display text-2xl font-bold tracking-tight">Koho chceš spoznať?</h2><p className="mt-1 text-sm leading-relaxed text-foreground/65">Nastav si vzdialenosť a preferencie vyhľadávania.</p></div>
 
         <div className="space-y-4 font-sans text-xs">
           {/* Global vs National Toggle */}
-          <div className="flex justify-between items-center border-b border-foreground/5 pb-3">
-            <span className="text-foreground/70 uppercase text-xs">ROZSAH VYHĽADÁVANIA</span>
+          <div className="flex flex-wrap justify-between items-center gap-3 border-b border-foreground/10 pb-4">
+            <span className="text-foreground/75 text-sm font-medium">Rozsah vyhľadávania</span>
             <div className="flex gap-2">
               <button
                 onClick={() => {
@@ -640,13 +619,13 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                   setIsGlobalMode(false);
                   saveFilterChange("radiusKm", distance);
                 }}
-                className={`px-2 py-1 border text-xs tracking-wider rounded-none font-bold transition-all ${
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all active:scale-95 ${
                   !isGlobalMode
-                    ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
-                    : "border-foreground/15 text-foreground hover:border-cerebral/40 hover:text-cerebral"
+                    ? "bg-foreground text-background"
+                    : "bg-foreground/5 text-foreground hover:bg-foreground/10"
                 }`}
               >
-                NÁRODNÝ
+                V okolí
               </button>
               <button
                 onClick={() => {
@@ -654,13 +633,13 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                   setIsGlobalMode(true);
                   saveFilterChange("radiusKm", 500); // 500+ triggers Global search
                 }}
-                className={`px-2 py-1 border text-xs tracking-wider rounded-none font-bold transition-all ${
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all active:scale-95 ${
                   isGlobalMode
-                    ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
-                    : "border-foreground/15 text-foreground hover:border-cerebral/40 hover:text-cerebral"
+                    ? "bg-foreground text-background"
+                    : "bg-foreground/5 text-foreground hover:bg-foreground/10"
                 }`}
               >
-                GLOBÁLNY
+                Celý svet
               </button>
             </div>
           </div>
@@ -674,7 +653,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
             }
           >
             <div className="flex justify-between mb-1">
-              <span className="text-foreground/70 uppercase text-xs">MAXIMÁLNA VZDIALENOSŤ</span>
+              <span className="text-foreground/75 text-sm font-medium">Maximálna vzdialenosť</span>
               <span className="font-bold text-cerebral">{distance} km</span>
             </div>
             <input
@@ -689,13 +668,14 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 setDistance(val);
                 saveFilterChange("radiusKm", val);
               }}
-              className="w-full accent-cerebral h-1 bg-foreground/10 rounded-none cursor-pointer"
+              aria-label="Maximálna vzdialenosť"
+              className="my-3 h-2 w-full cursor-pointer accent-cerebral"
             />
           </div>
 
           {/* Target Demographic Select Dropdown */}
           <div>
-            <label className="block text-xs text-muted-foreground uppercase mb-1">
+            <label className="mb-2 block text-sm font-medium text-foreground/75">
               Koho hľadáš
             </label>
             <select
@@ -704,7 +684,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 const val = e.target.value as "male" | "female" | "all";
                 handleTargetMarketChange(val);
               }}
-              className="w-full border border-foreground/20 bg-background p-2 font-sans text-xs text-foreground focus:border-foreground focus:outline-none rounded-none"
+              className="w-full rounded-xl border border-foreground/10 bg-background px-4 py-3 text-base text-foreground"
             >
               <option value="male">Mužov</option>
               <option value="female">Ženy</option>
@@ -716,52 +696,45 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
       {/* Pure Data Algorithmic Diagnostics */}
       <div className="mb-6">
-        <div className="mb-3 flex items-center gap-1.5 font-sans text-xs tracking-wide text-muted-foreground uppercase">
-          <span className="size-1.5 rounded-full bg-cerebral" />
-          <span>OSOBNOSTNÝ PROFIL // METRIKY</span>
-        </div>
-        <div className="border border-foreground/15 bg-card p-5 font-sans text-xs text-foreground/90 space-y-2.5 rounded-none select-none">
+        <div className="mb-4"><h2 className="font-display text-2xl font-bold tracking-tight">Tvoja osobnosť</h2><p className="mt-1 text-sm leading-relaxed text-foreground/65">Prehľad toho, čo o tebe prezradili tvoje odpovede.</p></div>
+        <div className="personal-card font-sans text-sm text-foreground/90 space-y-3">
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase">Typ_osobnosti</span>
+            <span className="text-foreground/70">Typ osobnosti</span>
             <span className="font-bold text-cerebral">{primaryMarker}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase">Rýchlosť_odpovedí</span>
+            <span className="text-foreground/70">Rýchlosť odpovedí</span>
             <span className="font-bold text-foreground">{decisionLatency}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase">Zostávajúce_pokusy</span>
+            <span className="text-foreground/70">Zostávajúce pokusy</span>
             <span className="font-bold text-foreground">{redemptionQuota}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase">Dokončené_scenáre</span>
-            <span className="font-bold text-foreground">{closureRate}</span>
-          </div>
-          <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase">Hĺbka_osobnosti</span>
+            <span className="text-foreground/70">Hĺbka osobnosti</span>
             <span className="font-bold text-cerebral">{cognitiveDepth}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase">Svedomitosť</span>
+            <span className="text-foreground/70">Svedomitosť</span>
             <span className="font-bold text-foreground">{conscientiousness}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase">Extraverzia</span>
+            <span className="text-foreground/70">Extraverzia</span>
             <span className="font-bold text-foreground">{extraversion}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase">Váhavosť_pri_teste</span>
+            <span className="text-foreground/70">Váhavosť pri teste</span>
             <span className="font-bold text-foreground">{hesitationFlag}</span>
           </div>
 
           {/* HARDCODED ALGORITHMIC BRACKET */}
           <div className="flex justify-between border-b border-foreground/5 pb-2 border-dashed">
-            <span className="text-cerebral font-bold uppercase">Hľadaný_vek_partnera</span>
+            <span className="text-cerebral font-bold">Hľadaný vek partnera</span>
             <span className="font-black text-cerebral font-sans">{calculatedBracket}</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-foreground/70 uppercase">Stav_účtu</span>
+            <span className="text-foreground/70">Stav účtu</span>
             <span className="font-bold text-cerebral uppercase flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
               KALIBROVANÉ

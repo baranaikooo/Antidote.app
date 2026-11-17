@@ -3,6 +3,7 @@ import {
   Settings as SettingsIcon,
   ShieldAlert,
   ShieldCheck,
+  Shield,
   Key,
   LogOut,
   Trash2,
@@ -12,6 +13,11 @@ import {
   AlertTriangle,
   Snowflake,
   Loader2,
+  Bell,
+  Sun,
+  Moon,
+  Monitor,
+  ChevronRight,
 } from "lucide-react";
 import { UserProfile, ThemeMode } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
@@ -50,8 +56,6 @@ export function SystemConfig({
   const [isGpsLoading, setIsGpsLoading] = useState(false);
 
   // Alerts states
-  const [criticalAlerts, setCriticalAlerts] = useState(true);
-  const [messageAlerts, setMessageAlerts] = useState(true);
 
   // Market freeze state
   const [isFrozen, setIsFrozen] = useState(user.status === "FROZEN");
@@ -273,348 +277,102 @@ export function SystemConfig({
   }
 
   return (
-    <div className="animate-fade-up">
-      {/* Header */}
-      <div className="mb-8 border-b border-foreground/25 pb-6">
-        <p className="editorial-kicker text-foreground/70">Antidote · tvoj účet</p>
-        <h1 className="mt-3 font-display text-4xl font-extrabold leading-none tracking-[-0.06em]">
-          Nastavenia
-        </h1>
-      </div>
+    <div className="personal-screen animate-fade-up pb-28">
+      <header className="mb-7 pt-2">
+        <p className="personal-eyebrow">Tvoje miesto v Antidote</p>
+        <h1 className="mt-2 font-display text-4xl font-bold tracking-[-0.045em]">Nastavenia</h1>
+        <p className="mt-2 text-base leading-relaxed text-foreground/65">Prispôsob si aplikáciu tak, aby ti vyhovovala.</p>
+      </header>
 
-      {/* Hardware Protocols */}
-      <div className="mb-6 border border-foreground/10 bg-card p-5 rounded-none space-y-4">
-        <p className="font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
-          <span className="size-1 rounded-full bg-cerebral" />
-          <span>POVOLENIA A POLOHA</span>
-        </p>
-
-        <div className="space-y-3 font-sans text-xs">
-          {/* Permission indicators */}
-          <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase flex items-center gap-1.5">
-              <Mic className="size-3.5" /> Mikrofón
-            </span>
-            <span
-              className={`font-bold uppercase ${micPermission === "granted" ? "text-green-500" : "text-amber-500"}`}
-            >
-              {micPermission === "granted" ? "[ POVOLENÝ ]" : "[ NEPOVOLENÝ ]"}
-            </span>
-          </div>
-
-          <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase flex items-center gap-1.5">
-              <Camera className="size-3.5" /> Kamera
-            </span>
-            <span
-              className={`font-bold uppercase ${camPermission === "granted" ? "text-green-500" : "text-amber-500"}`}
-            >
-              {camPermission === "granted" ? "[ POVOLENÝ ]" : "[ NEPOVOLENÝ ]"}
-            </span>
-          </div>
-
-          {/* Coordinate status */}
-          <div className="flex justify-between items-center border-b border-foreground/5 pb-2">
-            <span className="text-foreground/70 uppercase flex items-center gap-1.5">
-              <Compass className="size-3.5" /> Poloha GPS
-            </span>
-            <span className="text-xs text-foreground/80 font-sans">
-              {gpsCoords
-                ? `[${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lon.toFixed(4)}]`
-                : "[ NEZISTENÁ ]"}
-            </span>
-          </div>
-
-          {/* High accuracy ping button */}
-          <button
-            onClick={handleRefreshCoordinates}
-            disabled={isGpsLoading}
-            className="w-full border border-foreground/20 py-3 text-xs tracking-wide text-foreground font-sans font-bold uppercase hover:border-cerebral/40 hover:text-cerebral transition-all rounded-none bg-card flex justify-center items-center gap-2 cursor-pointer"
-          >
-            {isGpsLoading ? "[ VYHĽADÁVAM... ]" : "[ AKTUALIZOVAŤ POLOHU ]"}
-          </button>
+      <section className="personal-card mb-4" aria-labelledby="appearance-title">
+        <div className="personal-section-heading">
+          <span className="personal-icon"><Sun className="size-5" /></span>
+          <div><h2 id="appearance-title">Vzhľad</h2><p>Vyber si, v akom svetle chceš Antidote používať.</p></div>
         </div>
-      </div>
-
-      {/* Alert System (Anti-Ghosting Penalty Warning highlights) */}
-      <div className="mb-6 border border-foreground/10 bg-card p-5 rounded-none space-y-4">
-        <p className="font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
-          <span className="size-1 rounded-full bg-cerebral" />
-          <span>NOTIFIKÁCIE A UPOZORNENIA</span>
-        </p>
-
-        <div className="space-y-4 font-sans text-xs">
-          {/* CRITICAL WARNING MANDATORY ALERTS */}
-          <div className="border border-red-500/35 bg-red-500/[0.02] p-4 rounded-none space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-red-500 font-bold uppercase flex items-center gap-1.5">
-                <AlertTriangle className="size-3.5" /> DÔLEŽITÉ UPOZORNENIA
-              </span>
-              <span className="bg-red-500/20 text-red-500 text-xs font-bold px-2 py-0.5 rounded-none uppercase">
-                POVINNÉ
-              </span>
-            </div>
-            <p className="text-xs text-red-500/70 normal-case leading-relaxed font-sans">
-              Varovania pred neaktívnosťou v konverzáciách a limit 180 sekúnd v hlasovom chate.
-              Tieto správy sú dôležité a nie je možné ich vypnúť.
-            </p>
-          </div>
-
-          {/* Standard alert toggles */}
-          <div className="flex justify-between items-center pt-2">
-            <span className="text-foreground/60 uppercase">Nové správy a spojenia</span>
-            <button
-              onClick={() => {
-                haptic("tap");
-                setMessageAlerts(!messageAlerts);
-              }}
-              className={`border px-3 py-1 text-xs rounded-none font-bold transition-all cursor-pointer ${
-                messageAlerts
-                  ? "border-cerebral bg-cerebral/15 text-cerebral"
-                  : "border-foreground/20 text-foreground/70"
-              }`}
-            >
-              {messageAlerts ? "[ ZAPNUTÉ ]" : "[ VYPNUTÉ ]"}
+        <div className="personal-segments mt-5" aria-label="Vzhľad aplikácie">
+          {([
+            ["system", "Systém", Monitor],
+            ["light", "Svetlý", Sun],
+            ["dark", "Tmavý", Moon],
+          ] as const).map(([mode, label, Icon]) => (
+            <button key={mode} type="button" aria-pressed={theme === mode} onClick={() => { haptic("tap"); onTheme(mode); }} className="personal-segment">
+              <Icon className="size-5" aria-hidden="true" /><span>{label}</span>
             </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="personal-card mb-4" aria-labelledby="haptics-title">
+        <div className="personal-section-heading">
+          <span className="personal-icon"><SettingsIcon className="size-5" /></span>
+          <div><h2 id="haptics-title">Odozva na dotyk</h2><p>Zvoľ si intenzitu haptickej odozvy.</p></div>
+        </div>
+        <div className="personal-segments mt-5" aria-label="Haptická odozva">
+          {([
+            ["STEALTH", "Vypnutá"], ["TACTILE", "Vyvážená"], ["MECHANICAL", "Výrazná"],
+          ] as const).map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={hapticProfile === value} onClick={() => handleUpdateHapticProfile(value)} className="personal-segment">{label}</button>
+          ))}
+        </div>
+      </section>
+
+      <section className="personal-card mb-4" aria-labelledby="permissions-title">
+        <div className="personal-section-heading mb-4">
+          <span className="personal-icon"><ShieldCheck className="size-5" /></span>
+          <div><h2 id="permissions-title">Súkromie a povolenia</h2><p>Prehľad prístupu k tvojmu zariadeniu.</p></div>
+        </div>
+        <div className="personal-row"><span><Mic className="size-5" /> Mikrofón</span><span className="personal-status">{micPermission === "granted" ? "Povolený" : "Nepovolený"}</span></div>
+        <div className="personal-row"><span><Camera className="size-5" /> Kamera</span><span className="personal-status">{camPermission === "granted" ? "Povolená" : "Nepovolená"}</span></div>
+        <div className="personal-row"><span><Compass className="size-5" /> Poloha</span><span className="personal-status">{gpsCoords ? "Dostupná" : "Nezistená"}</span></div>
+        <button type="button" onClick={handleRefreshCoordinates} disabled={isGpsLoading} className="personal-action mt-4 w-full">
+          {isGpsLoading ? "Vyhľadávam polohu…" : "Aktualizovať polohu"}
+        </button>
+      </section>
+
+      <section className="personal-card mb-4" aria-labelledby="alerts-title">
+        <div className="personal-section-heading">
+          <span className="personal-icon"><Bell className="size-5" /></span>
+          <div><h2 id="alerts-title">Upozornenia</h2><p>Dôležité upozornenia na neaktivitu a časový limit v hlasovom chate zostávajú zapnuté.</p></div>
+        </div>
+      </section>
+
+      <section className="personal-card mb-4" aria-labelledby="documents-title">
+        <div className="personal-section-heading mb-3">
+          <span className="personal-icon"><Shield className="size-5" /></span>
+          <div><h2 id="documents-title">Informácie</h2><p>Všetko dôležité na jednom mieste.</p></div>
+        </div>
+        {([
+          ["Podmienky používania", onOpenTerms], ["Ochrana súkromia", onOpenPrivacy], ["Cookies", onOpenCookies], ["Kontakt", onOpenContact],
+        ] as const).map(([label, action]) => (
+          <button key={label} type="button" onClick={() => { haptic("tap"); action(); }} className="personal-link"><span>{label}</span><ChevronRight className="size-5" aria-hidden="true" /></button>
+        ))}
+      </section>
+
+      <section className="personal-card" aria-labelledby="account-title">
+        <div className="personal-section-heading mb-3">
+          <span className="personal-icon"><Key className="size-5" /></span>
+          <div><h2 id="account-title">Účet</h2><p>Spravuj viditeľnosť a svoj účet.</p></div>
+        </div>
+        {freezeMessage && <p role="status" className="mb-3 text-sm text-foreground/75">{freezeMessage}</p>}
+        {showWipeConfirm ? (
+          <div className="rounded-2xl bg-red-500/10 p-4">
+            <p className="font-semibold text-red-500">Naozaj chceš vymazať účet?</p>
+            <p className="mt-2 text-sm leading-relaxed text-foreground/75">Všetky informácie, výsledky testov a správy budú natrvalo vymazané. Táto akcia je nevratná.</p>
+            <div className="mt-4 flex gap-2"><button type="button" onClick={executeDataWipe} className="personal-action personal-danger flex-1">Vymazať účet</button><button type="button" onClick={() => { haptic("tap"); setShowWipeConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
           </div>
-        </div>
-      </div>
-
-      {/* Personalization & System Engine Configs */}
-      <div className="mb-6 border border-foreground/10 bg-card p-5 rounded-none space-y-4">
-        <p className="font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
-          <span className="size-1 rounded-full bg-cerebral" />
-          <span>HARDWARE & PERSONALIZÁCIA</span>
-        </p>
-
-        <div className="space-y-4 font-sans text-xs">
-          {/* Haptic profile */}
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-foreground/60 uppercase">Haptický profil</span>
-              <span className="text-xs font-bold text-foreground bg-foreground/10 px-2 py-0.5 uppercase">
-                {hapticProfile}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {(["STEALTH", "TACTILE", "MECHANICAL"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => handleUpdateHapticProfile(p)}
-                  className={`border py-2 text-xs font-bold tracking-wider rounded-none transition-all cursor-pointer ${
-                    hapticProfile === p
-                      ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
-                      : "border-foreground/10 text-foreground/70 hover:border-cerebral/30 hover:text-cerebral"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+        ) : showLogoutConfirm ? (
+          <div className="rounded-2xl bg-foreground/5 p-4">
+            <p className="font-semibold">Naozaj sa chceš odhlásiť?</p>
+            <div className="mt-4 flex gap-2"><button type="button" onClick={executeLogout} className="personal-action flex-1">Odhlásiť sa</button><button type="button" onClick={() => { haptic("tap"); setShowLogoutConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
           </div>
-        </div>
-      </div>
-
-      {/* Theme Settings */}
-      <div className="mb-6 border border-foreground/10 bg-card p-4 rounded-none">
-        <p className="mb-3 font-sans text-xs tracking-wide text-foreground/70 uppercase flex items-center gap-1.5">
-          <span className="size-1 rounded-full bg-cerebral" />
-          <span>Vzhľad aplikácie</span>
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => {
-              haptic("tap");
-              onTheme("system");
-            }}
-            className={`border py-3 text-xs tracking-wide transition-all rounded-none font-sans cursor-pointer ${
-              theme === "system"
-                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
-                : "border-foreground/10 bg-transparent text-foreground/65 hover:border-cerebral/30 hover:text-cerebral"
-            }`}
-          >
-            SYSTÉM
-          </button>
-          <button
-            onClick={() => {
-              haptic("tap");
-              onTheme("dark");
-            }}
-            className={`border py-3 text-xs tracking-wide transition-all rounded-none font-sans cursor-pointer ${
-              theme === "dark"
-                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
-                : "border-foreground/10 bg-transparent text-foreground/65 hover:border-cerebral/30 hover:text-cerebral"
-            }`}
-          >
-            TMAVÝ
-          </button>
-          <button
-            onClick={() => {
-              haptic("tap");
-              onTheme("light");
-            }}
-            className={`border py-3 text-xs tracking-wide transition-all rounded-none font-sans cursor-pointer ${
-              theme === "light"
-                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
-                : "border-foreground/10 bg-transparent text-foreground/65 hover:border-cerebral/30 hover:text-cerebral"
-            }`}
-          >
-            SVETLÝ
-          </button>
-        </div>
-      </div>
-
-      {/* Legal & Terms Row actions */}
-      <div className="mb-6 border border-foreground/10 bg-card p-4 rounded-none space-y-2">
-        <p className="mb-2 font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
-          <span className="size-1 rounded-full bg-cerebral" />
-          <span>DOKUMENTÁCIA</span>
-        </p>
-        <div className="grid grid-cols-2 gap-2 text-center font-sans text-xs">
-          <button
-            onClick={() => {
-              haptic("tap");
-              onOpenTerms();
-            }}
-            className="border border-foreground/10 py-2.5 hover:bg-foreground/5 transition-all rounded-none uppercase"
-          >
-            PODMIENKY
-          </button>
-          <button
-            onClick={() => {
-              haptic("tap");
-              onOpenPrivacy();
-            }}
-            className="border border-foreground/10 py-2.5 hover:bg-foreground/5 transition-all rounded-none uppercase"
-          >
-            GDPR
-          </button>
-          <button
-            onClick={() => {
-              haptic("tap");
-              onOpenCookies();
-            }}
-            className="border border-foreground/10 py-2.5 hover:bg-foreground/5 transition-all rounded-none uppercase"
-          >
-            COOKIES
-          </button>
-          <button
-            onClick={() => {
-              haptic("tap");
-              onOpenContact();
-            }}
-            className="border border-foreground/10 py-2.5 hover:bg-foreground/5 transition-all rounded-none uppercase"
-          >
-            KONTAKT
-          </button>
-        </div>
-      </div>
-
-      {/* Action Notification Banner */}
-      {freezeMessage && (
-        <div className="border border-foreground bg-foreground/10 p-3 text-center font-sans text-xs font-bold text-foreground uppercase tracking-wide animate-pulse">
-          {freezeMessage}
-        </div>
-      )}
-
-      {/* Account Liquidity & Wiping Actions */}
-      <div className="border border-red-500/25 bg-red-500/5 p-5 rounded-none space-y-3">
-        <p className="font-sans text-xs tracking-wide text-red-500/80 uppercase">
-          SPRAVOVANIE ÚČTU
-        </p>
-
-        {showWipeConfirm && (
-          <div className="border border-red-500 bg-red-950/20 p-4 space-y-3 select-none">
-            <p className="font-sans text-xs text-red-500 uppercase text-center font-bold tracking-wider">
-              !!! TRVALÉ VYMAZANIE PROFILU !!!
-            </p>
-            <p className="font-sans text-xs text-red-400 leading-normal text-center uppercase font-medium">
-              Všetky informácie, výsledky testov a správy budú permanentne vymazané. Táto akcia je nevratná.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={executeDataWipe}
-                className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-sans text-xs font-bold py-2 uppercase border border-red-500 active:scale-95 transition-all cursor-pointer"
-              >
-                ZMAZAŤ
-              </button>
-              <button
-                onClick={() => {
-                  haptic("tap");
-                  setShowWipeConfirm(false);
-                }}
-                className="w-1/2 border border-foreground/20 hover:bg-foreground/5 text-foreground font-sans text-xs font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
-              >
-                ZRUŠIŤ
-              </button>
-            </div>
-          </div>
+        ) : (
+          <>
+            <button type="button" onClick={handleToggleFreeze} className="personal-link"><span><Snowflake className="size-5" />{isFrozen ? "Znovu zobraziť profil" : "Skryť profil"}</span><ChevronRight className="size-5" /></button>
+            <button type="button" onClick={() => { haptic("warning"); setShowLogoutConfirm(true); }} className="personal-link"><span><LogOut className="size-5" />Odhlásiť sa</span><ChevronRight className="size-5" /></button>
+            <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="personal-link text-red-500"><span><Trash2 className="size-5" />Vymazať účet</span><ChevronRight className="size-5" /></button>
+          </>
         )}
-
-        {showLogoutConfirm && (
-          <div className="border border-foreground/20 bg-card p-4 space-y-3 select-none">
-            <p className="font-sans text-xs text-foreground uppercase text-center font-bold tracking-wider">
-              Naozaj sa chcete odhlásiť?
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={executeLogout}
-                className="w-1/2 bg-foreground text-background font-sans text-xs font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
-              >
-                ODHLÁSIŤ
-              </button>
-              <button
-                onClick={() => {
-                  haptic("tap");
-                  setShowLogoutConfirm(false);
-                }}
-                className="w-1/2 border border-foreground/20 hover:bg-foreground/5 text-foreground font-sans text-xs font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
-              >
-                ZRUŠIŤ
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!showWipeConfirm && !showLogoutConfirm && (
-          <div className="grid grid-cols-3 gap-2">
-            {/* MARKET FREEZE */}
-            <button
-              onClick={handleToggleFreeze}
-              className={`flex flex-col items-center justify-center border py-2.5 font-sans text-xs font-bold tracking-wider transition-all rounded-none bg-card ${
-                isFrozen
-                  ? "border-blue-500 text-blue-500 bg-blue-500/5"
-                  : "border-foreground/20 text-foreground hover:bg-foreground/5"
-              }`}
-            >
-              <Snowflake className="size-4 mb-1" />
-              {isFrozen ? "[ ODKRYŤ PROFIL ]" : "[ SKRYŤ PROFIL ]"}
-            </button>
-
-            {/* SIGN OUT */}
-            <button
-              onClick={() => {
-                haptic("warning");
-                setShowLogoutConfirm(true);
-              }}
-              className="flex flex-col items-center justify-center border border-foreground/20 hover:border-foreground/40 py-2.5 font-sans text-xs font-bold tracking-wider text-foreground rounded-none bg-card hover:bg-foreground/5 transition-all cursor-pointer"
-            >
-              <LogOut className="size-4 mb-1" />[ ODHLÁSIŤ ]
-            </button>
-
-            {/* DATA WIPE */}
-            <button
-              onClick={() => {
-                haptic("destructive");
-                setShowWipeConfirm(true);
-              }}
-              className="flex flex-col items-center justify-center border border-red-500/40 hover:border-red-500/60 py-2.5 font-sans text-xs font-bold tracking-wider text-red-600 rounded-none bg-card hover:bg-red-500/10 transition-all cursor-pointer"
-            >
-              <Trash2 className="size-4 mb-1" />[ ZMAZAŤ ÚČET ]
-            </button>
-          </div>
-        )}
-      </div>
+      </section>
     </div>
   );
 }

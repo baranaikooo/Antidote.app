@@ -552,6 +552,43 @@ html.dark {
   box-shadow: 5px 5px 0 color-mix(in srgb, var(--foreground) 88%, transparent);
 }
 
+.personal-screen {
+  margin-inline: auto;
+  max-width: 36rem;
+}
+
+.personal-eyebrow {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.personal-card {
+  padding: 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  border-radius: 1.5rem;
+  background: color-mix(in srgb, var(--card) 94%, var(--foreground) 6%);
+}
+
+.personal-section-heading { display: flex; align-items: flex-start; gap: 0.875rem; }
+.personal-section-heading h2 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; line-height: 1.25; }
+.personal-section-heading p { margin-top: 0.25rem; color: var(--muted-foreground); font-size: 0.9rem; line-height: 1.45; }
+.personal-icon { display: grid; width: 2.75rem; height: 2.75rem; flex: none; place-items: center; border-radius: 1rem; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.personal-segments { display: flex; gap: 0.25rem; padding: 0.25rem; border-radius: 1rem; background: color-mix(in srgb, var(--foreground) 7%, transparent); }
+.personal-segment { display: flex; min-width: 0; min-height: 3rem; flex: 1; align-items: center; justify-content: center; gap: 0.4rem; border-radius: 0.75rem; padding: 0.5rem 0.25rem; color: var(--muted-foreground); font-size: 0.875rem; font-weight: 600; transition: background-color 150ms, color 150ms, transform 100ms; }
+.personal-segment[aria-pressed="true"] { background: var(--foreground); color: var(--background); }
+.personal-action { min-height: 3rem; border-radius: 0.875rem; background: color-mix(in srgb, var(--foreground) 9%, transparent); padding: 0.75rem 1rem; font-weight: 600; transition: background-color 150ms, transform 100ms; }
+.personal-action.personal-danger { background: #dc2626; color: white; }
+.personal-action:not(.personal-danger):hover, .personal-link:hover { background: color-mix(in srgb, var(--foreground) 12%, transparent); }
+.personal-action.personal-danger:hover { background: #b91c1c; }
+.personal-action:active, .personal-segment:active, .personal-link:active { transform: scale(0.98); }
+.personal-row, .personal-link { display: flex; min-height: 3.25rem; width: 100%; align-items: center; justify-content: space-between; gap: 0.75rem; border-top: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent); text-align: left; }
+.personal-row > span:first-child, .personal-link > span { display: inline-flex; align-items: center; gap: 0.75rem; }
+.personal-link { padding-inline: 0.5rem; border-radius: 0.5rem; font-weight: 600; transition: background-color 150ms, transform 100ms; }
+.personal-link > svg { color: var(--muted-foreground); }
+.personal-status { color: var(--muted-foreground); font-size: 0.875rem; }
+.personal-screen button:focus-visible, .personal-screen select:focus-visible, .personal-screen input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
 .tactile-button {
   border: 1.5px solid var(--foreground);
   box-shadow: 3px 3px 0 var(--foreground);
