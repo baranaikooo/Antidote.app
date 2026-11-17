@@ -277,7 +277,8 @@ export function SystemConfig({
         <p className="personal-intro">Vzhľad, súkromie a tvoj účet.</p>
       </header>
 
-      <section className="personal-section" aria-labelledby="preferences-title">
+      <section className="personal-section settings-feature" aria-labelledby="preferences-title">
+        <p className="personal-eyebrow">Tvoj priestor</p>
         <h2 id="preferences-title" className="personal-heading mb-3">Prispôsobenie</h2>
         <div className="personal-setting">
           <span className="font-medium">Vzhľad</span>
@@ -305,8 +306,8 @@ export function SystemConfig({
         </div>
       </section>
 
-      <section className="personal-section" aria-labelledby="permissions-title">
-        <h2 id="permissions-title" className="personal-heading mb-3">Súkromie a povolenia</h2>
+      <details className="personal-section settings-disclosure">
+        <summary className="personal-summary"><h2 className="personal-heading">Súkromie a povolenia</h2><ChevronRight className="size-5" aria-hidden="true" /></summary>
         <div className="personal-row"><span><Mic className="size-5" /> Mikrofón</span><span className="personal-status">{micPermission === "granted" ? "Povolený" : "Nepovolený"}</span></div>
         <div className="personal-row"><span><Camera className="size-5" /> Kamera</span><span className="personal-status">{camPermission === "granted" ? "Povolená" : "Nepovolená"}</span></div>
         <button type="button" onClick={handleRefreshCoordinates} disabled={isGpsLoading} className="personal-link">
@@ -317,19 +318,19 @@ export function SystemConfig({
           <Bell className="size-5 shrink-0" aria-hidden="true" />
           <span>Upozornenia na neaktivitu a koniec hlasového chatu sú zapnuté.</span>
         </p>
-      </section>
+      </details>
 
-      <section className="personal-section" aria-labelledby="documents-title">
-        <h2 id="documents-title" className="personal-heading mb-3">Informácie</h2>
+      <details className="personal-section settings-disclosure">
+        <summary className="personal-summary"><h2 className="personal-heading">Informácie</h2><ChevronRight className="size-5" aria-hidden="true" /></summary>
         {([
           ["Podmienky používania", onOpenTerms], ["Ochrana súkromia", onOpenPrivacy], ["Cookies", onOpenCookies], ["Kontakt", onOpenContact],
         ] as const).map(([label, action]) => (
           <button key={label} type="button" onClick={() => { haptic("tap"); action(); }} className="personal-link"><span>{label}</span><ChevronRight className="size-5" aria-hidden="true" /></button>
         ))}
-      </section>
+      </details>
 
-      <section className="personal-section" aria-labelledby="account-title">
-        <h2 id="account-title" className="personal-heading mb-3">Účet</h2>
+      <details className="personal-section settings-disclosure">
+        <summary className="personal-summary"><h2 className="personal-heading">Účet</h2><ChevronRight className="size-5" aria-hidden="true" /></summary>
         {freezeMessage && <p role="status" className="mb-3 text-foreground/75">{freezeMessage}</p>}
         {showWipeConfirm ? (
           <div className="bg-red-500/10 p-4">
@@ -352,7 +353,7 @@ export function SystemConfig({
             <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="personal-link text-red-500"><span><Trash2 className="size-5" />Vymazať účet</span><ChevronRight className="size-5" /></button>
           </>
         )}
-      </section>
+      </details>
     </div>
   );
 }
