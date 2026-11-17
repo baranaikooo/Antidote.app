@@ -264,13 +264,13 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
   }
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-background min-h-screen flex flex-col justify-between animate-fade-in font-mono">
+    <div className="mx-auto flex min-h-[80vh] max-w-md flex-col bg-background px-1 py-6 animate-fade-in">
       {/* Title */}
       <div className="space-y-4 mb-6">
-        <div className="text-xs font-medium text-cerebral">
+        <div className="editorial-kicker text-foreground/50">
           Tvoj profil
         </div>
-        <h2 className="font-display text-3xl font-bold tracking-tight text-foreground leading-tight">
+        <h2 className="font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em] text-foreground">
           Pridaj krátke video
         </h2>
         <p className="text-sm text-foreground/75 leading-relaxed font-sans">
@@ -304,34 +304,35 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
                     style={{ transform: "scaleX(-1)" }}
                   />
                   <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/75 px-1.5 py-0.5 rounded-none border border-white/10">
-                    <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-                    <span className="font-mono text-[7px] text-cerebral tracking-widest uppercase">
+                    <span className="size-1.5 rounded-full bg-white animate-pulse" />
+                    <span className="font-mono text-xs text-white tracking-widest uppercase">
                       LIVE
                     </span>
                   </div>
                   <div className="absolute bottom-1.5 left-1.5 bg-black/70 px-1.5 py-0.5 rounded-none">
-                    <span className="font-mono text-[7px] text-white tracking-widest uppercase">
+                    <span className="font-mono text-xs text-white tracking-widest uppercase">
                       00:03:00
                     </span>
                   </div>
                   {/* Delete button only if url exists */}
                   <button
                     onClick={() => deleteSnippet(idx)}
-                    className="absolute top-1.5 right-1.5 bg-red-600/90 text-white p-1 rounded-none border border-red-500 hover:bg-red-700 transition-all opacity-0 group-hover:opacity-100"
+                    aria-label={`Odstrániť video ${idx + 1}`}
+                    className="absolute right-1.5 top-1.5 grid size-9 place-items-center border border-white/30 bg-black/75 text-white transition-colors hover:bg-black"
                   >
                     <X className="size-3" />
                   </button>
                 </>
               ) : (
-                <div className="size-full flex flex-col justify-center items-center p-3 bg-foreground/[0.02] text-center">
-                  <span className={`font-mono text-[8px] font-bold tracking-wider uppercase mb-2 ${idx === 0 ? "text-cerebral" : "text-foreground/60"}`}>
+                <div className="size-full flex flex-col justify-center items-center p-3 bg-card text-center">
+                  <span className={`font-mono text-xs font-bold tracking-wider uppercase mb-2 ${idx === 0 ? "text-cerebral" : "text-foreground/60"}`}>
                     {idx === 0 ? "SLOT 1 [POVINNÝ]" : `SLOT ${idx + 1} [VOLITEĽNÝ]`}
                   </span>
                   <div className="flex flex-col gap-1.5 w-full max-w-[130px]">
                     <button
                       type="button"
                       onClick={() => startRecording(idx)}
-                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 border border-foreground/25 hover:border-foreground hover:bg-foreground/10 transition-all text-foreground rounded-none bg-card text-[10px] font-mono font-medium uppercase shadow-none active:scale-[0.98]"
+                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 border border-foreground/25 hover:border-foreground hover:bg-foreground/10 transition-all text-foreground rounded-none bg-card text-xs font-mono font-medium uppercase shadow-none active:scale-[0.98]"
                       title="Nahrať kamerou"
                     >
                       <Camera className="size-3.5" />
@@ -340,14 +341,14 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
                     <button
                       type="button"
                       onClick={() => triggerFileUpload(idx)}
-                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 border border-foreground/25 hover:border-foreground hover:bg-foreground/10 transition-all text-foreground rounded-none bg-card text-[10px] font-mono font-medium uppercase shadow-none active:scale-[0.98]"
+                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 border border-foreground/25 hover:border-foreground hover:bg-foreground/10 transition-all text-foreground rounded-none bg-card text-xs font-mono font-medium uppercase shadow-none active:scale-[0.98]"
                       title="Vybrať z galérie"
                     >
                       <Upload className="size-3.5" />
                       <span>GALÉRIA</span>
                     </button>
                   </div>
-                  <span className="mt-2 font-mono text-[7px] text-foreground/40 uppercase">
+                  <span className="mt-2 font-mono text-xs text-foreground/40 uppercase">
                     MAX 3 SEKUNDY
                   </span>
                 </div>
@@ -399,7 +400,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
             ? "Pridaj aspoň jedno video"
             : `Pokračovať (${snippets.filter(Boolean).length}/4)`}
         </button>
-        <p className="text-[9px] text-muted-foreground text-center uppercase">
+        <p className="text-xs text-muted-foreground text-center uppercase">
           Videá sa prehrávajú bez zvuku.
         </p>
       </div>
@@ -408,7 +409,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       {recordingIndex !== null && createPortal(
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex flex-col justify-center items-center p-4">
           <div className="w-full max-w-sm border border-foreground/20 bg-card p-6 rounded-none relative animate-fade-up">
-            <div className="mb-4 text-[9px] tracking-widest text-red-500 font-bold uppercase animate-pulse">
+            <div className="mb-4 text-xs tracking-widest text-red-500 font-bold uppercase animate-pulse">
               Nahrávanie videa
             </div>
 
@@ -424,7 +425,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
               {recordingState === "countdown" && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
                   <span className="text-4xl text-white font-bold animate-ping">{countdown}</span>
-                  <span className="text-[9px] text-white/50 tracking-widest uppercase mt-2">
+                  <span className="text-xs text-white/50 tracking-widest uppercase mt-2">
                     Príprava...
                   </span>
                 </div>
@@ -433,7 +434,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
               {recordingState === "recording" && (
                 <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 px-2 py-0.5 border border-red-500">
                   <span className="size-1.5 rounded-full bg-red-500 animate-ping" />
-                  <span className="text-[7px] text-white tracking-widest uppercase">REC (3s)</span>
+                  <span className="text-xs text-white tracking-widest uppercase">REC (3s)</span>
                 </div>
               )}
             </div>

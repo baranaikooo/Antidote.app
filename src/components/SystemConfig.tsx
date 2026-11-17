@@ -275,27 +275,24 @@ export function SystemConfig({
   return (
     <div className="animate-fade-up">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between border-b border-foreground/15 pb-4">
-        <div className="flex items-center gap-2">
-          <span className="size-1.5 rounded-full bg-cerebral" />
-          <h1 className="font-sans text-lg tracking-tight text-foreground font-bold uppercase">
-            NASTAVENIA ÚČTU
-          </h1>
-        </div>
-        <span className="font-mono text-xs tracking-widest text-cerebral font-bold">ANTIDOTE v0.9</span>
+      <div className="mb-8 border-b border-foreground/25 pb-6">
+        <p className="editorial-kicker text-foreground/70">Antidote · tvoj účet</p>
+        <h1 className="mt-3 font-display text-4xl font-extrabold leading-none tracking-[-0.06em]">
+          Nastavenia
+        </h1>
       </div>
 
       {/* Hardware Protocols */}
       <div className="mb-6 border border-foreground/10 bg-card p-5 rounded-none space-y-4">
-        <p className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase flex items-center gap-1.5">
+        <p className="font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
           <span className="size-1 rounded-full bg-cerebral" />
           <span>POVOLENIA A POLOHA</span>
         </p>
 
-        <div className="space-y-3 font-mono text-xs">
+        <div className="space-y-3 font-sans text-xs">
           {/* Permission indicators */}
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase flex items-center gap-1.5">
+            <span className="text-foreground/70 uppercase flex items-center gap-1.5">
               <Mic className="size-3.5" /> Mikrofón
             </span>
             <span
@@ -306,7 +303,7 @@ export function SystemConfig({
           </div>
 
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase flex items-center gap-1.5">
+            <span className="text-foreground/70 uppercase flex items-center gap-1.5">
               <Camera className="size-3.5" /> Kamera
             </span>
             <span
@@ -318,10 +315,10 @@ export function SystemConfig({
 
           {/* Coordinate status */}
           <div className="flex justify-between items-center border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase flex items-center gap-1.5">
+            <span className="text-foreground/70 uppercase flex items-center gap-1.5">
               <Compass className="size-3.5" /> Poloha GPS
             </span>
-            <span className="text-[10px] text-foreground/80 font-mono">
+            <span className="text-xs text-foreground/80 font-sans">
               {gpsCoords
                 ? `[${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lon.toFixed(4)}]`
                 : "[ NEZISTENÁ ]"}
@@ -332,7 +329,7 @@ export function SystemConfig({
           <button
             onClick={handleRefreshCoordinates}
             disabled={isGpsLoading}
-            className="w-full border border-foreground/20 py-3 text-xs tracking-widest text-foreground font-mono font-bold uppercase hover:border-cerebral/40 hover:text-cerebral transition-all rounded-none bg-card flex justify-center items-center gap-2 cursor-pointer"
+            className="w-full border border-foreground/20 py-3 text-xs tracking-wide text-foreground font-sans font-bold uppercase hover:border-cerebral/40 hover:text-cerebral transition-all rounded-none bg-card flex justify-center items-center gap-2 cursor-pointer"
           >
             {isGpsLoading ? "[ VYHĽADÁVAM... ]" : "[ AKTUALIZOVAŤ POLOHU ]"}
           </button>
@@ -341,23 +338,23 @@ export function SystemConfig({
 
       {/* Alert System (Anti-Ghosting Penalty Warning highlights) */}
       <div className="mb-6 border border-foreground/10 bg-card p-5 rounded-none space-y-4">
-        <p className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase flex items-center gap-1.5">
+        <p className="font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
           <span className="size-1 rounded-full bg-cerebral" />
           <span>NOTIFIKÁCIE A UPOZORNENIA</span>
         </p>
 
-        <div className="space-y-4 font-mono text-xs">
+        <div className="space-y-4 font-sans text-xs">
           {/* CRITICAL WARNING MANDATORY ALERTS */}
           <div className="border border-red-500/35 bg-red-500/[0.02] p-4 rounded-none space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-red-500 font-bold uppercase flex items-center gap-1.5">
                 <AlertTriangle className="size-3.5" /> DÔLEŽITÉ UPOZORNENIA
               </span>
-              <span className="bg-red-500/20 text-red-500 text-[8px] font-bold px-2 py-0.5 rounded-none uppercase">
+              <span className="bg-red-500/20 text-red-500 text-xs font-bold px-2 py-0.5 rounded-none uppercase">
                 POVINNÉ
               </span>
             </div>
-            <p className="text-[9px] text-red-500/70 normal-case leading-relaxed font-sans">
+            <p className="text-xs text-red-500/70 normal-case leading-relaxed font-sans">
               Varovania pred neaktívnosťou v konverzáciách a limit 180 sekúnd v hlasovom chate.
               Tieto správy sú dôležité a nie je možné ich vypnúť.
             </p>
@@ -371,10 +368,10 @@ export function SystemConfig({
                 haptic("tap");
                 setMessageAlerts(!messageAlerts);
               }}
-              className={`border px-3 py-1 text-[10px] rounded-none font-bold transition-all cursor-pointer ${
+              className={`border px-3 py-1 text-xs rounded-none font-bold transition-all cursor-pointer ${
                 messageAlerts
                   ? "border-cerebral bg-cerebral/15 text-cerebral"
-                  : "border-foreground/20 text-foreground/45"
+                  : "border-foreground/20 text-foreground/70"
               }`}
             >
               {messageAlerts ? "[ ZAPNUTÉ ]" : "[ VYPNUTÉ ]"}
@@ -385,17 +382,17 @@ export function SystemConfig({
 
       {/* Personalization & System Engine Configs */}
       <div className="mb-6 border border-foreground/10 bg-card p-5 rounded-none space-y-4">
-        <p className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase flex items-center gap-1.5">
+        <p className="font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
           <span className="size-1 rounded-full bg-cerebral" />
           <span>HARDWARE & PERSONALIZÁCIA</span>
         </p>
 
-        <div className="space-y-4 font-mono text-xs">
+        <div className="space-y-4 font-sans text-xs">
           {/* Haptic profile */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-foreground/60 uppercase">Haptický profil</span>
-              <span className="text-[10px] font-bold text-foreground bg-foreground/10 px-2 py-0.5 uppercase">
+              <span className="text-xs font-bold text-foreground bg-foreground/10 px-2 py-0.5 uppercase">
                 {hapticProfile}
               </span>
             </div>
@@ -404,10 +401,10 @@ export function SystemConfig({
                 <button
                   key={p}
                   onClick={() => handleUpdateHapticProfile(p)}
-                  className={`border py-2 text-[8px] font-bold tracking-wider rounded-none transition-all cursor-pointer ${
+                  className={`border py-2 text-xs font-bold tracking-wider rounded-none transition-all cursor-pointer ${
                     hapticProfile === p
-                      ? "border-cerebral bg-cerebral text-white shadow-[0_0_8px_var(--cerebral-glow)]"
-                      : "border-foreground/10 text-foreground/50 hover:border-cerebral/30 hover:text-cerebral"
+                      ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
+                      : "border-foreground/10 text-foreground/70 hover:border-cerebral/30 hover:text-cerebral"
                   }`}
                 >
                   {p}
@@ -420,7 +417,7 @@ export function SystemConfig({
 
       {/* Theme Settings */}
       <div className="mb-6 border border-foreground/10 bg-card p-4 rounded-none">
-        <p className="mb-3 font-mono text-[9px] tracking-widest text-foreground/45 uppercase flex items-center gap-1.5">
+        <p className="mb-3 font-sans text-xs tracking-wide text-foreground/70 uppercase flex items-center gap-1.5">
           <span className="size-1 rounded-full bg-cerebral" />
           <span>Vzhľad aplikácie</span>
         </p>
@@ -430,9 +427,9 @@ export function SystemConfig({
               haptic("tap");
               onTheme("system");
             }}
-            className={`border py-3 text-xs tracking-widest transition-all rounded-none font-mono cursor-pointer ${
+            className={`border py-3 text-xs tracking-wide transition-all rounded-none font-sans cursor-pointer ${
               theme === "system"
-                ? "border-cerebral bg-cerebral text-white shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
+                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
                 : "border-foreground/10 bg-transparent text-foreground/65 hover:border-cerebral/30 hover:text-cerebral"
             }`}
           >
@@ -443,9 +440,9 @@ export function SystemConfig({
               haptic("tap");
               onTheme("dark");
             }}
-            className={`border py-3 text-xs tracking-widest transition-all rounded-none font-mono cursor-pointer ${
+            className={`border py-3 text-xs tracking-wide transition-all rounded-none font-sans cursor-pointer ${
               theme === "dark"
-                ? "border-cerebral bg-cerebral text-white shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
+                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
                 : "border-foreground/10 bg-transparent text-foreground/65 hover:border-cerebral/30 hover:text-cerebral"
             }`}
           >
@@ -456,9 +453,9 @@ export function SystemConfig({
               haptic("tap");
               onTheme("light");
             }}
-            className={`border py-3 text-xs tracking-widest transition-all rounded-none font-mono cursor-pointer ${
+            className={`border py-3 text-xs tracking-wide transition-all rounded-none font-sans cursor-pointer ${
               theme === "light"
-                ? "border-cerebral bg-cerebral text-white shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
+                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)] font-bold"
                 : "border-foreground/10 bg-transparent text-foreground/65 hover:border-cerebral/30 hover:text-cerebral"
             }`}
           >
@@ -469,11 +466,11 @@ export function SystemConfig({
 
       {/* Legal & Terms Row actions */}
       <div className="mb-6 border border-foreground/10 bg-card p-4 rounded-none space-y-2">
-        <p className="mb-2 font-mono text-[9px] tracking-widest text-muted-foreground uppercase flex items-center gap-1.5">
+        <p className="mb-2 font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
           <span className="size-1 rounded-full bg-cerebral" />
           <span>DOKUMENTÁCIA</span>
         </p>
-        <div className="grid grid-cols-2 gap-2 text-center font-mono text-[10px]">
+        <div className="grid grid-cols-2 gap-2 text-center font-sans text-xs">
           <button
             onClick={() => {
               haptic("tap");
@@ -515,29 +512,29 @@ export function SystemConfig({
 
       {/* Action Notification Banner */}
       {freezeMessage && (
-        <div className="border border-foreground bg-foreground/10 p-3 text-center font-mono text-[9px] font-bold text-foreground uppercase tracking-widest animate-pulse">
+        <div className="border border-foreground bg-foreground/10 p-3 text-center font-sans text-xs font-bold text-foreground uppercase tracking-wide animate-pulse">
           {freezeMessage}
         </div>
       )}
 
       {/* Account Liquidity & Wiping Actions */}
       <div className="border border-red-500/25 bg-red-500/5 p-5 rounded-none space-y-3">
-        <p className="font-mono text-[9px] tracking-widest text-red-500/80 uppercase">
+        <p className="font-sans text-xs tracking-wide text-red-500/80 uppercase">
           SPRAVOVANIE ÚČTU
         </p>
 
         {showWipeConfirm && (
           <div className="border border-red-500 bg-red-950/20 p-4 space-y-3 select-none">
-            <p className="font-mono text-[9px] text-red-500 uppercase text-center font-bold tracking-wider">
+            <p className="font-sans text-xs text-red-500 uppercase text-center font-bold tracking-wider">
               !!! TRVALÉ VYMAZANIE PROFILU !!!
             </p>
-            <p className="font-sans text-[10px] text-red-400 leading-normal text-center uppercase font-medium">
+            <p className="font-sans text-xs text-red-400 leading-normal text-center uppercase font-medium">
               Všetky informácie, výsledky testov a správy budú permanentne vymazané. Táto akcia je nevratná.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={executeDataWipe}
-                className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-mono text-[9px] font-bold py-2 uppercase border border-red-500 active:scale-95 transition-all cursor-pointer"
+                className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-sans text-xs font-bold py-2 uppercase border border-red-500 active:scale-95 transition-all cursor-pointer"
               >
                 ZMAZAŤ
               </button>
@@ -546,7 +543,7 @@ export function SystemConfig({
                   haptic("tap");
                   setShowWipeConfirm(false);
                 }}
-                className="w-1/2 border border-foreground/20 hover:bg-foreground/5 text-foreground font-mono text-[9px] font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
+                className="w-1/2 border border-foreground/20 hover:bg-foreground/5 text-foreground font-sans text-xs font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
               >
                 ZRUŠIŤ
               </button>
@@ -556,13 +553,13 @@ export function SystemConfig({
 
         {showLogoutConfirm && (
           <div className="border border-foreground/20 bg-card p-4 space-y-3 select-none">
-            <p className="font-mono text-[9px] text-foreground uppercase text-center font-bold tracking-wider">
+            <p className="font-sans text-xs text-foreground uppercase text-center font-bold tracking-wider">
               Naozaj sa chcete odhlásiť?
             </p>
             <div className="flex gap-2">
               <button
                 onClick={executeLogout}
-                className="w-1/2 bg-foreground text-background font-mono text-[9px] font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
+                className="w-1/2 bg-foreground text-background font-sans text-xs font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
               >
                 ODHLÁSIŤ
               </button>
@@ -571,7 +568,7 @@ export function SystemConfig({
                   haptic("tap");
                   setShowLogoutConfirm(false);
                 }}
-                className="w-1/2 border border-foreground/20 hover:bg-foreground/5 text-foreground font-mono text-[9px] font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
+                className="w-1/2 border border-foreground/20 hover:bg-foreground/5 text-foreground font-sans text-xs font-bold py-2 uppercase active:scale-95 transition-all cursor-pointer"
               >
                 ZRUŠIŤ
               </button>
@@ -584,7 +581,7 @@ export function SystemConfig({
             {/* MARKET FREEZE */}
             <button
               onClick={handleToggleFreeze}
-              className={`flex flex-col items-center justify-center border py-2.5 font-mono text-[8px] font-bold tracking-wider transition-all rounded-none bg-card ${
+              className={`flex flex-col items-center justify-center border py-2.5 font-sans text-xs font-bold tracking-wider transition-all rounded-none bg-card ${
                 isFrozen
                   ? "border-blue-500 text-blue-500 bg-blue-500/5"
                   : "border-foreground/20 text-foreground hover:bg-foreground/5"
@@ -600,7 +597,7 @@ export function SystemConfig({
                 haptic("warning");
                 setShowLogoutConfirm(true);
               }}
-              className="flex flex-col items-center justify-center border border-foreground/20 hover:border-foreground/40 py-2.5 font-mono text-[8px] font-bold tracking-wider text-foreground rounded-none bg-card hover:bg-foreground/5 transition-all cursor-pointer"
+              className="flex flex-col items-center justify-center border border-foreground/20 hover:border-foreground/40 py-2.5 font-sans text-xs font-bold tracking-wider text-foreground rounded-none bg-card hover:bg-foreground/5 transition-all cursor-pointer"
             >
               <LogOut className="size-4 mb-1" />[ ODHLÁSIŤ ]
             </button>
@@ -611,7 +608,7 @@ export function SystemConfig({
                 haptic("destructive");
                 setShowWipeConfirm(true);
               }}
-              className="flex flex-col items-center justify-center border border-red-500/40 hover:border-red-500/60 py-2.5 font-mono text-[8px] font-bold tracking-wider text-red-600 rounded-none bg-card hover:bg-red-500/10 transition-all cursor-pointer"
+              className="flex flex-col items-center justify-center border border-red-500/40 hover:border-red-500/60 py-2.5 font-sans text-xs font-bold tracking-wider text-red-600 rounded-none bg-card hover:bg-red-500/10 transition-all cursor-pointer"
             >
               <Trash2 className="size-4 mb-1" />[ ZMAZAŤ ÚČET ]
             </button>

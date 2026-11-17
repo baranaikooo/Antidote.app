@@ -507,21 +507,16 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
     <>
       <div className="animate-fade-up pb-32">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between border-b border-foreground/15 pb-4">
-        <div className="flex items-center gap-2">
-          <span className="size-1.5 rounded-full bg-cerebral" />
-          <h1 className="font-sans text-lg tracking-tight text-foreground font-bold uppercase">
-            MÔJ PROFIL // OSOBNOSŤ
-          </h1>
-        </div>
-        <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-          {user.name}
-        </span>
+      <div className="mb-8 border-b border-foreground/25 pb-6">
+        <p className="editorial-kicker text-foreground/70">Tvoj profil · {user.name}</p>
+        <h1 className="mt-3 font-display text-4xl font-extrabold leading-none tracking-[-0.06em]">
+          Tvoja osobnosť
+        </h1>
       </div>
 
       {/* Blur Preview Toggle */}
       <div className="mb-6 border border-foreground/10 bg-card p-4 rounded-none flex items-center justify-between">
-        <span className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
+        <span className="font-sans text-xs tracking-wide text-muted-foreground uppercase">
           Ukážka pre ostatných
         </span>
         <button
@@ -529,7 +524,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
             haptic("tap");
             setIsPreviewBlurred(!isPreviewBlurred);
           }}
-          className={`flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[9px] tracking-widest uppercase transition-all rounded-none font-bold ${
+          className={`flex items-center gap-1.5 border px-3 py-1.5 font-sans text-xs tracking-wide uppercase transition-all rounded-none font-bold ${
             isPreviewBlurred
               ? "border-amber-500 bg-amber-500/10 text-amber-500"
               : "border-foreground bg-foreground text-background"
@@ -542,7 +537,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
       {/* CCTV Live Snippets Grid (respects preview blur toggle) */}
       <div className="mb-6">
-        <p className="mb-3 font-mono text-[9px] tracking-widest text-muted-foreground uppercase flex items-center gap-1.5">
+        <p className="mb-3 font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
           <span className="size-1 rounded-full bg-cerebral" />
           <span>Moje videá (3-sekundové slučky)</span>
         </p>
@@ -574,12 +569,12 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                     />
                     <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/70 px-1.5 py-0.5 rounded-none border border-white/5">
                       <span className="size-1.5 rounded-full bg-red-500 animate-pulse" />
-                      <span className="font-mono text-[7px] text-white tracking-widest uppercase">
+                      <span className="font-sans text-xs text-white tracking-wide uppercase">
                         LIVE
                       </span>
                     </div>
                     <div className="absolute bottom-1.5 left-1.5 bg-black/70 px-1.5 py-0.5 rounded-none">
-                      <span className="font-mono text-[7px] text-white tracking-widest uppercase">
+                      <span className="font-sans text-xs text-white tracking-wide uppercase">
                         00:03:00
                       </span>
                     </div>
@@ -591,7 +586,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                     </button>
                   </>
                 ) : (
-                  <div className="size-full flex flex-col justify-center items-center p-2 bg-foreground/[0.01]">
+                  <div className="size-full flex flex-col justify-center items-center p-2 bg-card">
                     <div className="flex gap-2">
                       <button
                         onClick={() => startRecording(idx)}
@@ -608,7 +603,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                         <Upload className="size-4" />
                       </button>
                     </div>
-                    <span className="mt-1.5 font-mono text-[7px] text-foreground/35 uppercase">
+                    <span className="mt-1.5 font-sans text-xs text-foreground/60 uppercase">
                       SLOT {idx + 1} (MAX 3s)
                     </span>
                   </div>
@@ -629,15 +624,15 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
       {/* Market Parameters (Moved from settings to DNA section) */}
       <div className="mb-6 border border-foreground/10 bg-card p-5 rounded-none space-y-4">
-        <p className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase flex items-center gap-1.5">
+        <p className="font-sans text-xs tracking-wide text-muted-foreground uppercase flex items-center gap-1.5">
           <span className="size-1 rounded-full bg-cerebral" />
           <span>PARAMETRE TRHU (TRHOVÉ FILTRE)</span>
         </p>
 
-        <div className="space-y-4 font-mono text-xs">
+        <div className="space-y-4 font-sans text-xs">
           {/* Global vs National Toggle */}
           <div className="flex justify-between items-center border-b border-foreground/5 pb-3">
-            <span className="text-foreground/45 uppercase text-[9px]">ROZSAH VYHĽADÁVANIA</span>
+            <span className="text-foreground/70 uppercase text-xs">ROZSAH VYHĽADÁVANIA</span>
             <div className="flex gap-2">
               <button
                 onClick={() => {
@@ -645,9 +640,9 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                   setIsGlobalMode(false);
                   saveFilterChange("radiusKm", distance);
                 }}
-                className={`px-2 py-1 border text-[9px] tracking-wider rounded-none font-bold transition-all ${
+                className={`px-2 py-1 border text-xs tracking-wider rounded-none font-bold transition-all ${
                   !isGlobalMode
-                    ? "border-cerebral bg-cerebral text-white shadow-[0_0_8px_var(--cerebral-glow)]"
+                    ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
                     : "border-foreground/15 text-foreground hover:border-cerebral/40 hover:text-cerebral"
                 }`}
               >
@@ -659,9 +654,9 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                   setIsGlobalMode(true);
                   saveFilterChange("radiusKm", 500); // 500+ triggers Global search
                 }}
-                className={`px-2 py-1 border text-[9px] tracking-wider rounded-none font-bold transition-all ${
+                className={`px-2 py-1 border text-xs tracking-wider rounded-none font-bold transition-all ${
                   isGlobalMode
-                    ? "border-cerebral bg-cerebral text-white shadow-[0_0_8px_var(--cerebral-glow)]"
+                    ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
                     : "border-foreground/15 text-foreground hover:border-cerebral/40 hover:text-cerebral"
                 }`}
               >
@@ -679,7 +674,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
             }
           >
             <div className="flex justify-between mb-1">
-              <span className="text-foreground/45 uppercase text-[9px]">MAXIMÁLNA VZDIALENOSŤ</span>
+              <span className="text-foreground/70 uppercase text-xs">MAXIMÁLNA VZDIALENOSŤ</span>
               <span className="font-bold text-cerebral">{distance} km</span>
             </div>
             <input
@@ -700,7 +695,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
           {/* Target Demographic Select Dropdown */}
           <div>
-            <label className="block text-[8px] text-muted-foreground uppercase mb-1">
+            <label className="block text-xs text-muted-foreground uppercase mb-1">
               Koho hľadáš
             </label>
             <select
@@ -709,7 +704,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 const val = e.target.value as "male" | "female" | "all";
                 handleTargetMarketChange(val);
               }}
-              className="w-full border border-foreground/20 bg-background p-2 font-mono text-xs text-foreground focus:border-foreground focus:outline-none rounded-none"
+              className="w-full border border-foreground/20 bg-background p-2 font-sans text-xs text-foreground focus:border-foreground focus:outline-none rounded-none"
             >
               <option value="male">Mužov</option>
               <option value="female">Ženy</option>
@@ -721,52 +716,52 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
       {/* Pure Data Algorithmic Diagnostics */}
       <div className="mb-6">
-        <div className="mb-3 flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+        <div className="mb-3 flex items-center gap-1.5 font-sans text-xs tracking-wide text-muted-foreground uppercase">
           <span className="size-1.5 rounded-full bg-cerebral" />
           <span>OSOBNOSTNÝ PROFIL // METRIKY</span>
         </div>
-        <div className="border border-foreground/15 bg-card p-5 font-mono text-xs text-foreground/90 space-y-2.5 rounded-none select-none">
+        <div className="border border-foreground/15 bg-card p-5 font-sans text-xs text-foreground/90 space-y-2.5 rounded-none select-none">
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase">Typ_osobnosti</span>
+            <span className="text-foreground/70 uppercase">Typ_osobnosti</span>
             <span className="font-bold text-cerebral">{primaryMarker}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase">Rýchlosť_odpovedí</span>
+            <span className="text-foreground/70 uppercase">Rýchlosť_odpovedí</span>
             <span className="font-bold text-foreground">{decisionLatency}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase">Zostávajúce_pokusy</span>
+            <span className="text-foreground/70 uppercase">Zostávajúce_pokusy</span>
             <span className="font-bold text-foreground">{redemptionQuota}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase">Dokončené_scenáre</span>
+            <span className="text-foreground/70 uppercase">Dokončené_scenáre</span>
             <span className="font-bold text-foreground">{closureRate}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase">Hĺbka_osobnosti</span>
+            <span className="text-foreground/70 uppercase">Hĺbka_osobnosti</span>
             <span className="font-bold text-cerebral">{cognitiveDepth}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase">Svedomitosť</span>
+            <span className="text-foreground/70 uppercase">Svedomitosť</span>
             <span className="font-bold text-foreground">{conscientiousness}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase">Extraverzia</span>
+            <span className="text-foreground/70 uppercase">Extraverzia</span>
             <span className="font-bold text-foreground">{extraversion}</span>
           </div>
           <div className="flex justify-between border-b border-foreground/5 pb-2">
-            <span className="text-foreground/45 uppercase">Váhavosť_pri_teste</span>
+            <span className="text-foreground/70 uppercase">Váhavosť_pri_teste</span>
             <span className="font-bold text-foreground">{hesitationFlag}</span>
           </div>
 
           {/* HARDCODED ALGORITHMIC BRACKET */}
           <div className="flex justify-between border-b border-foreground/5 pb-2 border-dashed">
             <span className="text-cerebral font-bold uppercase">Hľadaný_vek_partnera</span>
-            <span className="font-black text-cerebral font-mono">{calculatedBracket}</span>
+            <span className="font-black text-cerebral font-sans">{calculatedBracket}</span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-foreground/45 uppercase">Stav_účtu</span>
+            <span className="text-foreground/70 uppercase">Stav_účtu</span>
             <span className="font-bold text-cerebral uppercase flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
               KALIBROVANÉ
@@ -780,7 +775,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
       {recordingIndex !== null && createPortal(
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex flex-col justify-center items-center p-4">
           <div className="w-full max-w-sm border border-foreground/20 bg-card p-6 rounded-none relative animate-fade-up">
-            <div className="mb-4 font-mono text-[9px] tracking-widest text-red-500 font-bold uppercase animate-pulse">
+            <div className="mb-4 font-sans text-xs tracking-wide text-red-500 font-bold uppercase animate-pulse">
               [ ROZHRANIE CCTV KAMERY ]
             </div>
 
@@ -795,10 +790,10 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
               {recordingState === "countdown" && (
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
-                  <span className="font-mono text-4xl text-white font-bold animate-ping">
+                  <span className="font-sans text-4xl text-white font-bold animate-ping">
                     {countdown}
                   </span>
-                  <span className="font-mono text-[9px] text-white/50 tracking-widest uppercase mt-2">
+                  <span className="font-sans text-xs text-white/50 tracking-wide uppercase mt-2">
                     Príprava...
                   </span>
                 </div>
@@ -807,7 +802,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
               {recordingState === "recording" && (
                 <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 px-2 py-0.5 border border-red-500">
                   <span className="size-1.5 rounded-full bg-red-500 animate-ping" />
-                  <span className="font-mono text-[7px] text-white tracking-widest uppercase">
+                  <span className="font-sans text-xs text-white tracking-wide uppercase">
                     ZÁZNAM (3s)
                   </span>
                 </div>
@@ -817,7 +812,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
             <div className="flex gap-2">
               <button
                 onClick={cancelRecording}
-                className="flex-1 border border-foreground/20 py-3 text-xs tracking-widest text-foreground/60 font-mono font-bold uppercase hover:bg-foreground/5 transition-all rounded-none bg-card"
+                className="flex-1 border border-foreground/20 py-3 text-xs tracking-wide text-foreground/60 font-sans font-bold uppercase hover:bg-foreground/5 transition-all rounded-none bg-card"
               >
                 [ ZRUŠIŤ ]
               </button>
@@ -834,7 +829,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
             <h3 className="font-sans text-sm font-bold uppercase text-foreground">
               Spracovanie videa...
             </h3>
-            <p className="text-[10px] text-foreground/60 font-mono max-w-xs leading-relaxed uppercase">
+            <p className="text-xs text-foreground/60 font-sans max-w-xs leading-relaxed uppercase">
               Komprimujem a nahrávam súbor <br />
               (môže to trvať niekoľko sekúnd)
             </p>

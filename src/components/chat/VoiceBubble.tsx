@@ -171,7 +171,7 @@ export function VoiceBubble({
             aria-label={playing ? "Pozastaviť hlasovku" : "Prehrať hlasovku"}
             className={`grid size-10 shrink-0 place-items-center rounded-full border transition-transform active:scale-95 disabled:opacity-40 cursor-pointer ${
               playing
-                ? "border-cerebral bg-cerebral text-white"
+                ? "border-cerebral bg-cerebral text-background"
                 : mine
                   ? "border-foreground bg-foreground text-background"
                   : "border-foreground/35 bg-transparent text-foreground hover:border-foreground"
@@ -233,17 +233,17 @@ export function VoiceBubble({
             type="button"
             onClick={toggleSpeed}
             aria-label="Rýchlosť prehrávania"
-            className="shrink-0 border border-foreground/20 px-2 py-1 font-mono text-[10px] text-foreground/65 transition-colors hover:border-foreground/45 hover:text-foreground cursor-pointer"
+            className="shrink-0 border border-foreground/20 px-2 py-1 font-mono text-xs text-foreground/65 transition-colors hover:border-foreground/45 hover:text-foreground cursor-pointer"
           >
             {speed}×
           </button>
         </div>
 
-        <div className="mt-2 flex items-center justify-between text-[11px] text-foreground/50">
+        <div className="mt-2 flex items-center justify-between text-xs text-foreground/50">
           <span>{mine ? "Tvoja odpoveď" : "Hlasová správa"}</span>
           <span className="inline-flex items-center gap-1.5 font-mono">
             {!mine && listened && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-accent">
+              <span className="inline-flex items-center gap-0.5 text-xs text-accent">
                 <Check className="size-3" />
                 vypočuté
               </span>

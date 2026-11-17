@@ -50,7 +50,7 @@ export const RadarChart = React.memo(function RadarChart({
     .join(" ");
 
   return (
-    <svg width={size} height={size} className="font-mono text-[9px]">
+    <svg width={size} height={size} className="font-mono text-xs">
       {/* Spiderweb Background grid */}
       {rings.map((ring, rIdx) => {
         const ringPoints = axes
@@ -110,7 +110,7 @@ export const RadarChart = React.memo(function RadarChart({
             alignmentBaseline="middle"
             fill="currentColor"
             fillOpacity="0.6"
-            className="font-mono text-[8px] font-bold"
+            className="font-mono text-xs font-bold"
           >
             {axis.label}
           </text>

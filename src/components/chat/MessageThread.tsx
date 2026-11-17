@@ -291,7 +291,7 @@ export function MessageThread({
                 <span className="font-semibold text-foreground text-sm tracking-tight">
                   {match.name}
                 </span>
-                <span className="font-mono text-[10px] tracking-widest text-cerebral uppercase font-bold">
+                <span className="font-mono text-xs tracking-widest text-cerebral uppercase font-bold">
                   BLUR: {conversation.blurLevel}%
                 </span>
               </div>
@@ -374,7 +374,7 @@ export function MessageThread({
                 )}
                 <p className="break-words">{m.text}</p>
                 <span
-                  className={`block mt-1.5 text-right font-mono text-[10px] ${mine ? "text-background/60" : "text-foreground/40"}`}
+                  className={`block mt-1.5 text-right font-mono text-xs ${mine ? "text-background/60" : "text-foreground/40"}`}
                 >
                   {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
@@ -396,10 +396,10 @@ export function MessageThread({
         {showGifs && (
           <div className="border-t border-foreground/5 bg-background/40 p-3 animate-fade-up">
             <div className="flex justify-between items-center mb-2">
-              <span className="font-mono text-[10px] text-foreground/50">MOCK GIF LIBRRAY</span>
+              <span className="font-mono text-xs text-foreground/50">MOCK GIF LIBRRAY</span>
               <button
                 onClick={() => setShowGifs(false)}
-                className="text-[10px] tracking-widest text-foreground/40 hover:text-foreground"
+                className="text-xs tracking-widest text-foreground/40 hover:text-foreground"
               >
                 ZAVRIEŤ
               </button>
@@ -451,7 +451,7 @@ export function MessageThread({
             onClick={send}
             disabled={pressureActive || !input.trim() || conversation.status === "closed"}
             aria-label="Odoslať správu"
-            className="grid size-10 shrink-0 place-items-center rounded-none bg-cerebral text-white disabled:opacity-30 disabled:bg-foreground disabled:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-cerebral transition-all shadow-[0_0_8px_var(--cerebral-glow)] cursor-pointer"
+            className="grid size-10 shrink-0 place-items-center rounded-none bg-cerebral text-background disabled:opacity-30 disabled:bg-foreground disabled:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-cerebral transition-all shadow-[0_0_8px_var(--cerebral-glow)] cursor-pointer"
           >
             <Send className="size-4" />
           </button>
@@ -462,7 +462,7 @@ export function MessageThread({
       {pressureActive && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-md z-[110] flex flex-col justify-center items-center p-4">
           <div className="w-full max-w-md border border-foreground/20 bg-card p-6 relative">
-            <div className="mb-4 flex items-center justify-between font-mono text-[10px] tracking-widest text-red-500 font-bold uppercase animate-pulse">
+            <div className="mb-4 flex items-center justify-between font-mono text-xs tracking-widest text-red-500 font-bold uppercase animate-pulse">
               <span>⚠️ NÁŠĽAPNÁ MÍNA DETEKOVANÁ</span>
               <span>TLAKOVÝ TEST</span>
             </div>
