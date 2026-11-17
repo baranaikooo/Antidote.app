@@ -151,8 +151,7 @@ export function MessageThread({
 
   function handleReport(reason: string) {
     haptic("warning");
-    alert(`Spojenie zablokované a nahlásené pre: ${reason}.`);
-    onEnd(); // delete match permanently
+    window.dispatchEvent(new CustomEvent("antidote:report", { detail: reason }));
     setReportOpen(false);
   }
 
@@ -326,7 +325,7 @@ export function MessageThread({
                     }}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-500 hover:bg-red-500/10"
                   >
-                    <Shield className="size-4" /> Nahlásiť a Blokovať
+                    <Shield className="size-4" /> Nahlásiť obsah
                   </button>
                 </div>
               </>
@@ -561,13 +560,11 @@ export function MessageThread({
           <div className="w-full max-w-sm border border-red-500/20 bg-card p-6 animate-fade-up">
             <div className="flex items-center gap-2 text-red-500 font-mono font-bold text-xs tracking-widest uppercase mb-3">
               <AlertTriangle className="size-5" />
-              <span>Nahlásiť a Zablokovať</span>
+              <span>Nahlásiť obsah</span>
             </div>
 
             <div className="mb-5 border border-red-500/25 bg-red-500/5 p-4 text-xs text-red-400 leading-relaxed font-mono">
-              ⚠️ Varovanie: Zneužitie tohto tlačidla na zrušenie matchu namiesto
-              &ldquo;Uzavrieť&rdquo; vedie k trvalému zablokovaniu vášho účtu. Nahlásenia slúžia
-              výhradne pre prípady spamu, zneužívania alebo obťažovania.
+              Vyber dôvod a doplň podrobnosti vo formulári. Odoslanie hlásenia neblokuje používateľa automaticky.
             </div>
 
             <div className="space-y-2 mb-6">
