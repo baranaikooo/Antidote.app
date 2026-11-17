@@ -42,6 +42,15 @@ export function LegalPage({
         ))}
       </div>
 
+      {title === "Cookies" && (
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event("antidote:cookie-settings"))}
+          className="mt-6 border border-border px-4 py-2 text-sm"
+        >
+          Zmeniť nastavenia cookies
+        </button>
+      )}
       <p className="mt-6 text-center text-xs text-muted-foreground">
         Toto je informatívne zhrnutie pravidiel. V prípade nejasností nás kontaktuj cez sekciu{" "}
         <span className="text-foreground">Kontakt</span>.
@@ -55,7 +64,7 @@ export const TERMS_BODY: Array<{ h: string; p: string[] }> = [
     h: "1. O službe",
     p: [
       "Antidote je aplikácia na zoznamovanie založené na psychologickej rezonancii. Namiesto swipovania ťa páruje cez krátky test a hlasovú konverzáciu.",
-      "Používaním aplikácie potvrdzuješ, že máš aspoň 16 rokov a že údaje o sebe poskytuješ pravdivo.",
+      "Používaním aplikácie potvrdzuješ, že máš aspoň 18 rokov a že údaje o sebe poskytuješ pravdivo.",
     ],
   },
   {

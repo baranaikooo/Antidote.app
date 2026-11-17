@@ -10,8 +10,8 @@ export function CookieConsent() {
   const [expanded, setExpanded] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>({
     necessary: true,
-    analytics: true,
-    personalization: true,
+    analytics: false,
+    personalization: false,
   });
 
   useEffect(() => {
@@ -20,6 +20,9 @@ export function CookieConsent() {
     } catch {
       setVisible(true);
     }
+    const reopen = () => setVisible(true);
+    window.addEventListener("antidote:cookie-settings", reopen);
+    return () => window.removeEventListener("antidote:cookie-settings", reopen);
   }, []);
 
   function save(value: "accepted" | "rejected" | "custom", p?: Prefs) {
