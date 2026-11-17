@@ -2282,11 +2282,10 @@ function MatchCard({
     profile.topPriority && match.top_priority && profile.topPriority === match.top_priority;
 
   return (
-    <article className="editorial-panel relative overflow-hidden p-4 sm:p-5">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <article className="match-card">
+      <div className="match-card-header">
         <div>
-          <p className="personal-eyebrow">Možné spojenie</p>
-          <h3 className="mt-2 font-display text-[clamp(2rem,8vw,3rem)] font-extrabold leading-none tracking-[-0.055em]">
+          <h3 className="match-card-name">
             {match.name}
             <span className="ml-2 text-base font-medium text-foreground/50">{match.age}</span>
           </h3>
@@ -2295,7 +2294,7 @@ function MatchCard({
             {match.distanceKm !== undefined && ` · ${Math.round(match.distanceKm)} km`}
           </p>
         </div>
-        <div className="relative size-16 shrink-0 overflow-hidden border border-foreground bg-black">
+        <div className="match-card-video">
           {match.videoUrls && match.videoUrls.length > 0 ? (
             <video
               src={match.videoUrls[0]}
@@ -2316,8 +2315,8 @@ function MatchCard({
         </div>
       </div>
 
-      <div className="border-t border-foreground/25 pt-3">
-        <p className="font-display text-xl font-semibold leading-snug tracking-[-0.03em]">
+      <div className="match-card-story">
+        <p className="match-card-highlight">
           {sharedPriority
             ? `Obaja dávate na prvé miesto hodnotu „${profile.topPriority}“.`
             : `Vaše odpovede sa podobajú na ${similarityPct} %.`}
@@ -2325,20 +2324,12 @@ function MatchCard({
         <p className="mt-2 text-sm leading-relaxed text-foreground/60">{match.bio}</p>
       </div>
 
-      <div className="my-3 grid grid-cols-2 divide-x divide-foreground/25 border-y border-foreground/25">
-        <div className="py-3 pr-3">
+      <div className="match-card-facts">
+        <div>
           <p className="text-xs font-medium text-foreground/65">Podobnosť odpovedí</p>
           <p className="mt-2 font-display text-lg font-bold">{similarityPct} %</p>
-          <div className="mt-3 flex gap-1">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <span
-                key={index}
-                className={`h-2 flex-1 ${index < Math.round(similarityPct / 20) ? "bg-cerebral" : "bg-foreground/10"}`}
-              />
-            ))}
-          </div>
         </div>
-        <div className="py-3 pl-3">
+        <div>
           <p className="text-xs font-medium text-foreground/65">Povaha spojenia</p>
           <p className="mt-2 text-sm font-semibold leading-snug">{extLabel}</p>
           <p className="mt-1 text-xs text-foreground/50">
@@ -2354,7 +2345,7 @@ function MatchCard({
           haptic("medium");
           onSelectMatch(match.id);
         }}
-        className="tactile-button w-full flex items-center justify-between gap-2 bg-foreground px-5 py-4 text-background cursor-pointer"
+        className="match-card-action"
       >
         <span className="font-display text-base font-bold">
           {initiatedMatchIds?.has(match.id) ? "Pokračovať v rozhovore" : "Odpovedať hlasom"}
@@ -2392,9 +2383,9 @@ function Dashboard({
   return (
     <div className="personal-screen">
       <header className="personal-header">
-        <p className="personal-eyebrow">Odporúčania</p>
+        <p className="personal-eyebrow">Antidote / Spojenia</p>
         <h1 className="personal-title">Dnešné spojenia</h1>
-        <p className="personal-intro">Denne ti odporučíme najviac tri profily. Pri každom uvidíš, v čom sa zhodujete a v čom sa líšite.</p>
+        <p className="personal-intro">Ľudia, ktorých môžeš dnes spoznať</p>
       </header>
 
       {profile.redemptionQuota && profile.redemptionQuota > 0 ? (

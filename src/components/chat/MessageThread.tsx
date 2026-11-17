@@ -268,12 +268,13 @@ export function MessageThread({
   const blurPx = Math.round((conversation.blurLevel / 100) * 24);
 
   return (
-    <div className="flex h-screen flex-col bg-background animate-fade-in">
+    <div className="conversation-screen flex h-[100dvh] flex-col bg-background">
       <div className="sticky top-0 z-10 border-b border-foreground/10 bg-background/80 px-4 py-3 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
+              aria-label="Späť na správy"
               className="grid size-10 place-items-center rounded-none bg-foreground/5 hover:bg-foreground/10 active:scale-95"
             >
               <ArrowLeft className="size-5 text-foreground" />
@@ -300,6 +301,8 @@ export function MessageThread({
           <div className="relative">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Možnosti rozhovoru"
+              aria-expanded={menuOpen}
               className="grid size-10 place-items-center rounded-none hover:bg-foreground/5"
             >
               <MoreVertical className="size-5 text-foreground" />
