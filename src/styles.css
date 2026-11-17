@@ -582,6 +582,13 @@ html.dark {
 /* Navigation and surfaces inside the signed-in app. */
 .app-main .personal-screen { max-width: 36rem; }
 .app-main { background: var(--background); }
+.update-notice { position: fixed; z-index: 45; top: max(0.75rem, env(safe-area-inset-top)); left: 50%; display: flex; width: min(calc(100% - 2rem), 28rem); align-items: center; gap: 0.5rem; padding: 0.5rem 0.5rem 0.5rem 0.75rem; transform: translateX(-50%); border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent); background: var(--card); color: var(--foreground); box-shadow: 0 4px 18px #0002; font-size: 0.875rem; }
+.update-notice > svg { flex: none; color: var(--accent); }
+.update-notice > span { flex: 1; }
+.update-notice button { min-height: 2.75rem; padding: 0 0.5rem; font-weight: 600; }
+.update-notice button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.update-notice button:not(.update-notice-close) { color: var(--accent); }
+.update-notice-close { display: grid; min-width: 2.75rem; place-items: center; }
 .app-main .personal-header { border: 0; padding-block: 1.25rem 1.5rem; margin-bottom: 0.5rem; }
 .app-main .personal-eyebrow { font-size: 0.875rem; font-weight: 500; }
 .app-main .personal-title { font-size: clamp(2.25rem, 9vw, 3.25rem); line-height: 1; }
