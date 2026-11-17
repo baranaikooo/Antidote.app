@@ -241,11 +241,10 @@ export function PressureChat({
       <div className="mx-auto flex min-h-[78vh] w-full max-w-md flex-col justify-center px-1 py-6 animate-fade-up">
         <p className="editorial-kicker text-cerebral">Spontánna reakcia · 03</p>
         <h2 className="mt-3 font-display text-4xl font-extrabold leading-[0.95] tracking-[-0.06em] text-foreground">
-          Jedna správa bez času na pretvárku.
+          Ako odpovieš na správu?
         </h2>
         <p className="mt-4 text-sm leading-relaxed text-foreground/65">
-          O chvíľu príde krátka správa z bežného vzťahového dňa. Neexistuje správna odpoveď — vyber
-          tú, ktorú by si naozaj poslal/a ako prvú.
+          Prečítaš si správu z bežnej situácie vo vzťahu. Vyber odpoveď, ktorú by si poslal/a ako prvú. Žiadna nie je správna ani nesprávna.
         </p>
 
         <div className="my-7 border-y border-foreground/25 py-4 text-xs text-foreground/55">
@@ -334,7 +333,7 @@ export function PressureChat({
       </div>
 
       <p className="mb-3 text-xs text-foreground/55">
-        {isTyping ? "Počkaj na správu…" : "Ako odpovieš? Jeden dotyk správu hneď odošle:"}
+        {isTyping ? "Počkaj na správu…" : "Ťuknutím odošleš vybranú odpoveď."}
       </p>
 
       <div className="space-y-2.5">

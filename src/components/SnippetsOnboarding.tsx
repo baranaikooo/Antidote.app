@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Camera, Upload } from "lucide-react";
+import { SnippetRows } from "@/components/SnippetRows";
 import { useHaptic } from "@/hooks/use-haptics";
 import { openCamera, recordStreamForMs, stopStream, attachStreamToVideo } from "@/lib/media";
 import { saveVideoBlob, getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
@@ -113,7 +113,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       setCameraStream(stream);
     } catch (err) {
       console.error("[onboarding-snippets] openCamera failed:", err);
-      alert("Nepodarilo sa spustiť kameru. Skontrolujte povolenia.");
+      alert("Kamera sa nespustila. Skontroluj, či má Antidote prístup ku kamere.");
       cancelRecording();
       return;
     }
@@ -199,7 +199,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       /\.(mp4|mov|webm|mkv|3gp|m4v|avi)$/i.test(file.name);
 
     if (!isVideo) {
-      alert("Vyberte platný video súbor (napr. MP4, MOV, WEBM).");
+      alert("Vyber súbor s videom, napríklad MP4, MOV alebo WebM.");
       setActiveUploadIndex(null);
       return;
     }
@@ -264,99 +264,17 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
   }
 
   return (
-    <div className="mx-auto flex min-h-[80vh] max-w-md flex-col bg-background px-1 py-6 animate-fade-in">
-      {/* Title */}
-      <div className="space-y-4 mb-6">
-        <div className="editorial-kicker text-foreground/50">
-          Tvoj profil
-        </div>
-        <h2 className="font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em] text-foreground">
-          Pridaj krátke video
-        </h2>
-        <p className="text-sm text-foreground/75 leading-relaxed font-sans">
-          Pridaj aspoň jedno trojsekundové video, najviac štyri. Môžeš ho nahrať kamerou alebo vybrať z galérie. Pri nahrávaní ťa zariadenie požiada o prístup ku kamere.
+    <div className="personal-screen">
+      <header className="personal-header">
+        <p className="personal-eyebrow">Tvoj profil</p>
+        <h1 className="personal-title">Pridaj krátke video</h1>
+        <p className="personal-intro">
+          Pridaj 1 až 4 trojsekundové videá. Vyber ich z galérie alebo ich nahraj kamerou. Pri nahrávaní ťa zariadenie požiada o prístup ku kamere.
         </p>
-      </div>
-
-      {/* CCTV Live Snippets Grid */}
-      <div className="grid grid-cols-2 gap-3 mb-8">
-        {Array.from({ length: 4 }).map((_, idx) => {
-          const url = snippets[idx];
-          return (
-            <div
-              key={idx}
-              className="relative aspect-[3/4] w-full border border-foreground/20 rounded-none bg-black overflow-hidden group"
-            >
-              {url ? (
-                <>
-                  <video
-                    src={url}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    onTimeUpdate={(e) => {
-                      if (e.currentTarget.currentTime >= 3.0) {
-                        e.currentTarget.currentTime = 0;
-                      }
-                    }}
-                    className="size-full object-contain bg-black rounded-none transition-all duration-300"
-                    style={{ transform: "scaleX(-1)" }}
-                  />
-                  <div className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-black/75 px-1.5 py-0.5 rounded-none border border-white/10">
-                    <span className="size-1.5 rounded-full bg-white animate-pulse" />
-                    <span className="font-mono text-xs text-white tracking-widest uppercase">
-                      LIVE
-                    </span>
-                  </div>
-                  <div className="absolute bottom-1.5 left-1.5 bg-black/70 px-1.5 py-0.5 rounded-none">
-                    <span className="font-mono text-xs text-white tracking-widest uppercase">
-                      00:03:00
-                    </span>
-                  </div>
-                  {/* Delete button only if url exists */}
-                  <button
-                    onClick={() => deleteSnippet(idx)}
-                    aria-label={`Odstrániť video ${idx + 1}`}
-                    className="absolute right-1.5 top-1.5 grid size-9 place-items-center border border-white/30 bg-black/75 text-white transition-colors hover:bg-black"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </>
-              ) : (
-                <div className="size-full flex flex-col justify-center items-center p-3 bg-card text-center">
-                  <span className={`font-mono text-xs font-bold tracking-wider uppercase mb-2 ${idx === 0 ? "text-cerebral" : "text-foreground/60"}`}>
-                    {idx === 0 ? "SLOT 1 [POVINNÝ]" : `SLOT ${idx + 1} [VOLITEĽNÝ]`}
-                  </span>
-                  <div className="flex flex-col gap-1.5 w-full max-w-[130px]">
-                    <button
-                      type="button"
-                      onClick={() => startRecording(idx)}
-                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 border border-foreground/25 hover:border-foreground hover:bg-foreground/10 transition-all text-foreground rounded-none bg-card text-xs font-mono font-medium uppercase shadow-none active:scale-[0.98]"
-                      title="Nahrať kamerou"
-                    >
-                      <Camera className="size-3.5" />
-                      <span>KAMERA</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => triggerFileUpload(idx)}
-                      className="flex items-center justify-center gap-1.5 py-1.5 px-2 border border-foreground/25 hover:border-foreground hover:bg-foreground/10 transition-all text-foreground rounded-none bg-card text-xs font-mono font-medium uppercase shadow-none active:scale-[0.98]"
-                      title="Vybrať z galérie"
-                    >
-                      <Upload className="size-3.5" />
-                      <span>GALÉRIA</span>
-                    </button>
-                  </div>
-                  <span className="mt-2 font-mono text-xs text-foreground/40 uppercase">
-                    MAX 3 SEKUNDY
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      </header>
+      <section className="personal-section" aria-label="Videá profilu">
+        <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} />
+      </section>
 
       <input
         type="file"
@@ -367,7 +285,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       />
 
       {/* Action Footer */}
-      <div className="space-y-3">
+      <div className="mt-4 space-y-3">
         <button
           type="button"
           disabled={snippets.filter(Boolean).length === 0 || isSubmitting}
@@ -375,7 +293,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
             const activeSnippets = snippets.filter(Boolean);
             if (activeSnippets.length === 0) {
               haptic("error");
-              alert("Chyba: Musíte nahrať aspoň 1 video snippet (cez kameru alebo galériu) na vytvorenie účtu.");
+              alert("Na vytvorenie účtu pridaj aspoň jedno video z kamery alebo galérie.");
               return;
             }
             setIsSubmitting(true);
@@ -388,7 +306,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
               setIsSubmitting(false);
             }
           }}
-          className={`w-full border-2 border-foreground py-3.5 text-xs font-bold tracking-widest uppercase transition-all rounded-none ${
+          className={`w-full border border-foreground py-3.5 text-base font-bold transition-colors ${
             snippets.filter(Boolean).length === 0 || isSubmitting
               ? "opacity-40 cursor-not-allowed bg-foreground/20 text-muted-foreground border-foreground/20"
               : "text-background bg-foreground hover:bg-foreground/90 cursor-pointer"
@@ -400,7 +318,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
             ? "Pridaj aspoň jedno video"
             : `Pokračovať (${snippets.filter(Boolean).length}/4)`}
         </button>
-        <p className="text-xs text-muted-foreground text-center uppercase">
+        <p className="text-sm text-muted-foreground text-center">
           Videá sa prehrávajú bez zvuku.
         </p>
       </div>
@@ -408,12 +326,12 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       {/* Recording Overlay Modal */}
       {recordingIndex !== null && createPortal(
         <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex flex-col justify-center items-center p-4">
-          <div className="w-full max-w-sm border border-foreground/20 bg-card p-6 rounded-none relative animate-fade-up">
-            <div className="mb-4 text-xs tracking-widest text-red-500 font-bold uppercase animate-pulse">
+          <div className="editorial-dock w-full max-w-xs p-4 relative">
+            <div className="mb-3 font-display text-lg font-bold">
               Nahrávanie videa
             </div>
 
-            <div className="relative aspect-[3/4] w-full border border-foreground/20 rounded-none bg-black overflow-hidden mb-6">
+            <div className="relative mx-auto mb-3 aspect-[3/4] w-[min(100%,12rem,40dvh)] overflow-hidden bg-black">
               <video
                 ref={videoRef}
                 playsInline
@@ -434,7 +352,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
               {recordingState === "recording" && (
                 <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 px-2 py-0.5 border border-red-500">
                   <span className="size-1.5 rounded-full bg-red-500 animate-ping" />
-                  <span className="text-xs text-white tracking-widest uppercase">REC (3s)</span>
+                  <span className="text-xs text-white tracking-widest uppercase">Nahráva sa (3 s)</span>
                 </div>
               )}
             </div>
@@ -442,9 +360,9 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
             <div className="flex gap-2">
               <button
                 onClick={cancelRecording}
-                className="flex-1 border border-foreground/20 py-3.5 text-sm font-bold tracking-wider text-foreground/60 uppercase hover:bg-foreground/5 transition-all rounded-none bg-card"
+                className="personal-action flex-1"
               >
-                [ ZRUŠIŤ ]
+                Zrušiť
               </button>
             </div>
           </div>

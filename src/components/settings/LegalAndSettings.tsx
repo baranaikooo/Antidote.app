@@ -11,29 +11,25 @@ export function LegalPage({
   body: Array<{ h: string; p: string[] }>;
 }) {
   return (
-    <div className="animate-fade-up">
-      <div className="mb-6 flex items-center gap-3">
+    <div className="personal-screen">
+      <header className="personal-header">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 text-xs tracking-widest text-muted-foreground hover:text-foreground"
+          className="personal-action mb-2 inline-flex items-center gap-2"
         >
-          <ArrowLeft className="size-4" /> NASTAVENIA
+          <ArrowLeft className="size-4" aria-hidden="true" /> Nastavenia
         </button>
-      </div>
-      <h1 className="mb-2 font-sans text-lg tracking-tight text-foreground font-bold uppercase">
-        {title}
-      </h1>
-      <p className="mb-6 font-mono text-xs tracking-widest text-muted-foreground">
-        POSLEDNÁ AKTUALIZÁCIA · JÚN 2026
-      </p>
+        <h1 className="personal-title">{title}</h1>
+        <p className="personal-intro">Posledná aktualizácia: jún 2026</p>
+      </header>
 
-      <div className="space-y-5">
+      <div>
         {body.map((s, i) => (
-          <section key={i} className="border border-border bg-card p-5">
-            <h2 className="mb-3 font-sans text-base text-foreground font-bold uppercase">{s.h}</h2>
+          <section key={i} className="personal-section">
+            <h2 className="personal-heading mb-3">{s.h}</h2>
             <div className="space-y-3">
               {s.p.map((line, j) => (
-                <p key={j} className="text-sm leading-relaxed text-muted-foreground">
+                <p key={j} className="leading-relaxed text-muted-foreground">
                   {line}
                 </p>
               ))}

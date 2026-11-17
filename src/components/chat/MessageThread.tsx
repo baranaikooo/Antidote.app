@@ -291,8 +291,8 @@ export function MessageThread({
                 <span className="font-semibold text-foreground text-sm tracking-tight">
                   {match.name}
                 </span>
-                <span className="font-mono text-xs tracking-widest text-cerebral uppercase font-bold">
-                  BLUR: {conversation.blurLevel}%
+                <span className="text-sm text-muted-foreground">
+                  Rozmazanie: {conversation.blurLevel} %
                 </span>
               </div>
             </div>
@@ -316,7 +316,7 @@ export function MessageThread({
                       }}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-foreground/80 hover:bg-foreground/5"
                     >
-                      <Check className="size-4" /> Uzavrieť čet slušne
+                      <Check className="size-4" /> Ukončiť rozhovor
                     </button>
                   )}
                   <button
@@ -326,7 +326,7 @@ export function MessageThread({
                     }}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-500 hover:bg-red-500/10"
                   >
-                    <Shield className="size-4" /> Nahlásiť a Blokovať
+                    <Shield className="size-4" /> Nahlásiť a zablokovať
                   </button>
                 </div>
               </>
@@ -336,9 +336,8 @@ export function MessageThread({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="border border-foreground/10 bg-foreground/[0.02] p-6 text-center text-sm font-light text-foreground/60 leading-relaxed font-mono mt-4 mb-8">
-          Vstúpili ste do textového dialógu. Rozmazanie profilu (aktuálne {conversation.blurLevel}%)
-          sa bude postupne znižovať po každej odoslanej správe (krok {THREAD_BLUR_STEP}%).
+        <div className="mb-5 border-b border-foreground/15 pb-3 text-sm leading-relaxed text-muted-foreground">
+          Každá odoslaná správa zníži rozmazanie profilu o {THREAD_BLUR_STEP} percentuálnych bodov.
         </div>
 
         {conversation.messages.map((m) => {
@@ -396,7 +395,7 @@ export function MessageThread({
         {showGifs && (
           <div className="border-t border-foreground/5 bg-background/40 p-3 animate-fade-up">
             <div className="flex justify-between items-center mb-2">
-              <span className="font-mono text-xs text-foreground/50">MOCK GIF LIBRRAY</span>
+              <span className="font-mono text-xs text-foreground/50">GIFy</span>
               <button
                 onClick={() => setShowGifs(false)}
                 className="text-xs tracking-widest text-foreground/40 hover:text-foreground"
@@ -463,8 +462,7 @@ export function MessageThread({
         <div className="fixed inset-0 bg-background/95 backdrop-blur-md z-[110] flex flex-col justify-center items-center p-4">
           <div className="w-full max-w-md border border-foreground/20 bg-card p-6 relative">
             <div className="mb-4 flex items-center justify-between font-mono text-xs tracking-widest text-red-500 font-bold uppercase animate-pulse">
-              <span>⚠️ NÁŠĽAPNÁ MÍNA DETEKOVANÁ</span>
-              <span>TLAKOVÝ TEST</span>
+              <span>Ako zareaguješ?</span>
             </div>
 
             {waitingForPartner ? (
@@ -489,12 +487,12 @@ export function MessageThread({
                         setPressureCompleted(true);
                         setPressureActive(false);
                         setWaitingForPartner(false);
-                        alert("Úspešne ste prešli tlakovým testom.");
+                        alert("Táto úloha je hotová. Môžeš pokračovať v rozhovore.");
                       }, 2500);
                     }}
                     className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-4 text-xs hover:bg-foreground/5 transition-all"
                   >
-                    Vysvetlím svoj postoj pokojne (SECURE)
+                    Vysvetlím svoj postoj pokojne
                   </button>
                   <button
                     onClick={() => {
@@ -509,7 +507,7 @@ export function MessageThread({
                     }}
                     className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-4 text-xs hover:bg-red-500/5 transition-all"
                   >
-                    Stiahnem sa a neodpoviem priamo (AVOIDANT)
+                    Stiahnem sa a neodpoviem priamo
                   </button>
                 </div>
               </>
@@ -521,13 +519,12 @@ export function MessageThread({
       {/* Closure Graceful UI */}
       {closureOpen && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] grid place-items-center p-4">
-          <div className="w-full max-w-sm border border-foreground/20 bg-card p-6 animate-fade-up">
-            <h3 className="font-mono font-bold text-sm tracking-widest text-foreground uppercase mb-2">
-              Dôstojné Ukončenie
+          <div className="editorial-dock w-full max-w-sm p-4">
+            <h3 className="personal-heading mb-2">
+              Ukončiť rozhovor
             </h3>
-            <p className="text-xs text-foreground/60 leading-relaxed mb-6 font-mono">
-              Vyberte čestný a slušný dôvod uzavretia konverzácie. Druhej strane sa odošle systémová
-              správa a čet sa bezpečne uzamkne. Nenesie to žiadnu penalizáciu.
+            <p className="mb-4 leading-relaxed text-muted-foreground">
+              Vyber dôvod ukončenia. Druhej osobe pošleme správu a čet uzavrieme. Tvoje skóre sa nezmení.
             </p>
             <div className="space-y-2 mb-6">
               {[
@@ -539,7 +536,7 @@ export function MessageThread({
                 <button
                   key={idx}
                   onClick={() => handleClosure(reason)}
-                  className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-3 hover:bg-foreground/5 hover:border-foreground/30 text-xs font-mono text-foreground/80 transition-all active:scale-[0.99]"
+                  className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-3 hover:bg-foreground/5 hover:border-foreground/30 text-base text-foreground/80 transition-colors"
                 >
                   {reason}
                 </button>
@@ -547,9 +544,9 @@ export function MessageThread({
             </div>
             <button
               onClick={() => setClosureOpen(false)}
-              className="w-full border border-foreground/20 py-3 text-xs tracking-widest text-foreground/60 hover:bg-foreground/5 font-mono font-bold uppercase transition-all"
+              className="personal-action w-full"
             >
-              ZRUŠIŤ
+              Zrušiť
             </button>
           </div>
         </div>
@@ -561,12 +558,12 @@ export function MessageThread({
           <div className="w-full max-w-sm border border-red-500/20 bg-card p-6 animate-fade-up">
             <div className="flex items-center gap-2 text-red-500 font-mono font-bold text-xs tracking-widest uppercase mb-3">
               <AlertTriangle className="size-5" />
-              <span>Nahlásiť a Zablokovať</span>
+              <span>Nahlásiť a zablokovať</span>
             </div>
 
             <div className="mb-5 border border-red-500/25 bg-red-500/5 p-4 text-xs text-red-400 leading-relaxed font-mono">
               ⚠️ Varovanie: Zneužitie tohto tlačidla na zrušenie matchu namiesto
-              &ldquo;Uzavrieť&rdquo; vedie k trvalému zablokovaniu vášho účtu. Nahlásenia slúžia
+              &ldquo;Ukončiť rozhovor&rdquo; vedie k trvalému zablokovaniu vášho účtu. Nahlásenia slúžia
               výhradne pre prípady spamu, zneužívania alebo obťažovania.
             </div>
 

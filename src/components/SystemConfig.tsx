@@ -175,7 +175,7 @@ export function SystemConfig({
     setIsGpsLoading(true);
 
     if (!navigator.geolocation) {
-      alert("Geolokácia nie je podporovaná týmto prehliadačom.");
+      alert("Tento prehliadač nevie zistiť tvoju polohu.");
       setIsGpsLoading(false);
       return;
     }
@@ -194,7 +194,7 @@ export function SystemConfig({
       },
       (err) => {
         console.error("[config] GPS refresh error:", err);
-        alert("Chyba geolokácie: Uistite sa, že máte zapnuté GPS a povolené vyhľadávanie.");
+        alert("Polohu sa nepodarilo zistiť. Zapni polohu v zariadení a povoľ k nej prístup.");
         setIsGpsLoading(false);
       },
       {
@@ -219,7 +219,7 @@ export function SystemConfig({
 
       if (error) {
         console.error("[settings] failed to toggle freeze in database:", error);
-        setFreezeMessage("Chyba: Nepodarilo sa zmeniť stav profilu v databáze.");
+        setFreezeMessage("Viditeľnosť profilu sa nepodarilo zmeniť.");
         setIsFrozen(!nextState); // rollback
         return;
       }
@@ -229,8 +229,8 @@ export function SystemConfig({
 
     setFreezeMessage(
       nextState
-        ? "SKRYTIE PROFILU AKTÍVNE: Váš profil je dočasne skrytý pred ostatnými."
-        : "PROFIL JE AKTÍVNY: Váš profil je znova viditeľný pre ostatných."
+        ? "Tvoj profil je dočasne skrytý."
+        : "Ostatní už znova vidia tvoj profil."
     );
     setTimeout(() => {
       setFreezeMessage(null);
