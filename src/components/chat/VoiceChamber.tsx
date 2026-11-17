@@ -474,7 +474,7 @@ export function Chamber({
   }
 
   return (
-    <div className="-mx-5 min-h-[100dvh] night-radio px-5 py-2 animate-fade-up">
+    <div className="voice-screen -mx-5 min-h-[100dvh] night-radio px-5 py-2">
       {/* Header */}
       <div className="mb-8 flex items-end justify-between border-b border-foreground/25 pb-4">
         <div>

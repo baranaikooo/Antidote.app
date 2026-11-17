@@ -272,13 +272,11 @@ export function SystemConfig({
   return (
     <div className="personal-screen">
       <header className="personal-header">
-        <p className="personal-eyebrow">Antidote</p>
+        <p className="personal-eyebrow">Antidote / Nastavenia</p>
         <h1 className="personal-title">Nastavenia</h1>
-        <p className="personal-intro">Vzhľad, súkromie a tvoj účet.</p>
       </header>
 
       <section className="personal-section settings-feature" aria-labelledby="preferences-title">
-        <p className="personal-eyebrow">Tvoj priestor</p>
         <h2 id="preferences-title" className="personal-heading mb-3">Prispôsobenie</h2>
         <div className="personal-setting">
           <span className="font-medium">Vzhľad</span>

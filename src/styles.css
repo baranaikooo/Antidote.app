@@ -581,11 +581,12 @@ html.dark {
 
 /* Navigation and surfaces inside the signed-in app. */
 .app-main .personal-screen { max-width: 36rem; }
-.app-main .personal-header { border-bottom: 2px solid var(--foreground); padding-block: 1rem 1.5rem; margin-bottom: 1rem; }
-.app-main .personal-eyebrow { font-weight: 600; }
-.app-main .personal-title { font-size: clamp(2rem, 8vw, 2.75rem); }
-.app-main .personal-section { border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent); padding: 1rem; margin-bottom: 0.75rem; background: var(--card); }
-.app-main .profile-moments, .app-main .settings-feature { border: 2px solid var(--foreground); box-shadow: 4px 4px 0 var(--foreground); margin-bottom: 1.25rem; }
+.app-main { background: var(--background); }
+.app-main .personal-header { border: 0; padding-block: 1.25rem 1.5rem; margin-bottom: 0.5rem; }
+.app-main .personal-eyebrow { font-size: 0.875rem; font-weight: 500; }
+.app-main .personal-title { font-size: clamp(2.25rem, 9vw, 3.25rem); line-height: 1; }
+.app-main .personal-section { border: 0; padding: 1.25rem 0; margin-bottom: 0; background: transparent; }
+.app-main .profile-moments, .app-main .settings-feature { border: 0; box-shadow: none; margin-bottom: 0.75rem; }
 .app-main .personal-segments { padding: 0.2rem; gap: 0.2rem; }
 .app-main .personal-segment { transition: background-color 140ms, color 140ms, transform 100ms; }
 .app-main .personal-segment:active, .app-main .personal-link:active, .app-main .personal-icon-button:active { transform: scale(0.97); }
@@ -594,15 +595,31 @@ html.dark {
 .app-main .profile-filters[open] > .personal-summary svg { transform: rotate(180deg); }
 .app-main .personal-summary svg { transition: transform 150ms; }
 .app-main .personal-thumbnail { width: 3rem; height: 3.5rem; }
-.app-main .personal-setting { border-color: color-mix(in srgb, var(--foreground) 12%, transparent); }
-.app-main .editorial-panel { border: 2px solid var(--foreground); box-shadow: 4px 4px 0 var(--foreground); }
-.app-nav { padding: 0.35rem; border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent); background: color-mix(in srgb, var(--background) 92%, transparent); backdrop-filter: blur(20px); box-shadow: 0 8px 30px #0002; }
+.app-main .personal-setting { border: 0; padding-block: 0.75rem; }
+.app-main .personal-row, .app-main .personal-link { border-color: color-mix(in srgb, var(--foreground) 10%, transparent); }
+.app-main .settings-disclosure, .app-main .profile-filters { border-top: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent); padding-block: 0.4rem; }
+.app-nav { padding: 0.25rem; border: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent); background: var(--background); }
 .app-nav-item { position: relative; display: flex; min-width: 0; min-height: 3.75rem; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; color: var(--muted-foreground); font-size: 0.875rem; font-weight: 600; transition: background-color 120ms, color 120ms; }
 .app-nav-item[aria-current="page"] { background: var(--foreground); color: var(--background); }
 .app-nav-item:active { transform: scale(0.97); }
 .app-nav-item:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
 @media (prefers-reduced-transparency: reduce) { .app-nav { background: var(--background); backdrop-filter: none; } }
 @media (prefers-reduced-motion: reduce) { .app-main .personal-summary svg, .app-main .personal-segment { transition: none; } }
+
+.match-card { padding: 1.25rem; background: color-mix(in srgb, var(--foreground) 5%, var(--background)); }
+.match-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.match-card-name { font-family: var(--font-display); font-size: clamp(2rem, 7vw, 2.75rem); font-weight: 700; line-height: 1; letter-spacing: -0.04em; overflow-wrap: anywhere; }
+.match-card-video { width: 4rem; height: 4.5rem; overflow: hidden; flex: none; background: #000; }
+.match-card-story { margin-top: 1.25rem; }
+.match-card-highlight { font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+.match-card-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-block: 1.25rem; }
+.match-card-action { display: flex; width: 100%; min-height: 3.25rem; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.75rem 1rem; background: var(--foreground); color: var(--background); transition: opacity 120ms, transform 100ms; }
+.match-card-action:hover { opacity: 0.85; }
+.match-card-action:active { transform: scale(0.98); }
+.match-card-action:focus-visible { outline: 2px solid var(--foreground); outline-offset: 3px; }
+.conversation-screen button:focus-visible, .voice-screen button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.night-radio.voice-screen { --background: #101010; --foreground: #f7f7f7; --card: #1b1b1b; --card-foreground: #f7f7f7; --muted: #242424; --muted-foreground: #b6b6b6; --accent: #f7f7f7; --accent-foreground: #101010; --cerebral: #f7f7f7; background: var(--background); color: var(--foreground); }
+.voice-screen .editorial-kicker { font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
 
 .personal-header {
   padding-block: 0.5rem 1.25rem;

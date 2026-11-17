@@ -507,9 +507,9 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
     <>
       <div className="personal-screen">
         <header className="personal-header">
-          <p className="personal-eyebrow">Tvoj profil</p>
-          <h1 className="personal-title">Ahoj, {user.name}.</h1>
-          <p className="personal-intro">Tu môžeš ukázať, kto si a koho chceš spoznať.</p>
+          <p className="personal-eyebrow">Antidote / Profil</p>
+          <h1 className="personal-title">{user.name}</h1>
+          <p className="personal-intro">Tvoj profil a nastavenia zoznamovania</p>
         </header>
 
         <section className="personal-section profile-moments" aria-labelledby="moments-title">
@@ -526,7 +526,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
               {isPreviewBlurred ? "Rozmazané" : "Odhalené"}
             </button>
           </div>
-          <p className="personal-status mb-3">Tri sekundy z tvojho sveta.</p>
+          <p className="personal-status mb-3">Krátke videá bez zvuku</p>
           <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} blurred={isPreviewBlurred} />
           <input type="file" ref={fileInputRef} accept="video/*" className="hidden" onChange={handleFileChange} />
         </section>
