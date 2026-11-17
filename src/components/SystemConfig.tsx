@@ -289,7 +289,7 @@ export function SystemConfig({
           <span className="personal-icon"><Sun className="size-5" /></span>
           <div><h2 id="appearance-title">Vzhľad</h2><p>Vyber si, v akom svetle chceš Antidote používať.</p></div>
         </div>
-        <div className="personal-segments mt-5" aria-label="Vzhľad aplikácie">
+        <div className="personal-segments mt-5" role="group" aria-label="Vzhľad aplikácie">
           {([
             ["system", "Systém", Monitor],
             ["light", "Svetlý", Sun],
@@ -307,7 +307,7 @@ export function SystemConfig({
           <span className="personal-icon"><SettingsIcon className="size-5" /></span>
           <div><h2 id="haptics-title">Odozva na dotyk</h2><p>Zvoľ si intenzitu haptickej odozvy.</p></div>
         </div>
-        <div className="personal-segments mt-5" aria-label="Haptická odozva">
+        <div className="personal-segments mt-5" role="group" aria-label="Haptická odozva">
           {([
             ["STEALTH", "Vypnutá"], ["TACTILE", "Vyvážená"], ["MECHANICAL", "Výrazná"],
           ] as const).map(([value, label]) => (
@@ -355,13 +355,13 @@ export function SystemConfig({
         </div>
         {freezeMessage && <p role="status" className="mb-3 text-sm text-foreground/75">{freezeMessage}</p>}
         {showWipeConfirm ? (
-          <div className="rounded-2xl bg-red-500/10 p-4">
+          <div className="bg-red-500/10 p-4">
             <p className="font-semibold text-red-500">Naozaj chceš vymazať účet?</p>
             <p className="mt-2 text-sm leading-relaxed text-foreground/75">Všetky informácie, výsledky testov a správy budú natrvalo vymazané. Táto akcia je nevratná.</p>
             <div className="mt-4 flex gap-2"><button type="button" onClick={executeDataWipe} className="personal-action personal-danger flex-1">Vymazať účet</button><button type="button" onClick={() => { haptic("tap"); setShowWipeConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
           </div>
         ) : showLogoutConfirm ? (
-          <div className="rounded-2xl bg-foreground/5 p-4">
+          <div className="bg-foreground/5 p-4">
             <p className="font-semibold">Naozaj sa chceš odhlásiť?</p>
             <div className="mt-4 flex gap-2"><button type="button" onClick={executeLogout} className="personal-action flex-1">Odhlásiť sa</button><button type="button" onClick={() => { haptic("tap"); setShowLogoutConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
           </div>

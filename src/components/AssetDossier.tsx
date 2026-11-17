@@ -528,7 +528,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
             return (
               <div
                 key={idx}
-                className="relative aspect-[3/4] w-full overflow-hidden rounded-3xl border border-foreground/10 bg-card group"
+                className="relative aspect-[3/4] w-full overflow-hidden border border-foreground/10 bg-card"
               >
                 {url ? (
                   <>
@@ -562,7 +562,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                     <button
                       onClick={() => deleteSnippet(idx)}
                       aria-label={`Odstrániť video ${idx + 1}`}
-                      className="absolute right-2 top-2 z-10 grid size-10 place-items-center rounded-full bg-black/70 text-white transition-transform active:scale-95"
+                      className="absolute right-2 top-2 z-10 grid size-11 place-items-center bg-black/70 text-white transition-transform active:scale-95"
                     >
                       <X className="size-3.5" />
                     </button>
@@ -572,14 +572,14 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                     <div className="flex gap-2">
                       <button
                         onClick={() => startRecording(idx)}
-                        className="grid size-12 place-items-center rounded-full bg-foreground/10 text-foreground transition-transform active:scale-95"
+                        className="grid size-12 place-items-center bg-foreground/10 text-foreground transition-colors hover:bg-foreground/15 active:scale-95"
                         title="Nahrať kamerou"
                       >
                         <Camera className="size-4" />
                       </button>
                       <button
                         onClick={() => triggerFileUpload(idx)}
-                        className="p-2 border border-foreground/10 hover:border-foreground/30 hover:bg-foreground/5 transition-all text-foreground rounded-none bg-card"
+                        className="grid size-12 place-items-center bg-foreground/10 text-foreground transition-colors hover:bg-foreground/15 active:scale-95"
                         title="Nahrať z galérie"
                       >
                         <Upload className="size-4" />
@@ -612,18 +612,15 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
           {/* Global vs National Toggle */}
           <div className="flex flex-wrap justify-between items-center gap-3 border-b border-foreground/10 pb-4">
             <span className="text-foreground/75 text-sm font-medium">Rozsah vyhľadávania</span>
-            <div className="flex gap-2">
+            <div className="personal-segments w-full sm:w-52" role="group" aria-label="Rozsah vyhľadávania">
               <button
                 onClick={() => {
                   haptic("tap");
                   setIsGlobalMode(false);
                   saveFilterChange("radiusKm", distance);
                 }}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all active:scale-95 ${
-                  !isGlobalMode
-                    ? "bg-foreground text-background"
-                    : "bg-foreground/5 text-foreground hover:bg-foreground/10"
-                }`}
+                aria-pressed={!isGlobalMode}
+                className="personal-segment"
               >
                 V okolí
               </button>
@@ -633,11 +630,8 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                   setIsGlobalMode(true);
                   saveFilterChange("radiusKm", 500); // 500+ triggers Global search
                 }}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all active:scale-95 ${
-                  isGlobalMode
-                    ? "bg-foreground text-background"
-                    : "bg-foreground/5 text-foreground hover:bg-foreground/10"
-                }`}
+                aria-pressed={isGlobalMode}
+                className="personal-segment"
               >
                 Celý svet
               </button>
@@ -684,7 +678,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 const val = e.target.value as "male" | "female" | "all";
                 handleTargetMarketChange(val);
               }}
-              className="w-full rounded-xl border border-foreground/10 bg-background px-4 py-3 text-base text-foreground"
+              className="w-full border border-foreground/10 bg-background px-4 py-3 text-base text-foreground"
             >
               <option value="male">Mužov</option>
               <option value="female">Ženy</option>
