@@ -157,12 +157,12 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
   );
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children, landing = false }: { children: React.ReactNode; landing?: boolean }) {
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden">
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
-      <div className="mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 pb-28 pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : "pb-28 pt-5"}`}>
         {children}
       </div>
     </div>
@@ -1086,7 +1086,7 @@ function AntidoteApp() {
   }
 
   return (
-    <Shell>
+    <Shell landing={screen === "landing"}>
       {screen === "landing" && (
         <Landing
           onGoogle={(profile) => {
@@ -1720,24 +1720,25 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   };
 
   return (
-    <div className="relative flex min-h-[88vh] flex-col px-1 py-3 animate-fade-up">
+    <div className="flex min-h-full flex-col px-1">
       <header className="flex items-center justify-between">
         <AntidoteLogo markClassName="h-9" />
         <span className="font-mono text-xs text-foreground/35">01</span>
       </header>
 
-      <main className="my-auto py-10">
-        <div className="mb-8 max-w-sm">
-          <h1 className="font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em] text-foreground">
+      <main className="landing-main my-auto">
+        <div className="landing-question max-w-sm">
+          <h1 className="landing-title font-display font-extrabold leading-[0.96] tracking-[-0.055em] text-foreground">
             Čo by si radšej stratil/a na jeden rok?
           </h1>
         </div>
 
-        <div className="grid gap-3">
+        <div className="landing-options grid gap-3">
           <button
             type="button"
             onClick={() => choose("travel")}
-            className={`tactile-button flex min-h-24 items-center justify-between p-5 text-left ${
+            aria-pressed={choice === "travel"}
+            className={`tactile-button landing-option flex items-center justify-between gap-2 text-left ${
               choice === "travel" ? "bg-cerebral text-background" : "bg-card text-foreground"
             }`}
           >
@@ -1747,7 +1748,8 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
           <button
             type="button"
             onClick={() => choose("love")}
-            className={`tactile-button flex min-h-24 items-center justify-between p-5 text-left ${
+            aria-pressed={choice === "love"}
+            className={`tactile-button landing-option flex items-center justify-between gap-2 text-left ${
               choice === "love" ? "bg-accent text-accent-foreground" : "bg-card text-foreground"
             }`}
           >
@@ -1759,14 +1761,14 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
         </div>
 
         {choice && (
-          <div className="mt-8 animate-fade-up border-t border-foreground/30 pt-6">
-            <p className="font-display text-2xl font-semibold leading-tight tracking-[-0.035em]">
+          <div className="landing-result animate-fade-in border-t border-foreground/30">
+            <p className="font-display text-xl font-semibold leading-tight tracking-[-0.035em]">
               Toto nebola náhodná otázka.
             </p>
-            <p className="mt-2 text-sm leading-relaxed text-foreground/60">
+            <p className="mt-1 text-sm leading-snug text-foreground/60">
               Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
             </p>
-            <div className="mt-6">
+            <div className="landing-sign-in">
               <GoogleSignInButton onSuccess={onGoogle} />
             </div>
           </div>
