@@ -1,18 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Settings as SettingsIcon,
-  ShieldAlert,
-  ShieldCheck,
-  Shield,
-  Key,
   LogOut,
   Trash2,
   Camera,
   Mic,
   Compass,
-  AlertTriangle,
   Snowflake,
-  Loader2,
   Bell,
   Sun,
   Moon,
@@ -277,70 +270,57 @@ export function SystemConfig({
   }
 
   return (
-    <div className="personal-screen animate-fade-up pb-28">
-      <header className="mb-7 pt-2">
-        <p className="personal-eyebrow">Tvoje miesto v Antidote</p>
-        <h1 className="mt-2 font-display text-4xl font-bold tracking-[-0.045em]">Nastavenia</h1>
-        <p className="mt-2 text-base leading-relaxed text-foreground/65">Prispôsob si aplikáciu tak, aby ti vyhovovala.</p>
+    <div className="personal-screen">
+      <header className="personal-header">
+        <p className="personal-eyebrow">Antidote</p>
+        <h1 className="personal-title">Nastavenia</h1>
+        <p className="personal-intro">Vzhľad, súkromie a tvoj účet.</p>
       </header>
 
-      <section className="personal-card mb-4" aria-labelledby="appearance-title">
-        <div className="personal-section-heading">
-          <span className="personal-icon"><Sun className="size-5" /></span>
-          <div><h2 id="appearance-title">Vzhľad</h2><p>Vyber si, v akom svetle chceš Antidote používať.</p></div>
+      <section className="personal-section" aria-labelledby="preferences-title">
+        <h2 id="preferences-title" className="personal-heading mb-3">Prispôsobenie</h2>
+        <div className="personal-setting">
+          <span className="font-medium">Vzhľad</span>
+          <div className="personal-segments" role="group" aria-label="Vzhľad aplikácie">
+            {([
+              ["system", "Systém", Monitor],
+              ["light", "Svetlý", Sun],
+              ["dark", "Tmavý", Moon],
+            ] as const).map(([mode, label, Icon]) => (
+              <button key={mode} type="button" aria-pressed={theme === mode} onClick={() => { haptic("tap"); onTheme(mode); }} className="personal-segment">
+                <Icon className="hidden size-4 min-[380px]:block" aria-hidden="true" /><span>{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="personal-segments mt-5" role="group" aria-label="Vzhľad aplikácie">
-          {([
-            ["system", "Systém", Monitor],
-            ["light", "Svetlý", Sun],
-            ["dark", "Tmavý", Moon],
-          ] as const).map(([mode, label, Icon]) => (
-            <button key={mode} type="button" aria-pressed={theme === mode} onClick={() => { haptic("tap"); onTheme(mode); }} className="personal-segment">
-              <Icon className="size-5" aria-hidden="true" /><span>{label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="personal-card mb-4" aria-labelledby="haptics-title">
-        <div className="personal-section-heading">
-          <span className="personal-icon"><SettingsIcon className="size-5" /></span>
-          <div><h2 id="haptics-title">Odozva na dotyk</h2><p>Zvoľ si intenzitu haptickej odozvy.</p></div>
-        </div>
-        <div className="personal-segments mt-5" role="group" aria-label="Haptická odozva">
-          {([
-            ["STEALTH", "Vypnutá"], ["TACTILE", "Vyvážená"], ["MECHANICAL", "Výrazná"],
-          ] as const).map(([value, label]) => (
-            <button key={value} type="button" aria-pressed={hapticProfile === value} onClick={() => handleUpdateHapticProfile(value)} className="personal-segment">{label}</button>
-          ))}
+        <div className="personal-setting">
+          <span className="font-medium">Odozva na dotyk</span>
+          <div className="personal-segments" role="group" aria-label="Haptická odozva">
+            {([
+              ["STEALTH", "Vypnutá"], ["TACTILE", "Vyvážená"], ["MECHANICAL", "Výrazná"],
+            ] as const).map(([value, label]) => (
+              <button key={value} type="button" aria-pressed={hapticProfile === value} onClick={() => handleUpdateHapticProfile(value)} className="personal-segment">{label}</button>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="personal-card mb-4" aria-labelledby="permissions-title">
-        <div className="personal-section-heading mb-4">
-          <span className="personal-icon"><ShieldCheck className="size-5" /></span>
-          <div><h2 id="permissions-title">Súkromie a povolenia</h2><p>Prehľad prístupu k tvojmu zariadeniu.</p></div>
-        </div>
+      <section className="personal-section" aria-labelledby="permissions-title">
+        <h2 id="permissions-title" className="personal-heading mb-3">Súkromie a povolenia</h2>
         <div className="personal-row"><span><Mic className="size-5" /> Mikrofón</span><span className="personal-status">{micPermission === "granted" ? "Povolený" : "Nepovolený"}</span></div>
         <div className="personal-row"><span><Camera className="size-5" /> Kamera</span><span className="personal-status">{camPermission === "granted" ? "Povolená" : "Nepovolená"}</span></div>
-        <div className="personal-row"><span><Compass className="size-5" /> Poloha</span><span className="personal-status">{gpsCoords ? "Dostupná" : "Nezistená"}</span></div>
-        <button type="button" onClick={handleRefreshCoordinates} disabled={isGpsLoading} className="personal-action mt-4 w-full">
-          {isGpsLoading ? "Vyhľadávam polohu…" : "Aktualizovať polohu"}
+        <button type="button" onClick={handleRefreshCoordinates} disabled={isGpsLoading} className="personal-link">
+          <span><Compass className="size-5 shrink-0" />{isGpsLoading ? "Vyhľadávam polohu…" : "Aktualizovať polohu"}</span>
+          <span className="personal-status">{gpsCoords ? "Dostupná" : "Nezistená"}</span>
         </button>
+        <p className="personal-row justify-start py-3 text-foreground/75">
+          <Bell className="size-5 shrink-0" aria-hidden="true" />
+          <span>Upozornenia na neaktivitu a koniec hlasového chatu sú zapnuté.</span>
+        </p>
       </section>
 
-      <section className="personal-card mb-4" aria-labelledby="alerts-title">
-        <div className="personal-section-heading">
-          <span className="personal-icon"><Bell className="size-5" /></span>
-          <div><h2 id="alerts-title">Upozornenia</h2><p>Dôležité upozornenia na neaktivitu a časový limit v hlasovom chate zostávajú zapnuté.</p></div>
-        </div>
-      </section>
-
-      <section className="personal-card mb-4" aria-labelledby="documents-title">
-        <div className="personal-section-heading mb-3">
-          <span className="personal-icon"><Shield className="size-5" /></span>
-          <div><h2 id="documents-title">Informácie</h2><p>Všetko dôležité na jednom mieste.</p></div>
-        </div>
+      <section className="personal-section" aria-labelledby="documents-title">
+        <h2 id="documents-title" className="personal-heading mb-3">Informácie</h2>
         {([
           ["Podmienky používania", onOpenTerms], ["Ochrana súkromia", onOpenPrivacy], ["Cookies", onOpenCookies], ["Kontakt", onOpenContact],
         ] as const).map(([label, action]) => (
@@ -348,16 +328,13 @@ export function SystemConfig({
         ))}
       </section>
 
-      <section className="personal-card" aria-labelledby="account-title">
-        <div className="personal-section-heading mb-3">
-          <span className="personal-icon"><Key className="size-5" /></span>
-          <div><h2 id="account-title">Účet</h2><p>Spravuj viditeľnosť a svoj účet.</p></div>
-        </div>
-        {freezeMessage && <p role="status" className="mb-3 text-sm text-foreground/75">{freezeMessage}</p>}
+      <section className="personal-section" aria-labelledby="account-title">
+        <h2 id="account-title" className="personal-heading mb-3">Účet</h2>
+        {freezeMessage && <p role="status" className="mb-3 text-foreground/75">{freezeMessage}</p>}
         {showWipeConfirm ? (
           <div className="bg-red-500/10 p-4">
             <p className="font-semibold text-red-500">Naozaj chceš vymazať účet?</p>
-            <p className="mt-2 text-sm leading-relaxed text-foreground/75">Všetky informácie, výsledky testov a správy budú natrvalo vymazané. Táto akcia je nevratná.</p>
+            <p className="mt-2 leading-relaxed text-foreground/75">Všetky informácie, výsledky testov a správy budú natrvalo vymazané. Táto akcia je nevratná.</p>
             <div className="mt-4 flex gap-2"><button type="button" onClick={executeDataWipe} className="personal-action personal-danger flex-1">Vymazať účet</button><button type="button" onClick={() => { haptic("tap"); setShowWipeConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
           </div>
         ) : showLogoutConfirm ? (
@@ -367,7 +344,10 @@ export function SystemConfig({
           </div>
         ) : (
           <>
-            <button type="button" onClick={handleToggleFreeze} className="personal-link"><span><Snowflake className="size-5" />{isFrozen ? "Znovu zobraziť profil" : "Skryť profil"}</span><ChevronRight className="size-5" /></button>
+            <button type="button" onClick={handleToggleFreeze} aria-pressed={isFrozen} className="personal-link">
+              <span><Snowflake className="size-5" aria-hidden="true" />Skryť profil</span>
+              <span className="personal-status" aria-hidden="true">{isFrozen ? "Zapnuté" : "Vypnuté"}</span>
+            </button>
             <button type="button" onClick={() => { haptic("warning"); setShowLogoutConfirm(true); }} className="personal-link"><span><LogOut className="size-5" />Odhlásiť sa</span><ChevronRight className="size-5" /></button>
             <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="personal-link text-red-500"><span><Trash2 className="size-5" />Vymazať účet</span><ChevronRight className="size-5" /></button>
           </>
