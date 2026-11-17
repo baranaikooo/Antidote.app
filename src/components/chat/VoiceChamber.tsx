@@ -272,7 +272,7 @@ export function Chamber({
       return;
     }
     if (typeof MediaRecorder === "undefined") {
-      const msg = "Tvoj prehliadač nepodporuje MediaRecorder API.";
+      const msg = "V tomto prehliadači sa nedá nahrať hlasová správa.";
       console.warn("[voice]", msg);
       setMicError(msg);
       return;
@@ -377,7 +377,7 @@ export function Chamber({
 
           const blob = chunks.length ? new Blob(chunks, { type: rec.mimeType || mime }) : null;
           if (!blob || blob.size === 0) {
-            setMicError("Nepodarilo sa nahrať zvuk (prázdny súbor).");
+            setMicError("V nahrávke nie je zvuk. Skús ju nahrať znova.");
             resolve();
             return;
           }
@@ -556,10 +556,6 @@ export function Chamber({
                 style={{ filter: `blur(${blurPx}px)` }}
               />
             )}
-            <div className="absolute top-0.5 left-0.5 flex items-center gap-0.5 bg-black/75 px-1 py-0.5 border border-white/5">
-              <span className="size-1 animate-pulse rounded-full bg-cerebral" />
-              <span className="font-mono text-xs tracking-tighter text-cerebral">LIVE</span>
-            </div>
           </div>
           {myVideoUrl && (
             <div className="relative size-14 shrink-0 overflow-hidden border border-foreground/20 rounded-none bg-black">
@@ -575,10 +571,6 @@ export function Chamber({
               <span className="absolute bottom-0.5 right-0.5 bg-background/60 px-1 font-mono text-xs tracking-widest text-foreground/70 uppercase">
                 TY
               </span>
-              <div className="absolute top-0.5 left-0.5 flex items-center gap-0.5 bg-black/75 px-1 py-0.5 border border-white/5">
-                <span className="size-1 animate-pulse rounded-full bg-cerebral" />
-                <span className="font-mono text-xs tracking-tighter text-cerebral">LIVE</span>
-              </div>
             </div>
           )}
           <div className="ml-auto flex h-14 flex-1 items-center gap-1 overflow-hidden">
@@ -681,7 +673,7 @@ export function Chamber({
 
       {!supabaseMatchId && (
         <div role="status" className="mb-3 border border-foreground/25 px-4 py-3 text-sm text-foreground/80">
-          {connectionError ? "Nepodarilo sa pripojiť rozhovor." : "Pripájame rozhovor…"}
+          {connectionError ? "K rozhovoru sa nepodarilo pripojiť." : "Pripájame rozhovor…"}
           {connectionError && <button type="button" className="ml-2 underline" onClick={() => {
             setConnectionError(false);
             setConnectionAttempt((attempt) => attempt + 1);
@@ -828,7 +820,7 @@ export function Chamber({
               }
             } catch (err) {
               console.error("[Chamber] Vote submission failed:", err);
-              alert("Odoslanie voľby zlyhalo. Skúste znova.");
+              alert("Voľbu sa nepodarilo odoslať. Skús znova.");
               setStage("blindVote");
             }
           }}
@@ -869,11 +861,11 @@ export function Chamber({
               Obaja chcete pokračovať.
             </h3>
             <p className="mt-2 text-sm text-foreground/65">
-              Obraz sa vyostruje a otvára sa váš spoločný priestor bez časového limitu.
+              Videá sa odhalia a rozhovor môže pokračovať bez časového limitu.
             </p>
 
             <div className="my-6 flex items-center gap-4 border-y border-foreground/20 py-5">
-              <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-2 border-foreground bg-black">
+              <div className="relative size-16 shrink-0 overflow-hidden border border-foreground bg-black">
                 {match.videoUrls && match.videoUrls.length > 0 ? (
                   <video
                     src={match.videoUrls[0]}
@@ -943,11 +935,8 @@ export function Chamber({
             </h3>
             <p className="mt-3 text-sm leading-relaxed text-foreground/70">
               {myChoice === "cancel"
-                ? "Rozhodol/a si sa nepokračovať. Spojenie sme pokojne uzavreli."
+                ? "Rozhodol/a si sa nepokračovať."
                 : `${match.name} sa tentoraz rozhodol/a nepokračovať.`}
-            </p>
-            <p className="mt-2 text-xs text-foreground/45">
-              Niekedy stačia tri minúty na to, aby ste mali obaja jasno — bez ghostingu.
             </p>
             <button
               type="button"

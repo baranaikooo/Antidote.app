@@ -23,7 +23,7 @@ export function BlindVote({ onVote, matchName }: BlindVoteProps) {
           {matchName ? `Chcete sa s ${matchName} spoznať ďalej?` : "Chcete sa spoznať ďalej?"}
         </h3>
         <p className="mt-3 text-sm leading-relaxed text-foreground/65">
-          Každý z vás sa teraz rozhodne samostatne, bez toho aby videl voľbu druhého.
+          Voľbu druhého pri rozhodovaní neuvidíš.
         </p>
 
         <div className="my-6 space-y-3 border-y border-foreground/20 py-5 text-sm">
@@ -32,9 +32,7 @@ export function BlindVote({ onVote, matchName }: BlindVoteProps) {
               1
             </span>
             <p className="leading-relaxed text-foreground/80">
-              Ak sa pre pokračovanie rozhodnete{" "}
-              <strong className="font-semibold text-foreground">obaja</strong>, odomkne sa čisté
-              video aj otvorená konverzácia.
+              Ak chcete pokračovať <strong className="font-semibold text-foreground">obaja</strong>, uvidíte videá bez rozmazania a môžete si písať.
             </p>
           </div>
           <div className="flex items-start gap-3">
@@ -42,8 +40,7 @@ export function BlindVote({ onVote, matchName }: BlindVoteProps) {
               2
             </span>
             <p className="leading-relaxed text-foreground/65">
-              Ak sa čo i len jeden rozhodne skončiť, rozhovor sa pokojne uzavrie a nezostane po ňom
-              história.
+              Ak jeden z vás nebude chcieť pokračovať, rozhovor sa ukončí a história sa neuloží.
             </p>
           </div>
         </div>

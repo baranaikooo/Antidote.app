@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Camera, Upload, Eye, EyeOff, Loader2, Film, ChevronDown } from "lucide-react";
+import { Eye, EyeOff, Loader2, ChevronDown } from "lucide-react";
+import { SnippetRows } from "@/components/SnippetRows";
 import { UserProfile } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
 import { openCamera, recordStreamForMs, stopStream, attachStreamToVideo } from "@/lib/media";
@@ -141,7 +142,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
       setCameraStream(stream);
     } catch (err) {
       console.error("[dossier] openCamera failed:", err);
-      alert("Nepodarilo sa spustiť kameru. Skontrolujte povolenia.");
+      alert("Kamera sa nespustila. Skontroluj, či má Antidote prístup ku kamere.");
       cancelRecording();
       return;
     }
@@ -206,7 +207,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
     if (signError || !signedData?.signedUrl) {
       console.error("[dossier] signed url error:", signError);
-      alert("Chyba: Nepodarilo sa vytvoriť autorizovaný odkaz pre video.");
+      alert("Video je uložené, ale náhľad sa nepodarilo načítať.");
       throw signError || new Error("Signed URL failed");
     }
 
@@ -224,7 +225,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
     if (dbError) {
       console.error("[dossier] database save error:", dbError);
-      alert(`Nepodarilo sa uložiť informácie o videu do databázy.`);
+      alert(`Video sa nepodarilo pridať do profilu.`);
       throw dbError;
     }
 
@@ -255,7 +256,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
       haptic("success");
     } catch (err) {
       console.error("[dossier] recordStreamForMs failed:", err);
-      alert("Nahrávanie alebo nahratie na úložisko zlyhalo.");
+      alert("Video sa nepodarilo nahrať alebo uložiť.");
     } finally {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -414,7 +415,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
     if (!file) return;
 
     if (!file.type.startsWith("video/")) {
-      alert("Vyberte validný video súbor.");
+      alert("Vyber súbor s videom.");
       setActiveUploadIndex(null);
       return;
     }
@@ -467,7 +468,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
       if (error) {
         console.error("[dossier] failed to delete snippet from database:", error);
-        alert("Chyba: Nepodarilo sa odstrániť video z databázy.");
+        alert("Video sa nepodarilo odstrániť z profilu.");
         return;
       }
     }
@@ -526,52 +527,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
             </button>
           </div>
           <p className="personal-status mb-3">Tri sekundy z tvojho sveta.</p>
-          <ul className="grid gap-x-5 sm:grid-cols-2">
-            {Array.from({ length: 4 }, (_, idx) => {
-              const url = snippets[idx];
-              return (
-                <li key={idx} className="personal-row py-2">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="personal-thumbnail" aria-hidden="true">
-                      {url ? (
-                        <video
-                          src={url}
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          onTimeUpdate={(e) => {
-                            if (e.currentTarget.currentTime >= 3) e.currentTarget.currentTime = 0;
-                          }}
-                          className={`size-full bg-black object-cover -scale-x-100 ${isPreviewBlurred ? "blur-[10px]" : ""}`}
-                        />
-                      ) : <Film className="size-5" />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold">Video {idx + 1}</p>
-                      <p className="personal-status">{url ? "Pridané" : "Prázdne"}</p>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center">
-                    {url ? (
-                      <button type="button" onClick={() => deleteSnippet(idx)} aria-label={`Odstrániť video ${idx + 1}`} className="personal-icon-button">
-                        <X className="size-5" />
-                      </button>
-                    ) : (
-                      <>
-                        <button type="button" onClick={() => startRecording(idx)} aria-label={`Nahrať video ${idx + 1} kamerou`} className="personal-icon-button">
-                          <Camera className="size-5" />
-                        </button>
-                        <button type="button" onClick={() => triggerFileUpload(idx)} aria-label={`Nahrať video ${idx + 1} z galérie`} className="personal-icon-button">
-                          <Upload className="size-5" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} blurred={isPreviewBlurred} />
           <input type="file" ref={fileInputRef} accept="video/*" className="hidden" onChange={handleFileChange} />
         </section>
 
@@ -705,7 +661,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
               <span className="text-foreground/70">Stav účtu</span>
               <span className="font-bold text-cerebral uppercase flex items-center gap-1.5">
                 <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-                KALIBROVANÉ
+                Profil je pripravený
               </span>
             </div>
           </div>
@@ -744,7 +700,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 px-2 py-0.5 border border-red-500">
                   <span className="size-1.5 rounded-full bg-red-500 animate-ping" />
                   <span className="font-sans text-xs text-white tracking-wide uppercase">
-                    ZÁZNAM (3s)
+                    Nahráva sa (3 s)
                   </span>
                 </div>
               )}

@@ -60,19 +60,20 @@ export function CookieConsent() {
     locked?: boolean;
     onChange?: (v: boolean) => void;
   }) => (
-    <div className="flex items-start gap-3 rounded-2xl border border-border/40 bg-background/30 p-3">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+    <div className="flex items-start gap-3 border-t border-foreground/15 py-2.5">
+      <div className="grid size-8 shrink-0 place-items-center bg-primary/10 text-primary">
         <Icon className="size-3.5" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[12px] font-semibold tracking-wide text-foreground">{title}</p>
+          <p className="text-sm font-semibold text-foreground">{title}</p>
           <button
             onClick={() => !locked && onChange?.(!checked)}
             disabled={locked}
             className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
               checked ? "bg-primary" : "bg-muted-foreground/30"
             } ${locked ? "opacity-60" : ""}`}
+            aria-label={title}
             aria-pressed={checked}
           >
             <span
@@ -89,25 +90,23 @@ export function CookieConsent() {
 
   return (
     <div className="fixed inset-x-3 bottom-3 z-[60] md:inset-x-auto md:right-4 md:bottom-4 md:max-w-md animate-fade-up">
-      <div className="overflow-hidden rounded-3xl border border-border/60 bg-background/85 shadow-glow backdrop-blur-xl">
-        <div className="flex items-start gap-3 p-5">
-          <div className="relative flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 text-primary">
+      <div className="editorial-dock max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
+        <div className="flex items-start gap-3 p-3.5 sm:p-4">
+          <div className="grid size-9 shrink-0 place-items-center bg-foreground/10 text-foreground">
             <Cookie className="size-4" />
-            <span className="absolute -top-1 -right-1 size-2 rounded-full bg-primary animate-pulse" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-sans text-sm font-bold tracking-wide text-foreground uppercase">
-              Tvoje súkromie, tvoja voľba
+            <h3 className="font-display text-lg font-bold leading-tight">
+              Nastavenia cookies
             </h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Používame cookies, aby Antidote fungoval hladko. Voliteľné nám pomáhajú zlepšovať
-              zážitok.
+              Nevyhnutné cookies potrebujeme na fungovanie aplikácie. Analytiku a personalizáciu môžeš povoliť alebo odmietnuť.
             </p>
           </div>
         </div>
 
         {expanded && (
-          <div className="space-y-2 px-5 pb-1">
+          <div className="px-3.5 sm:px-4">
             <Row
               icon={Shield}
               title="Nevyhnutné"
@@ -125,35 +124,35 @@ export function CookieConsent() {
             <Row
               icon={Sparkles}
               title="Personalizácia"
-              desc="Lepšie odporúčania rezonancií podľa tvojich odpovedí."
+              desc="Odporúčania spojení podľa tvojich odpovedí."
               checked={prefs.personalization}
               onChange={(v) => setPrefs({ ...prefs, personalization: v })}
             />
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2 px-5 pb-4 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 pb-3.5 sm:px-4">
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="inline-flex items-center gap-1 text-xs font-medium tracking-wide text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground"
           >
             {expanded ? "Skryť detaily" : "Prispôsobiť"}
             <ChevronDown
               className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`}
             />
           </button>
-          <div className="flex flex-1 justify-end gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => (expanded ? save("custom", prefs) : save("rejected"))}
-              className="border border-border/60 bg-background/40 px-3 py-2 text-xs font-mono font-medium tracking-[0.14em] text-foreground/80 hover:bg-background/60"
+              className="personal-action px-2.5 text-sm"
             >
-              {expanded ? "ULOŽIŤ" : "ODMIETNUŤ"}
+              {expanded ? "Uložiť" : "Odmietnuť"}
             </button>
             <button
               onClick={() => save("accepted")}
-              className="cta-gradient cta-gradient-hover px-4 py-2 text-xs font-mono font-semibold tracking-[0.14em]"
+              className="min-h-11 bg-foreground px-2.5 text-sm font-semibold text-background"
             >
-              <span className="relative z-10">PRIJAŤ VŠETKO</span>
+              <span className="relative z-10">Prijať všetko</span>
             </button>
           </div>
         </div>

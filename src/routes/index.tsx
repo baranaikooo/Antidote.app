@@ -176,7 +176,7 @@ function AppSplash() {
         <span className="size-4 rounded-full bg-foreground/40 animate-ping" />
       </div>
       <p className="mt-6 font-mono text-xs tracking-[0.32em] text-foreground/45 uppercase">
-        ANTIDOTE // SYSTÉM SA INICIALIZUJE
+        Načítavam Antidote…
       </p>
     </div>
   );
@@ -1362,7 +1362,7 @@ function AntidoteApp() {
             } catch (err: any) {
               console.error("[UPLOAD_FAILED]: CONNECTION_SEVERED", err);
               alert(
-                `[ UPLOAD_FAILED ]: CONNECTION_SEVERED\n\nDetail: ${err?.message || JSON.stringify(err)}\n\nOdoslanie zlyhalo. Skús znova.`,
+                `Výsledky sa nepodarilo uložiť. Skús znova.`,
               );
             }
           }}
@@ -1640,7 +1640,7 @@ function BottomNav({
         <Item
           id="home"
           icon={<Home className="size-5" />}
-          label={testDone ? "Matche" : "Domov"}
+          label={testDone ? "Spojenia" : "Domov"}
           onClick={onHome}
         />
         <Item
@@ -1763,10 +1763,10 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
         {choice && (
           <div className="landing-result animate-fade-in border-t border-foreground/30">
             <p className="font-display text-xl font-semibold leading-tight tracking-[-0.035em]">
-              Toto nebola náhodná otázka.
+              Ako tvoríme spojenia
             </p>
             <p className="mt-1 text-sm leading-snug text-foreground/60">
-              Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
+              Pri párovaní vychádzame z tvojich odpovedí na otázky o vzťahoch a hodnotách.
             </p>
             <div className="landing-sign-in">
               <GoogleSignInButton onSuccess={onGoogle} />
@@ -2098,15 +2098,15 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
 
                 {/* Active Step Indicator Overlay */}
                 <div className="absolute inset-x-1 bottom-1.5 bg-black/85 border border-foreground/15 px-1.5 py-1 text-center text-xs font-mono leading-tight">
-                  <div className="font-bold text-foreground mb-0.5 tracking-wider uppercase">
-                    [ BIOMETRICKÝ SKEN ]
+                  <div className="mb-0.5 font-semibold text-white">
+                    Pohyb hlavy
                   </div>
-                  <div className="flex flex-col gap-0 text-left text-foreground/75 uppercase font-mono">
+                  <div className="flex flex-col gap-0.5 text-left text-white">
                     <div
                       className={
                         challengeStep === "center"
                           ? "text-green-400 font-bold"
-                          : "text-foreground/45"
+                          : "text-white/75"
                       }
                     >
                       {challengeStep === "center" ? "● " : "○ "}1. Pozri do kamery
@@ -2115,7 +2115,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
                       className={
                         challengeStep === "turn_right"
                           ? "text-green-400 font-bold"
-                          : "text-foreground/45"
+                          : "text-white/75"
                       }
                     >
                       {challengeStep === "turn_right" ? "● " : "○ "}2. Otoč hlavu doprava
@@ -2124,7 +2124,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
                       className={
                         challengeStep === "turn_left"
                           ? "text-green-400 font-bold"
-                          : "text-foreground/45"
+                          : "text-white/75"
                       }
                     >
                       {challengeStep === "turn_left" ? "● " : "○ "}3. Otoč hlavu doľava
@@ -2139,7 +2139,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
                   <div className="flex flex-col items-center gap-3">
                     <div className="size-5 animate-spin border border-foreground border-t-transparent" />
                     <span className="text-xs tracking-wider text-foreground/80 font-mono uppercase">
-                      ANALYZÁTOR...
+                      Pripravujem overenie…
                     </span>
                   </div>
                 ) : (
@@ -2166,27 +2166,26 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
             )}
             {phase === "recording" && challengeStep === "done" && (
               <div className="absolute inset-x-0 top-3 mx-auto w-fit bg-red-600 px-2 py-0.5 font-mono text-xs tracking-widest text-white uppercase font-bold">
-                ● REC
+                Nahráva sa
               </div>
             )}
             {phase === "verifying" && (
               <div className="absolute inset-0 bg-foreground/10 pointer-events-none grid place-items-center">
                 <span className="text-xs font-mono tracking-widest text-foreground animate-pulse font-bold">
-                  OVERUJEM...
+                  Overujem…
                 </span>
               </div>
             )}
           </div>
         </div>
 
-        <p className="font-mono text-xs tracking-widest text-foreground/50 uppercase mb-3">
-          {phase === "idle" && "[ NEAKTÍVNY ]"}
-          {phase === "countdown" && "[ PRIPRAV SA ]"}
+        <p role="status" className="mb-3 text-base text-muted-foreground">
+          {phase === "countdown" && "Priprav sa"}
           {phase === "recording" &&
-            `[ ${challengeStep === "center" ? "KROK 1: CENTROVANIE" : challengeStep === "turn_right" ? "KROK 2: OTOČENIE VPRAVO" : "KROK 3: OTOČENIE VĽAVO"} ]`}
-          {phase === "verifying" && "[ VERIFIKÁCIA ]"}
-          {phase === "ready" && "[ PRIPRAVENÝ ]"}
-          {phase === "error" && "[ CHYBA OVERENIA ]"}
+            (challengeStep === "done" ? "Nahrávam video…" : "Postupuj podľa pokynov pri kamere.")}
+          {phase === "verifying" && "Overujem video…"}
+          {phase === "ready" && "Video je pripravené"}
+          {phase === "error" && "Overenie sa nepodarilo"}
         </p>
 
         {phase === "error" && <p className="text-xs text-red-500 mb-4 leading-relaxed">{errMsg}</p>}
@@ -2202,7 +2201,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
               className="w-full bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 disabled:opacity-20 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Camera className="size-4" />
-              {modelLoading ? "ČAKAJTE..." : phase === "error" ? "SKÚSIŤ ZNOVU" : "SPUSTIŤ TEST"}
+              {modelLoading ? "Pripravujem overenie…" : phase === "error" ? "Skúsiť znova" : "Spustiť overenie"}
             </button>
           )}
           {phase === "ready" && (
@@ -2248,7 +2247,7 @@ function Briefing({ onBegin }: { onBegin: () => void }) {
           onClick={onBegin}
           className="tactile-button mt-8 flex min-h-20 w-full items-center justify-between bg-foreground p-5 text-left text-background"
         >
-          <span className="font-display text-xl font-bold">Začať otázky</span>
+          <span className="font-display text-xl font-bold">Začať</span>
           <ChevronRight className="size-5" aria-hidden="true" />
         </button>
         </div>
@@ -2263,7 +2262,6 @@ interface MatchCardProps {
   similarityPct: number;
   extLabel: string;
   attachmentLabel: string;
-  isSecureMatch: boolean;
   initiatedMatchIds?: Set<string>;
   onSelectMatch: (id: string) => void;
 }
@@ -2274,7 +2272,6 @@ function MatchCard({
   similarityPct,
   extLabel,
   attachmentLabel,
-  isSecureMatch,
   initiatedMatchIds,
   onSelectMatch,
 }: MatchCardProps) {
@@ -2283,10 +2280,10 @@ function MatchCard({
     profile.topPriority && match.top_priority && profile.topPriority === match.top_priority;
 
   return (
-    <article className="editorial-panel relative overflow-hidden p-5 sm:p-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <article className="editorial-panel relative overflow-hidden p-4 sm:p-5">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-cerebral">Možné spojenie</p>
+          <p className="personal-eyebrow">Možné spojenie</p>
           <h3 className="mt-2 font-display text-[clamp(2rem,8vw,3rem)] font-extrabold leading-none tracking-[-0.055em]">
             {match.name}
             <span className="ml-2 text-base font-medium text-foreground/50">{match.age}</span>
@@ -2296,7 +2293,7 @@ function MatchCard({
             {match.distanceKm !== undefined && ` · ${Math.round(match.distanceKm)} km`}
           </p>
         </div>
-        <div className="relative size-20 shrink-0 overflow-hidden rounded-full border-2 border-foreground bg-black">
+        <div className="relative size-16 shrink-0 overflow-hidden border border-foreground bg-black">
           {match.videoUrls && match.videoUrls.length > 0 ? (
             <video
               src={match.videoUrls[0]}
@@ -2317,7 +2314,7 @@ function MatchCard({
         </div>
       </div>
 
-      <div className="border-y border-foreground/25 py-5">
+      <div className="border-t border-foreground/25 pt-3">
         <p className="font-display text-xl font-semibold leading-snug tracking-[-0.03em]">
           {sharedPriority
             ? `Obaja dávate na prvé miesto hodnotu „${profile.topPriority}“.`
@@ -2326,10 +2323,10 @@ function MatchCard({
         <p className="mt-2 text-sm leading-relaxed text-foreground/60">{match.bio}</p>
       </div>
 
-      <div className="my-5 grid grid-cols-2 divide-x divide-foreground/25 border-y border-foreground/25">
-        <div className="py-4 pr-4">
+      <div className="my-3 grid grid-cols-2 divide-x divide-foreground/25 border-y border-foreground/25">
+        <div className="py-3 pr-3">
           <p className="text-xs font-medium text-foreground/65">Podobnosť odpovedí</p>
-          <p className="mt-2 font-display text-lg font-bold">{similarityPct}% podobnosť</p>
+          <p className="mt-2 font-display text-lg font-bold">{similarityPct} %</p>
           <div className="mt-3 flex gap-1">
             {Array.from({ length: 5 }).map((_, index) => (
               <span
@@ -2339,11 +2336,11 @@ function MatchCard({
             ))}
           </div>
         </div>
-        <div className="py-4 pl-4">
+        <div className="py-3 pl-3">
           <p className="text-xs font-medium text-foreground/65">Povaha spojenia</p>
           <p className="mt-2 text-sm font-semibold leading-snug">{extLabel}</p>
           <p className="mt-1 text-xs text-foreground/50">
-            {isSecureMatch ? "Pokojný základ" : attachmentLabel}
+            {attachmentLabel}
           </p>
         </div>
       </div>
@@ -2391,89 +2388,50 @@ function Dashboard({
   const availableMatches = matches.slice(0, 3); // limit to 3 curated daily matches
 
   return (
-    <div className="mx-auto w-full max-w-md px-1 py-6 animate-fade-up relative">
-      {/* Top Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <Logo />
-        <div className="flex items-center gap-1.5 font-mono text-xs tracking-widest text-foreground/45">
-          <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-          <span>DNES</span>
-        </div>
-      </div>
+    <div className="personal-screen">
+      <header className="personal-header">
+        <p className="personal-eyebrow">Odporúčania</p>
+        <h1 className="personal-title">Dnešné spojenia</h1>
+        <p className="personal-intro">Denne ti odporučíme najviac tri profily. Pri každom uvidíš, v čom sa zhodujete a v čom sa líšite.</p>
+      </header>
 
       {profile.redemptionQuota && profile.redemptionQuota > 0 ? (
-        <div className="mb-6 border border-red-500/30 bg-red-500/5 p-5 relative overflow-hidden animate-fade-in">
-          <div className="flex items-center gap-2 mb-2 text-red-500 font-mono font-bold text-xs tracking-widest uppercase">
-            <AlertTriangle className="size-4 animate-pulse" />
-            <span>Máte aktívnu penalizáciu za predčasný odchod</span>
+        <div className="mt-3 border-l-2 border-destructive bg-destructive/5 px-3 py-2">
+          <div className="mb-1 flex items-center gap-2 font-semibold text-destructive">
+            <AlertTriangle className="size-4 shrink-0" />
+            <span>Dočasne nižšie skóre dôvery</span>
           </div>
-          <p className="text-xs text-foreground/80 leading-relaxed font-mono">
-            Uff, to bolo rýchle. V reálnom živote tlačidlo na reštart konfliktu nie je. Systém
-            zaznamenal váš útek a dočasne vám znížil skóre dôveryhodnosti. Môžete si ho však
-            odpracovať späť – stačí, ak zvládnete ďalšie interakcie bez toho, aby ste ušli.
+          <p className="text-sm leading-relaxed text-foreground/80">
+            Skóre kleslo po predčasnom odchode z rozhovoru. Obnoví sa, keď dokončíš potrebný počet rozhovorov.
           </p>
-          <div className="mt-3 flex items-center justify-between text-xs tracking-widest text-red-500/80 uppercase font-mono border-t border-red-500/10 pt-3">
-            <span>Zostávajúce čestné interakcie:</span>
-            <span className="font-bold bg-red-500/20 px-2 py-0.5 text-red-400">
+          <div className="mt-2 flex items-center justify-between border-t border-destructive/20 pt-2 font-medium">
+            <span>Zostáva dokončiť:</span>
+            <span className="font-bold text-destructive">
               {profile.redemptionQuota} / 3
             </span>
           </div>
         </div>
       ) : null}
 
-      {/* Sort options */}
-      <div className="mb-6 flex justify-between items-center border border-foreground/10 bg-card p-3 rounded-none font-mono text-xs tracking-widest text-muted-foreground uppercase">
-        <span>Zoradiť podľa:</span>
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              haptic("tap");
-              onSortChange("ev");
-            }}
-            className={`px-2 py-1 border transition-all rounded-none font-bold ${
-              sortBy === "ev"
-                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
-                : "border-foreground/15 text-foreground hover:border-cerebral/40 hover:text-cerebral"
-            }`}
-          >
-            ZHODA
-          </button>
-          <button
-            onClick={() => {
-              haptic("tap");
-              onSortChange("distance");
-            }}
-            className={`px-2 py-1 border transition-all rounded-none font-bold ${
-              sortBy === "distance"
-                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
-                : "border-foreground/15 text-foreground hover:border-cerebral/40 hover:text-cerebral"
-            }`}
-          >
-            VZDIALENOSŤ
-          </button>
+      <div className="personal-setting my-3">
+        <span className="font-medium">Zoradiť podľa</span>
+        <div className="personal-segments" role="group" aria-label="Zoradiť podľa">
+          {([{ value: "ev", label: "Zhody" }, { value: "distance", label: "Vzdialenosti" }] as const).map(({ value, label }) => (
+            <button key={value} type="button" aria-pressed={sortBy === value} className="personal-segment" onClick={() => { haptic("tap"); onSortChange(value); }}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="space-y-2 mb-8">
-        <p className="editorial-kicker text-cerebral">Tvoje dnešné spojenia</p>
-        <h2 className="font-display text-4xl font-extrabold tracking-[-0.06em] text-foreground leading-[0.95]">
-          Menej ľudí. Viac dôvodov začať hovoriť.
-        </h2>
-        <p className="text-sm text-foreground/55 leading-relaxed">
-          Tri kurátorované spojenia denne. Pri každom uvidíš, čo vás spája a kde sa oplatí
-          nesúhlasiť.
-        </p>
-      </div>
-
       {availableMatches.length === 0 ? (
-        <div className="border border-foreground/10 bg-card p-10 text-center space-y-4">
-          <Brain className="mx-auto size-12 text-foreground/30 animate-pulse" />
-          <h4 className="text-base font-semibold text-foreground/90 uppercase">
-            Žiadne nové matches
-          </h4>
-          <p className="text-xs text-foreground/50 leading-relaxed font-mono">
-            Momentálne sme pre teba nenašli ďalšie profily spĺňajúce prísne kognitívne kritériá.
-            Skús to neskôr alebo zmeň nastavenia okruhu.
+        <div className="personal-section space-y-2">
+          <Brain className="size-6 text-muted-foreground" />
+          <h2 className="personal-heading">
+            Žiadne nové spojenia
+          </h2>
+          <p className="leading-relaxed text-muted-foreground">
+            Skús to neskôr alebo v profile zväčši vzdialenosť vyhľadávania.
           </p>
         </div>
       ) : (
@@ -2506,7 +2464,6 @@ function Dashboard({
                 similarityPct={similarityPct}
                 extLabel={extLabel}
                 attachmentLabel={attachmentLabel}
-                isSecureMatch={isSecureMatch}
                 initiatedMatchIds={initiatedMatchIds}
                 onSelectMatch={onSelectMatch}
               />
@@ -2685,11 +2642,11 @@ function Processing({
     <div className="flex min-h-[72vh] flex-col justify-center px-1 sm:min-h-[80vh]">
       <p className="editorial-kicker text-cerebral">Tvoj profil je hotový</p>
       <h2 className="mt-4 max-w-lg font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.065em] sm:text-6xl">
-        Nie si skóre. Si spôsob, akým sa rozhoduješ.
+        Tvoj štýl rozhovoru
       </h2>
       <div className="mt-10 border-y border-foreground/30 py-5">
         <div className="flex items-center justify-between gap-4">
-          <span className="text-sm text-foreground/55">Tvoj konverzačný archetyp</span>
+          <span className="text-sm text-foreground/55">Výsledok</span>
           <span className="font-display text-xl font-bold text-right">{archetype.label}</span>
         </div>
       </div>
@@ -2703,7 +2660,7 @@ function Processing({
         ))}
       </div>
       <p className="mt-4 text-sm text-foreground/50">
-        Vyberáme ľudí, s ktorými má zmysel začať rozhovor.
+        Hľadáme spojenia podľa tvojich odpovedí.
       </p>
     </div>
   );
@@ -2819,23 +2776,15 @@ function ProfileForm({
   const isAgeValid = age !== null && age >= 18 && age <= 99;
   const isAlignmentValid = !!gender && !!targetMarket;
 
-  const progressMap = {
-    SYSTEM_IDENTIFICATION: { bar: "■□□□", percent: "25%" },
-    TEMPORAL_MATRIX: { bar: "■■□□", percent: "50%" },
-    AGE_VERIFICATION: { bar: "■■■□", percent: "75%" },
-    MARKET_ALIGNMENT: { bar: "■■■■", percent: "100%" },
-  };
+  const stepNumber = { SYSTEM_IDENTIFICATION: 1, TEMPORAL_MATRIX: 2, AGE_VERIFICATION: 3, MARKET_ALIGNMENT: 4 }[step];
 
   return (
     <div
-      className={`relative flex min-h-[88vh] flex-col items-center justify-center px-4 text-center transition-colors duration-100 ${
-        errorFlash ? "bg-red-950/40 border-2 border-red-500" : ""
+      className={`personal-screen transition-colors duration-100 ${
+        errorFlash ? "bg-red-500/5" : ""
       }`}
     >
-      {/* ASCII Progress Indicator */}
-      <div className="absolute top-4 right-4 font-mono text-xs tracking-widest text-foreground/45">
-        STEP: [{progressMap[step].bar}] {progressMap[step].percent}
-      </div>
+      <p className="personal-eyebrow mb-3" role="status">Krok {stepNumber} zo 4</p>
 
       {step === "SYSTEM_IDENTIFICATION" && (
         <form
@@ -2847,47 +2796,44 @@ function ProfileForm({
               setStep("TEMPORAL_MATRIX");
               setErrorMessage("");
             } else {
-              triggerError("ERROR: INVALID_DATA - Meno je príliš krátke");
+              triggerError("Meno alebo prezývka musí mať aspoň 2 znaky.");
             }
           }}
-          className="animate-kinetic-fade w-full max-w-md border border-foreground/20 bg-card p-6 md:p-8 text-center flex flex-col items-stretch"
+          className="w-full border-t-2 border-foreground pt-4"
         >
-          <div className="mb-5 flex justify-center">
-            <div className="border-2 border-foreground p-3 mb-2 uppercase text-sm font-bold tracking-widest font-mono">
-              PREDSTAV SA
-            </div>
-          </div>
-          <p className="mb-5 font-mono text-xs text-foreground/60 uppercase tracking-wider leading-relaxed">
+          <h1 className="personal-title">Predstav sa</h1>
+          <p className="personal-intro mb-5">
             Napíš svoje meno alebo prezývku, pod ktorou ťa v aplikácii uvidia ostatní.
           </p>
 
           <div className="text-left space-y-2">
-            <label className="mb-2 block text-sm font-bold uppercase tracking-widest text-foreground/75 font-mono">
-              MENO
+            <label htmlFor="profile-name" className="mb-2 block font-semibold">
+              Meno
             </label>
             <input
+              id="profile-name"
               ref={nameInputRef}
               value={name}
               onChange={(e) => {
                 setName(e.target.value.toUpperCase().slice(0, 30));
                 if (errorMessage) setErrorMessage("");
               }}
-              placeholder="MENO / PREZÝVKA"
-              className="w-full border-2 border-foreground bg-foreground/5 p-3 text-base text-foreground outline-none focus:bg-foreground/10 font-mono uppercase"
+              placeholder="Meno alebo prezývka"
+              className="w-full border border-foreground/30 bg-card p-3 text-base text-foreground focus:bg-foreground/5"
             />
           </div>
 
           {errorMessage && (
-            <div className="mt-4 border-2 border-red-500 bg-red-500/10 p-3 text-center font-mono text-sm text-red-500 font-bold uppercase tracking-wider animate-pulse">
+            <div role="alert" className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive">
               {errorMessage}
             </div>
           )}
 
           <button
             type="submit"
-            className="mt-6 w-full bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 transition-all cursor-pointer"
+            className="mt-6 w-full bg-foreground py-3.5 font-semibold text-background hover:bg-foreground/90"
           >
-            POKRAČOVAŤ
+            Pokračovať
           </button>
         </form>
       )}
@@ -2902,35 +2848,32 @@ function ProfileForm({
               setStep("AGE_VERIFICATION");
               setErrorMessage("");
             } else {
-              triggerError("ERROR: INVALID_DATA - Dátum je povinný");
+              triggerError("Zadaj dátum narodenia.");
             }
           }}
-          className="animate-kinetic-fade w-full max-w-md border border-foreground/20 bg-card p-6 md:p-8 text-center flex flex-col items-stretch"
+          className="w-full border-t-2 border-foreground pt-4"
         >
-          <div className="mb-5 flex justify-center">
-            <div className="border-2 border-foreground p-3 mb-2 uppercase text-sm font-bold tracking-widest font-mono">
-              KEDY MÁŠ NARODENINY?
-            </div>
-          </div>
-          <p className="mb-5 font-mono text-xs text-foreground/60 uppercase tracking-wider leading-relaxed">
+          <h1 className="personal-title">Kedy máš narodeniny?</h1>
+          <p className="personal-intro mb-5">
             Potrebujeme vedieť tvoj dátum narodenia, aby sme ti mohli zobraziť ľudí v správnom veku.
           </p>
 
           <div className="text-left space-y-2">
-            <label className="mb-2 block text-sm font-bold uppercase tracking-widest text-foreground/75 font-mono">
+            <label htmlFor="profile-birth-date" className="mb-2 block font-semibold">
               Dátum narodenia (DD / MM / RRRR)
             </label>
             <input
+              id="profile-birth-date"
               ref={dateInputRef}
               type="date"
               value={birthDate}
               onChange={(e) => handleBirthDateChange(e.target.value)}
-              className="w-full border-2 border-foreground bg-foreground/5 p-3 text-base text-foreground outline-none focus:bg-foreground/10 font-mono uppercase"
+              className="w-full border border-foreground/30 bg-card p-3 text-base text-foreground focus:bg-foreground/5"
             />
           </div>
 
           {errorMessage && (
-            <div className="mt-4 border-2 border-red-500 bg-red-500/10 p-3 text-center font-mono text-sm text-red-500 font-bold uppercase tracking-wider animate-pulse">
+            <div role="alert" className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive">
               {errorMessage}
             </div>
           )}
@@ -2943,15 +2886,15 @@ function ProfileForm({
                 setStep("SYSTEM_IDENTIFICATION");
                 setErrorMessage("");
               }}
-              className="w-1/3 border border-foreground/20 bg-card text-foreground font-mono font-bold py-4 hover:bg-foreground/5 transition-all cursor-pointer uppercase text-sm tracking-widest"
+              className="w-1/3 personal-action"
             >
-              SPÄŤ
+              Späť
             </button>
             <button
               type="submit"
-              className="w-2/3 bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 transition-all cursor-pointer"
+              className="w-2/3 bg-foreground py-3.5 font-semibold text-background hover:bg-foreground/90"
             >
-              ĎALEJ
+              Ďalej
             </button>
           </div>
         </form>
@@ -2967,33 +2910,24 @@ function ProfileForm({
               setStep("MARKET_ALIGNMENT");
               setErrorMessage("");
             } else {
-              triggerError("ERROR: INVALID_DATA - Nesplnené kritérium veku");
+              triggerError("Skontroluj dátum narodenia. Zadaný vek musí byť od 18 do 99 rokov.");
             }
           }}
-          className="animate-kinetic-fade w-full max-w-md border border-foreground/20 bg-card p-6 md:p-8 text-center flex flex-col items-stretch"
+          className="w-full border-t-2 border-foreground pt-4"
         >
-          <div className="mb-5 flex justify-center">
-            <div className="border-2 border-foreground p-3 mb-2 uppercase text-sm font-bold tracking-widest font-mono">
-              SKONTROLUJ SI VEK
-            </div>
-          </div>
-          <p className="mb-5 font-mono text-xs text-foreground/60 uppercase tracking-wider leading-relaxed">
+          <h1 className="personal-title">Skontroluj si vek</h1>
+          <p className="personal-intro mb-5">
             Podľa dátumu narodenia sme vypočítali tvoj vek. Sedí to?
           </p>
 
           <div className="text-left space-y-4">
-            <div className="border-2 border-foreground p-4 bg-foreground/5 font-mono text-center">
-              <p className="text-xs text-foreground/50 uppercase tracking-widest mb-1">
-                // TVOJ VEK
-              </p>
-              <div className="text-lg font-bold tracking-tight text-foreground uppercase">
-                TVOJ VEK: [ {age ?? "?"} ]
-              </div>
+            <div className="border-y border-foreground/20 bg-foreground/5 p-4">
+              <p className="font-semibold">Tvoj vek: {age ?? "?"}</p>
             </div>
           </div>
 
           {errorMessage && (
-            <div className="mt-4 border-2 border-red-500 bg-red-500/10 p-3 text-center font-mono text-sm text-red-500 font-bold uppercase tracking-wider animate-pulse">
+            <div role="alert" className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive">
               {errorMessage}
             </div>
           )}
@@ -3006,15 +2940,15 @@ function ProfileForm({
                 setStep("TEMPORAL_MATRIX");
                 setErrorMessage("");
               }}
-              className="w-1/3 border border-foreground/20 bg-card text-foreground font-mono font-bold py-4 hover:bg-foreground/5 transition-all cursor-pointer uppercase text-sm tracking-widest"
+              className="w-1/3 personal-action"
             >
-              SPÄŤ
+              Späť
             </button>
             <button
               type="submit"
-              className="w-2/3 bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 transition-all cursor-pointer"
+              className="w-2/3 bg-foreground py-3.5 font-semibold text-background hover:bg-foreground/90"
             >
-              SÚHLASÍM
+              Potvrdiť vek
             </button>
           </div>
         </form>
@@ -3049,31 +2983,25 @@ function ProfileForm({
                 radiusKm: 250,
               });
             } else {
-              triggerError("ERROR: INVALID_DATA - Chýba nastavenie zaradenia");
+              triggerError("Vyber, ako sa chceš uvádzať a koho hľadáš.");
             }
           }}
-          className="animate-kinetic-fade w-full max-w-md border border-foreground/20 bg-card p-6 md:p-8 text-center flex flex-col items-stretch"
+          className="w-full border-t-2 border-foreground pt-4"
         >
-          <div className="mb-5 flex justify-center">
-            <div className="border-2 border-foreground p-3 mb-2 uppercase text-sm font-bold tracking-widest font-mono">
-              KOHO CHCEŠ SPOZNAŤ?
-            </div>
-          </div>
-          <p className="mb-5 font-mono text-xs text-foreground/60 uppercase tracking-wider leading-relaxed">
+          <h1 className="personal-title">Koho chceš spoznať?</h1>
+          <p className="personal-intro mb-5">
             Zvoľ svoje pohlavie a vyber si, koho v aplikácii hľadáš.
           </p>
 
           <div className="text-left space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-bold uppercase tracking-widest text-foreground/75 font-mono">
-                JA SOM
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              <p className="mb-2 font-semibold">Ja som</p>
+              <div className="personal-segments" role="group" aria-label="Ja som">
                 {(
                   [
-                    { value: "male", label: "MUŽ" },
-                    { value: "female", label: "ŽENA" },
-                    { value: "other", label: "NEBINÁRNY" },
+                    { value: "male", label: "Muž" },
+                    { value: "female", label: "Žena" },
+                    { value: "other", label: "Nebinárna osoba" },
                   ] as const
                 ).map((g) => (
                   <button
@@ -3084,11 +3012,8 @@ function ProfileForm({
                       setGender(g.value);
                       if (errorMessage) setErrorMessage("");
                     }}
-                    className={`border-2 py-3 text-[13px] font-bold tracking-wider font-mono cursor-pointer transition-all ${
-                      gender === g.value
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-foreground/10 bg-transparent text-foreground/60 hover:bg-foreground/5"
-                    }`}
+                    aria-pressed={gender === g.value}
+                    className="personal-segment"
                   >
                     {g.label}
                   </button>
@@ -3097,15 +3022,13 @@ function ProfileForm({
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-bold uppercase tracking-widest text-foreground/75 font-mono">
-                HĽADÁM
-              </label>
-              <div className="grid grid-cols-3 gap-2">
+              <p className="mb-2 font-semibold">Hľadám</p>
+              <div className="personal-segments" role="group" aria-label="Hľadám">
                 {(
                   [
-                    { value: "male", label: "MUŽOV" },
-                    { value: "female", label: "ŽENY" },
-                    { value: "all", label: "VŠETKÝCH" },
+                    { value: "male", label: "Mužov" },
+                    { value: "female", label: "Ženy" },
+                    { value: "all", label: "Všetkých" },
                   ] as const
                 ).map((t) => (
                   <button
@@ -3116,11 +3039,8 @@ function ProfileForm({
                       setTargetMarket(t.value);
                       if (errorMessage) setErrorMessage("");
                     }}
-                    className={`border-2 py-3 text-[13px] font-bold tracking-wider font-mono cursor-pointer transition-all ${
-                      targetMarket === t.value
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-foreground/10 bg-transparent text-foreground/60 hover:bg-foreground/5"
-                    }`}
+                    aria-pressed={targetMarket === t.value}
+                    className="personal-segment"
                   >
                     {t.label}
                   </button>
@@ -3130,7 +3050,7 @@ function ProfileForm({
           </div>
 
           {errorMessage && (
-            <div className="mt-4 border-2 border-red-500 bg-red-500/10 p-3 text-center font-mono text-sm text-red-500 font-bold uppercase tracking-wider animate-pulse">
+            <div role="alert" className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive">
               {errorMessage}
             </div>
           )}
@@ -3143,15 +3063,15 @@ function ProfileForm({
                 setStep("AGE_VERIFICATION");
                 setErrorMessage("");
               }}
-              className="w-1/3 border border-foreground/20 bg-card text-foreground font-mono font-bold py-4 hover:bg-foreground/5 transition-all cursor-pointer uppercase text-sm tracking-widest"
+              className="w-1/3 personal-action"
             >
-              SPÄŤ
+              Späť
             </button>
             <button
               type="submit"
-              className="w-2/3 bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 transition-all cursor-pointer"
+              className="w-2/3 bg-foreground py-3.5 font-semibold text-background hover:bg-foreground/90"
             >
-              DOKONČIŤ PROFIL
+              Dokončiť profil
             </button>
           </div>
         </form>
@@ -3180,9 +3100,9 @@ function AutoMatch({
   }, [onReady, haptic]);
   return (
     <div className="flex min-h-[70vh] flex-col justify-center animate-fade-up">
-      <p className="editorial-kicker text-cerebral">Pripravujeme priestor</p>
+      <p className="editorial-kicker text-cerebral">Hlasové spojenie</p>
       <h2 className="mt-4 font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.065em]">
-        Dobrý rozhovor potrebuje chvíľu ticha.
+        Pripravujeme rozhovor
       </h2>
       <div className="my-10 flex h-24 items-end gap-2" aria-hidden>
         {[42, 78, 56, 92, 65, 35, 74, 48, 84, 58, 30, 68].map((height, index) => (
@@ -3197,7 +3117,7 @@ function AutoMatch({
         {hasNext
           ? isInitiated
             ? `Vraciame ťa do rozhovoru s ${nextName ?? "tvojím partnerom"}.`
-            : `Otvárame hlasový priestor s ${nextName ?? "novým človekom"}.`
+            : `Pripájame ťa k hlasovému rozhovoru s ${nextName ?? "novým človekom"}.`
           : "Dnes tu zatiaľ nie je nové spojenie."}
       </p>
     </div>
@@ -3212,7 +3132,7 @@ function NoOne({ onMessages }: { onMessages: (() => void) | null }) {
       <main className="my-auto py-10">
         <p className="editorial-kicker text-foreground/50">Tvoje spojenia</p>
         <h1 className="mt-5 max-w-sm font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em]">
-          Zatiaľ tu pre teba nikto nie je.
+          Žiadne nové spojenia
         </h1>
         <div className="mt-8 border-t border-foreground/30 pt-6">
         <p className="max-w-sm text-sm leading-relaxed text-foreground/60">
@@ -3252,25 +3172,22 @@ function MessagesList({
   onFindNew: () => void;
 }) {
   return (
-    <div className="animate-fade-up">
-      <div className="mb-8 flex items-center justify-between">
-        <Logo />
-        <div className="flex items-center gap-1.5 font-mono text-xs tracking-widest text-foreground/45">
-          <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-          <span>SPRÁVY</span>
-        </div>
-      </div>
+    <div className="personal-screen">
+      <header className="personal-header">
+        <p className="personal-eyebrow">Antidote</p>
+        <h1 className="personal-title">Správy</h1>
+      </header>
 
       {conversations.length === 0 ? (
-        <div className="border-y border-foreground/25 py-10">
+        <div className="personal-section">
           <MessageCircle className="size-7 text-cerebral" aria-hidden="true" />
-          <h2 className="mt-5 font-display text-3xl font-bold tracking-tight">Zatiaľ tu máš pokoj.</h2>
-          <p className="mt-3 max-w-xs text-sm leading-relaxed text-foreground/70">
+          <h2 className="personal-heading mt-2">Zatiaľ žiadne správy</h2>
+          <p className="personal-intro">
             Keď sa obaja rozhodnete pokračovať, váš rozhovor nájdeš tu.
           </p>
         </div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid">
           {conversations.map((c) => {
             const m = matches.find((x) => x.id === c.matchId);
             if (!m) return null;
@@ -3280,9 +3197,9 @@ function MessagesList({
               <button
                 key={c.id}
                 onClick={() => onOpen(c.id)}
-                className="group flex items-center gap-4 border border-foreground/10 bg-foreground/[0.02] p-4 text-left transition-all hover:border-cerebral/40 hover:bg-foreground/[0.04]"
+                className="personal-link group gap-3 py-2.5"
               >
-                <div className="relative size-14 shrink-0 overflow-hidden">
+                <div className="relative size-12 shrink-0 overflow-hidden">
                   <img
                     src={m.img}
                     alt={m.name}
@@ -3297,12 +3214,12 @@ function MessagesList({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3
-                      className={`truncate text-base ${c.unread ? "font-medium text-foreground" : "font-light text-foreground/90"}`}
+                      className={`truncate text-base ${c.unread ? "font-bold" : "font-medium"}`}
                     >
                       {m.name}
                     </h3>
-                    <span className="font-mono text-xs text-foreground/40">{m.age}</span>
-                    <span className="text-xs text-foreground/40">· {m.city}</span>
+                    <span className="shrink-0 text-sm text-muted-foreground">{m.age}</span>
+                    <span className="truncate text-sm text-muted-foreground">· {m.city}</span>
                     {c.unread && (
                       <span className="size-2 rounded-full bg-cerebral shadow-[0_0_6px_var(--cerebral)] animate-pulse" />
                     )}
@@ -3323,9 +3240,9 @@ function MessagesList({
 
       <button
         onClick={onFindNew}
-        className="mt-8 w-full border border-cerebral/40 bg-cerebral/5 py-4 text-sm tracking-[0.3em] text-foreground hover:bg-cerebral hover:text-background transition-all cursor-pointer font-mono font-bold"
+        className="personal-action mt-4 w-full"
       >
-        OBJAVIŤ SPOJENIE
+        Nájsť spojenie
       </button>
     </div>
   );
