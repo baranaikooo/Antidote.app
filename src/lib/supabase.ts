@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type AuthChangeEvent, type Session } from "@supabase/supabase-js";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
@@ -11,34 +11,38 @@ const sanitize = (val: string) => {
 const supabaseUrl = sanitize(import.meta.env.VITE_SUPABASE_URL as string);
 const supabaseAnonKey = sanitize(import.meta.env.VITE_SUPABASE_ANON_KEY as string);
 
-export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "");
+const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
 
-const checkIsNative = () => {
-  if (typeof window === "undefined") return false;
-  return (
-    Capacitor.isNativePlatform() ||
-    window.navigator?.userAgent?.includes("AntidoteMobile") ||
-    window.navigator?.userAgent?.includes("ResonMobile")
-  );
-};
+export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {
+  auth: {
+    flowType: "pkce",
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: !isNative,
+  },
+});
 
-if (checkIsNative()) {
+if (isNative) {
+  let lastCode: string | undefined;
   const handleAuthUrl = async (url: string) => {
     const callback = new URL(url);
-    if (!["antidote:", "reson:"].includes(callback.protocol) || callback.hostname !== "auth") return;
-    const params = new URLSearchParams(callback.hash.slice(1));
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token");
+    if (callback.protocol !== "antidote:" || callback.hostname !== "auth") return;
+
     const code = callback.searchParams.get("code");
-    if (access_token && refresh_token) {
-      await supabase.auth.setSession({ access_token, refresh_token });
-    } else if (code) {
-      await supabase.auth.exchangeCodeForSession(code);
-    }
-    if (Capacitor.isPluginAvailable("Browser")) await Browser.close().catch(() => {});
+    if (!code || code === lastCode) return;
+
+    lastCode = code;
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    if (Capacitor.isPluginAvailable("Browser")) await Browser.close();
   };
-  App.addListener("appUrlOpen", ({ url }) => { void handleAuthUrl(url); });
-  App.getLaunchUrl().then((result) => { if (result?.url) void handleAuthUrl(result.url); });
+  const reportCallbackFailure = () => console.warn("Antidote could not complete the Google sign-in callback.");
+  void App.addListener("appUrlOpen", ({ url }) => {
+    void handleAuthUrl(url).catch(reportCallbackFailure);
+  }).catch(reportCallbackFailure);
+  void App.getLaunchUrl().then((result) => {
+    if (result?.url) return handleAuthUrl(result.url);
+  }).catch(reportCallbackFailure);
 }
 
 export const supabaseLogs: string[] = [];
@@ -60,83 +64,27 @@ export function subscribeToSupabaseLogs(listener: (msg: string) => void) {
   };
 }
 
-// Capture query parameters and hash before routers (like TanStack Router) strip them
-if (typeof window !== "undefined") {
-  try {
-    const url = new URL(window.location.href);
-
-    // 1. Handle PKCE flow (?code=...)
-    const code = url.searchParams.get("code");
-    if (code) {
-      addSupabaseLog("Found code in URL, exchanging for session...");
-      supabase.auth
-        .exchangeCodeForSession(code)
-        .then(({ data, error }) => {
-          if (error) {
-            addSupabaseLog(`Error exchanging code: ${error.message}`);
-          } else {
-            addSupabaseLog(`Successfully exchanged code for user: ${data.user?.email}`);
-          }
-        })
-        .catch((err) => addSupabaseLog(`Exception during code exchange: ${err.message || err}`));
-    }
-
-    // 2. Handle Implicit flow (#access_token=...)
-    const hash = url.hash;
-    if (hash && (hash.includes("access_token") || hash.includes("error"))) {
-      const hashParams = new URLSearchParams(hash.substring(1));
-      const errorParam = hashParams.get("error");
-      const errorDesc = hashParams.get("error_description");
-
-      if (errorParam) {
-        addSupabaseLog(`OAuth error in hash: ${errorParam} - ${errorDesc}`);
-      }
-
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
-      if (accessToken && refreshToken) {
-        addSupabaseLog("Found access_token in hash, setting session...");
-        supabase.auth
-          .setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-          .then(({ data, error }) => {
-            if (error) {
-              addSupabaseLog(`Error setting session: ${error.message}`);
-            } else {
-              addSupabaseLog(`Successfully set session for user: ${data.user?.email}`);
-            }
-          })
-          .catch((err) => addSupabaseLog(`Exception during setSession: ${err.message || err}`));
-      }
-    }
-  } catch (err: any) {
-    addSupabaseLog(`Error parsing URL: ${err.message || err}`);
-  }
-}
-
 export type AuthError = {
   message: string;
 };
 
 export async function signInWithGoogle() {
-  const isNative =
-    typeof window !== "undefined" &&
-    (Capacitor.isNativePlatform() ||
-      window.navigator?.userAgent?.includes("AntidoteMobile") ||
-      window.navigator?.userAgent?.includes("ResonMobile"));
-  const redirectTo = isNative ? "antidote://auth" : window.location.origin;
+  const origin = window.location.origin;
+  const needsRelay = isNative || origin === "https://antidotesk.vercel.app";
+  // Supabase's configured Site URL is the legacy alias of the production deployment.
+  const redirectTo = new URL("/", needsRelay ? "https://reson-analytical-composer.vercel.app" : origin);
+  if (isNative) {
+    if (!Capacitor.isPluginAvailable("Browser")) throw new Error("System browser unavailable");
+    redirectTo.searchParams.set("native_auth", "1");
+  } else if (needsRelay) {
+    redirectTo.searchParams.set("web_auth", "1");
+  }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo,
+      redirectTo: redirectTo.href,
       skipBrowserRedirect: isNative,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
     },
   });
 
@@ -146,8 +94,7 @@ export async function signInWithGoogle() {
   }
 
   if (isNative && data.url) {
-    if (Capacitor.isPluginAvailable("Browser")) await Browser.open({ url: data.url });
-    else window.location.assign(data.url);
+    await Browser.open({ url: data.url });
   }
 
   return data;
@@ -173,7 +120,7 @@ export async function getCurrentUser() {
   return user;
 }
 
-export function onAuthStateChange(callback: (event: string, session: any) => void) {
+export function onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void) {
   return supabase.auth.onAuthStateChange(callback);
 }
 
@@ -462,18 +409,10 @@ export async function fetchUserProfile(userId: string): Promise<any | null> {
     .from("profiles")
     .select("*")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
-  if (error) {
-    console.error("[fetchUserProfile] Error fetching profile:", error);
-  }
-  console.log("[fetchUserProfile] Retrieved profile data:", data);
-
-  // Check if profile is complete (must have age saved in database)
-  if (error || !data || !data.age) {
-    console.warn("[fetchUserProfile] Profile is incomplete or not found. age:", data?.age);
-    return null; // Return null if user doesn't exist or hasn't finished profile form
-  }
+  if (error) throw error;
+  if (!data?.age) return null;
 
   // Fetch video loops from media_snippets table
   const { data: snippetsData, error: snippetsError } = await supabase

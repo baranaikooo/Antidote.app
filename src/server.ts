@@ -40,7 +40,46 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
-      if (new URL(request.url).pathname === "/api/app-version") {
+      const url = new URL(request.url);
+      const nativeCallback = url.searchParams.get("native_auth") === "1";
+      const webCallback = url.searchParams.get("web_auth") === "1";
+      if (request.method === "GET" && url.pathname === "/" && (nativeCallback || webCallback)) {
+        const code = url.searchParams.get("code");
+        const validCode = code && /^[A-Za-z0-9_-]{1,256}$/.test(code);
+        if (!nativeCallback) {
+          const target = new URL("https://antidotesk.vercel.app/");
+          if (validCode) target.searchParams.set("code", code);
+          return new Response(null, {
+            status: 303,
+            headers: { Location: target.href, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
+          });
+        }
+        const appUrl = validCode ? `antidote://auth?code=${code}` : "antidote://auth";
+        return new Response(`<!doctype html>
+<html lang="sk">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Návrat do Antidote</title>
+<style>
+  body { color-scheme: light dark; font: 1rem system-ui; margin: 0; padding: 2rem; }
+  main { max-width: 28rem; margin: 12vh auto; }
+  a { display: inline-block; padding: 0.875rem 1.25rem; border-radius: 0.75rem; background: #3159d6; color: white; font-weight: 700; }
+</style>
+<main>
+  <h1>${validCode ? "Späť do Antidote" : "Prihlásenie sa nedokončilo"}</h1>
+  <p>${validCode ? "Pokračuj v aplikácii." : "Vráť sa do aplikácie a skús to znova."}</p>
+  <a id="open-app" href="${appUrl}">Otvoriť Antidote</a>
+</main>
+${validCode ? '<script>location.replace(document.getElementById("open-app").href)</script>' : ""}
+</html>`, {
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+            "Referrer-Policy": "no-referrer",
+          },
+        });
+      }
+      if (url.pathname === "/api/app-version") {
         return Response.json({ version: __ANTIDOTE_BUILD_ID__ }, {
           headers: { "Cache-Control": "no-store, max-age=0" },
         });
