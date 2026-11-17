@@ -280,14 +280,15 @@ export function SystemConfig({
         <h2 id="preferences-title" className="personal-heading mb-3">Prispôsobenie</h2>
         <div className="personal-setting">
           <span className="font-medium">Vzhľad</span>
-          <div className="personal-segments" role="group" aria-label="Vzhľad aplikácie">
+          <div className="theme-choices" role="group" aria-label="Vzhľad aplikácie">
             {([
               ["system", "Systém", Monitor],
               ["light", "Svetlý", Sun],
               ["dark", "Tmavý", Moon],
             ] as const).map(([mode, label, Icon]) => (
-              <button key={mode} type="button" aria-pressed={theme === mode} onClick={() => { haptic("tap"); onTheme(mode); }} className="personal-segment">
-                <Icon className="hidden size-4 min-[380px]:block" aria-hidden="true" /><span>{label}</span>
+              <button key={mode} type="button" aria-pressed={theme === mode} onClick={() => { haptic("tap"); onTheme(mode); }} className="theme-choice">
+                <span className={`theme-preview theme-preview-${mode}`} aria-hidden="true"><span /><span /><span /></span>
+                <span className="theme-choice-label"><Icon className="size-4" aria-hidden="true" />{label}</span>
               </button>
             ))}
           </div>
@@ -305,7 +306,7 @@ export function SystemConfig({
       </section>
 
       <details className="personal-section settings-disclosure">
-        <summary className="personal-summary"><h2 className="personal-heading">Súkromie a povolenia</h2><ChevronRight className="size-5" aria-hidden="true" /></summary>
+        <summary className="personal-summary"><span><span className="personal-heading">Súkromie a povolenia</span><span className="summary-detail">Kamera, mikrofón a poloha</span></span><ChevronRight className="size-5" aria-hidden="true" /></summary>
         <div className="personal-row"><span><Mic className="size-5" /> Mikrofón</span><span className="personal-status">{micPermission === "granted" ? "Povolený" : "Nepovolený"}</span></div>
         <div className="personal-row"><span><Camera className="size-5" /> Kamera</span><span className="personal-status">{camPermission === "granted" ? "Povolená" : "Nepovolená"}</span></div>
         <button type="button" onClick={handleRefreshCoordinates} disabled={isGpsLoading} className="personal-link">
@@ -319,7 +320,7 @@ export function SystemConfig({
       </details>
 
       <details className="personal-section settings-disclosure">
-        <summary className="personal-summary"><h2 className="personal-heading">Informácie</h2><ChevronRight className="size-5" aria-hidden="true" /></summary>
+        <summary className="personal-summary"><span><span className="personal-heading">Informácie</span><span className="summary-detail">Podmienky, súkromie a kontakt</span></span><ChevronRight className="size-5" aria-hidden="true" /></summary>
         {([
           ["Podmienky používania", onOpenTerms], ["Ochrana súkromia", onOpenPrivacy], ["Cookies", onOpenCookies], ["Kontakt", onOpenContact],
         ] as const).map(([label, action]) => (
@@ -328,7 +329,7 @@ export function SystemConfig({
       </details>
 
       <details className="personal-section settings-disclosure">
-        <summary className="personal-summary"><h2 className="personal-heading">Účet</h2><ChevronRight className="size-5" aria-hidden="true" /></summary>
+        <summary className="personal-summary"><span><span className="personal-heading">Účet</span><span className="summary-detail">{isFrozen ? "Profil je skrytý" : "Profil je viditeľný"}</span></span><ChevronRight className="size-5" aria-hidden="true" /></summary>
         {freezeMessage && <p role="status" className="mb-3 text-foreground/75">{freezeMessage}</p>}
         {showWipeConfirm ? (
           <div className="bg-red-500/10 p-4">

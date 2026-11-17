@@ -527,13 +527,17 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
             </button>
           </div>
           <p className="personal-status mb-3">Krátke videá bez zvuku</p>
+          <div className="moment-progress" aria-label={`Pridané videá: ${snippets.filter(Boolean).length} zo 4`}>
+            <span className="moment-progress-label">{snippets.filter(Boolean).length} / 4 videá</span>
+            <span className="moment-progress-track" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <span key={index} data-filled={!!snippets[index]} />)}</span>
+          </div>
           <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} blurred={isPreviewBlurred} />
           <input type="file" ref={fileInputRef} accept="video/*" className="hidden" onChange={handleFileChange} />
         </section>
 
         {/* Market Parameters (Moved from settings to DNA section) */}
-        <details className="personal-section profile-filters">
-          <summary className="personal-summary"><h2 className="personal-heading">Koho chceš spoznať?</h2><ChevronDown className="size-5" aria-hidden="true" /></summary>
+        <details className="personal-section profile-filters" open>
+          <summary className="personal-summary"><span><span className="personal-heading">Koho chceš spoznať?</span><span className="summary-detail">{isGlobalMode ? "Celý svet" : `Do ${distance} km`}</span></span><ChevronDown className="size-5" aria-hidden="true" /></summary>
 
           <div className="space-y-3 pt-3">
             {/* Global vs National Toggle */}

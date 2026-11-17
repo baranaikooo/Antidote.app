@@ -595,6 +595,27 @@ html.dark {
 .app-main .profile-filters[open] > .personal-summary svg { transform: rotate(180deg); }
 .app-main .personal-summary svg { transition: transform 150ms; }
 .app-main .personal-thumbnail { width: 3rem; height: 3.5rem; }
+.app-main .summary-detail { display: block; margin-top: 0.2rem; color: var(--muted-foreground); font-size: 0.875rem; font-weight: 400; }
+.app-main .personal-summary { padding-block: 0.65rem; }
+.app-main .moment-progress { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0.75rem 0; }
+.moment-progress-label { font-size: 0.875rem; font-weight: 600; }
+.moment-progress-track { display: flex; width: 5rem; gap: 0.25rem; }
+.moment-progress-track > span { height: 0.25rem; flex: 1; background: color-mix(in srgb, var(--foreground) 15%, transparent); }
+.moment-progress-track > span[data-filled="true"] { background: var(--foreground); }
+.theme-choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.theme-choice { min-width: 0; padding: 0.35rem; border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent); text-align: left; transition: border-color 120ms, transform 100ms; }
+.theme-choice[aria-pressed="true"] { border: 2px solid var(--foreground); padding: calc(0.35rem - 1px); }
+.theme-choice:active { transform: scale(0.97); }
+.theme-choice:focus-visible { outline: 2px solid var(--foreground); outline-offset: 2px; }
+.theme-preview { display: flex; height: 3.5rem; flex-direction: column; gap: 0.3rem; padding: 0.5rem; background: #f0f0f0; }
+.theme-preview span { height: 0.3rem; width: 75%; background: #aaa; }
+.theme-preview span:first-child { width: 40%; background: #333; }
+.theme-preview-dark { background: #1c1c1c; }
+.theme-preview-dark span { background: #666; }
+.theme-preview-dark span:first-child { background: #eee; }
+.theme-preview-system { background: linear-gradient(90deg, #f0f0f0 50%, #1c1c1c 50%); }
+.theme-preview-system span { background: #888; }
+.theme-choice-label { display: flex; min-height: 2.75rem; align-items: center; gap: 0.35rem; padding: 0 0.2rem; font-size: 0.875rem; font-weight: 600; }
 .app-main .personal-setting { border: 0; padding-block: 0.75rem; }
 .app-main .personal-row, .app-main .personal-link { border-color: color-mix(in srgb, var(--foreground) 10%, transparent); }
 .app-main .settings-disclosure, .app-main .profile-filters { border-top: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent); padding-block: 0.4rem; }
