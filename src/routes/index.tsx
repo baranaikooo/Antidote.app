@@ -1763,10 +1763,10 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
         {choice && (
           <div className="landing-result animate-fade-in border-t border-foreground/30">
             <p className="font-display text-xl font-semibold leading-tight tracking-[-0.035em]">
-              Ako tvoríme spojenia
+              Toto nebola náhodná otázka.
             </p>
             <p className="mt-1 text-sm leading-snug text-foreground/60">
-              Pri párovaní vychádzame z tvojich odpovedí na otázky o vzťahoch a hodnotách.
+              Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
             </p>
             <div className="landing-sign-in">
               <GoogleSignInButton onSuccess={onGoogle} />
