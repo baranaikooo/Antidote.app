@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { ChatMessage } from "./resonance";
 
 const sanitize = (val: string) => {
@@ -22,19 +23,22 @@ const checkIsNative = () => {
 };
 
 if (checkIsNative()) {
-  App.addListener("appUrlOpen", (event) => {
-    if (event.url.includes("antidote://auth") || event.url.includes("reson://auth")) {
-      const hashPos = event.url.indexOf("#");
-      if (hashPos !== -1) {
-        const hashParams = new URLSearchParams(event.url.substring(hashPos + 1));
-        const access_token = hashParams.get("access_token");
-        const refresh_token = hashParams.get("refresh_token");
-        if (access_token && refresh_token) {
-          supabase.auth.setSession({ access_token, refresh_token });
-        }
-      }
+  const handleAuthUrl = async (url: string) => {
+    const callback = new URL(url);
+    if (!["antidote:", "reson:"].includes(callback.protocol) || callback.hostname !== "auth") return;
+    const params = new URLSearchParams(callback.hash.slice(1));
+    const access_token = params.get("access_token");
+    const refresh_token = params.get("refresh_token");
+    const code = callback.searchParams.get("code");
+    if (access_token && refresh_token) {
+      await supabase.auth.setSession({ access_token, refresh_token });
+    } else if (code) {
+      await supabase.auth.exchangeCodeForSession(code);
     }
-  });
+    if (Capacitor.isPluginAvailable("Browser")) await Browser.close().catch(() => {});
+  };
+  App.addListener("appUrlOpen", ({ url }) => { void handleAuthUrl(url); });
+  App.getLaunchUrl().then((result) => { if (result?.url) void handleAuthUrl(result.url); });
 }
 
 export const supabaseLogs: string[] = [];
@@ -128,6 +132,7 @@ export async function signInWithGoogle() {
     provider: "google",
     options: {
       redirectTo,
+      skipBrowserRedirect: isNative,
       queryParams: {
         access_type: "offline",
         prompt: "consent",
@@ -138,6 +143,11 @@ export async function signInWithGoogle() {
   if (error) {
     console.error("Google sign-in error:", error);
     throw error;
+  }
+
+  if (isNative && data.url) {
+    if (Capacitor.isPluginAvailable("Browser")) await Browser.open({ url: data.url });
+    else window.location.assign(data.url);
   }
 
   return data;

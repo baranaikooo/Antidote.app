@@ -512,7 +512,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
           <p className="personal-intro">Tu môžeš ukázať, kto si a koho chceš spoznať.</p>
         </header>
 
-        <section className="personal-section" aria-labelledby="moments-title">
+        <section className="personal-section profile-moments" aria-labelledby="moments-title">
           <div className="flex flex-wrap items-center justify-between gap-x-3">
             <h2 id="moments-title" className="personal-heading">Tvoje momenty</h2>
             <button
@@ -532,10 +532,10 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
         </section>
 
         {/* Market Parameters (Moved from settings to DNA section) */}
-        <section className="personal-section space-y-3">
-          <h2 className="personal-heading">Koho chceš spoznať?</h2>
+        <details className="personal-section profile-filters">
+          <summary className="personal-summary"><h2 className="personal-heading">Koho chceš spoznať?</h2><ChevronDown className="size-5" aria-hidden="true" /></summary>
 
-          <div className="space-y-3">
+          <div className="space-y-3 pt-3">
             {/* Global vs National Toggle */}
             <div className="flex flex-wrap justify-between items-center gap-2 border-b border-foreground/10 pb-3">
               <span className="font-medium">Rozsah vyhľadávania</span>
@@ -614,7 +614,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
               </select>
             </div>
           </div>
-        </section>
+        </details>
 
         <details className="personal-section group">
           <summary className="personal-summary">

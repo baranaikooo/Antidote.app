@@ -157,9 +157,9 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
   );
 }
 
-function Shell({ children, landing = false }: { children: React.ReactNode; landing?: boolean }) {
+function Shell({ children, landing = false, main = false }: { children: React.ReactNode; landing?: boolean; main?: boolean }) {
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden">
+    <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : ""}`}>
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
       <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : "pb-28 pt-5"}`}>
@@ -616,7 +616,7 @@ function AntidoteApp() {
     // 2. Auth changes subscription for subsequent updates
     const {
       data: { subscription },
-    } = onAuthStateChange(async (event, session) => {
+    } = onAuthStateChange((event, session) => {
       console.log("[auth] auth state changed:", event, session?.user?.email);
 
       if (event === "USER_UPDATED") {
@@ -625,6 +625,7 @@ function AntidoteApp() {
 
       if (!initialized) return; // Skip initial events, getSession handles the mount logic!
 
+      setTimeout(async () => {
       if (session?.user) {
         const user = await getCurrentUser();
         if (user) {
@@ -645,6 +646,7 @@ function AntidoteApp() {
         themeLoadedRef.current = false;
         clearOnboardingStorage();
       }
+      }, 0);
     });
 
     return () => subscription.unsubscribe();
@@ -1086,7 +1088,7 @@ function AntidoteApp() {
   }
 
   return (
-    <Shell landing={screen === "landing"}>
+    <Shell landing={screen === "landing"} main={showNav}>
       {screen === "landing" && (
         <Landing
           onGoogle={(profile) => {
@@ -1611,7 +1613,7 @@ function BottomNav({
       <button
         onClick={onClick}
         aria-current={is ? "page" : undefined}
-        className={`group relative flex min-h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 transition-colors ${is ? "bg-foreground text-background" : "text-foreground/65 hover:text-foreground"}`}
+        className="app-nav-item"
       >
         <span className="relative flex items-center justify-center size-7">
           {icon}
@@ -1636,7 +1638,7 @@ function BottomNav({
         isInputActive ? "opacity-0 translate-y-16 pointer-events-none" : "opacity-100 translate-y-0"
       }`}
     >
-      <div className="pointer-events-auto editorial-dock flex w-full max-w-md items-stretch p-1 transition-all">
+      <div className="app-nav pointer-events-auto flex w-full max-w-md items-stretch">
         <Item
           id="home"
           icon={<Home className="size-5" />}
