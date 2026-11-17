@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { signInWithGoogle, supabase } from "@/lib/supabase";
+import { useEffect, useRef, useState } from "react";
+import { signInWithGoogle } from "@/lib/supabase";
 
 export type GoogleProfile = { name: string; email: string; picture?: string };
 
@@ -74,19 +74,23 @@ export function GoogleSignInButton({
   onSuccess: (profile: GoogleProfile) => void;
   disabled?: boolean;
 }) {
+  const [launching, setLaunching] = useState(false);
+  const [launchFailed, setLaunchFailed] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const useSupabase = !!SUPABASE_URL;
   const useRealGoogle = !!CLIENT_ID;
 
   // Use Supabase OAuth if configured
   const handleSupabaseSignIn = async () => {
-    if (disabled) return;
+    if (disabled || launching) return;
+    setLaunching(true);
+    setLaunchFailed(false);
     try {
       await signInWithGoogle();
-      // Supabase will handle the redirect and session
-      // The user will be redirected back to the app
-    } catch (err) {
-      console.error("Supabase Google sign-in error:", err);
+    } catch {
+      setLaunchFailed(true);
+    } finally {
+      setLaunching(false);
     }
   };
 
@@ -158,15 +162,18 @@ export function GoogleSignInButton({
   // Use Supabase button if configured
   if (useSupabase) {
     return (
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={handleSupabaseSignIn}
-        className="flex w-full items-center justify-center gap-3 rounded-none border border-foreground/20 bg-foreground text-background px-4 py-3.5 transition-all hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-40"
-      >
-        <GoogleMark />
-        <span className="text-sm font-mono font-bold uppercase">Pokračovať cez Google</span>
-      </button>
+      <>
+        <button
+          type="button"
+          disabled={disabled || launching}
+          onClick={handleSupabaseSignIn}
+          className="flex w-full items-center justify-center gap-3 rounded-none border border-foreground/20 bg-foreground text-background px-4 py-3.5 transition-all hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-40"
+        >
+          <GoogleMark />
+          <span className="text-sm font-mono font-bold uppercase">Pokračovať cez Google</span>
+        </button>
+        {launchFailed && <p role="alert" className="mt-2 text-sm">Google prihlásenie sa nepodarilo spustiť. Skús to znova.</p>}
+      </>
     );
   }
 

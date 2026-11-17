@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import type { User as AuthUser } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Mic,
   Send,
   Phone,
+  ChevronLeft,
   ChevronRight,
   Sparkles,
   Play,
@@ -331,6 +333,8 @@ function AntidoteApp() {
 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
+  const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeMatchId, setActiveMatchId] = useState<string | null>(null);
@@ -507,10 +511,14 @@ function AntidoteApp() {
 
   // Handle Supabase auth state changes and initial session check
   useEffect(() => {
-    let initialized = false;
+    let stopped = false;
+    let activeUserId: string | null | undefined;
 
     // Helper to process session user (load profile, sync theme, etc.)
-    async function processSessionUser(user: any) {
+    async function processSessionUser(user: AuthUser) {
+      setIsAuthenticating(true);
+      setProfileLoadFailed(false);
+      const isCurrent = () => !stopped && activeUserId === user.id;
       const metadata = user.user_metadata;
 
       // Sync theme from Supabase metadata if exists, otherwise upload current theme
@@ -533,11 +541,11 @@ function AntidoteApp() {
         picture: metadata?.avatar_url || metadata?.picture,
       };
       setGoogleProfile(profileData);
-      haptic("success");
 
       try {
         setAuthUserId(user.id);
         const existingProfile = await fetchUserProfile(user.id);
+        if (!isCurrent()) return;
         if (existingProfile) {
           setProfile(existingProfile);
           const savedScreen = localStorage.getItem("reson:active_screen") as Screen;
@@ -574,84 +582,47 @@ function AntidoteApp() {
             setScreen("liveness");
           }
         }
-      } catch (err: any) {
-        console.error("[Auth Debug] fetchUserProfile crashed:", err);
-        const savedScreen = localStorage.getItem("reson:active_screen") as Screen;
-        const validOnboardingScreens: Screen[] = [
-          "liveness",
-          "profile",
-          "snippets-onboarding",
-          "briefing",
-          "mirror",
-          "bankroll",
-          "pressure",
-          "processing",
-        ];
-        if (savedScreen && validOnboardingScreens.includes(savedScreen)) {
-          setScreen(savedScreen);
-        } else {
-          setScreen("liveness");
-        }
+      } catch (error) {
+        console.error("[Auth] Could not load profile:", error);
+        if (isCurrent()) setProfileLoadFailed(true);
       } finally {
-        setIsAuthenticating(false);
+        if (isCurrent()) setIsAuthenticating(false);
       }
     }
 
-    // 1. Initial auth check on mount (prevents landing flash)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const user = await getCurrentUser();
-        if (user) {
-          await processSessionUser(user);
-        } else {
-          setScreen("landing");
-          setIsAuthenticating(false);
-        }
-      } else {
-        setScreen("landing");
-        setIsAuthenticating(false);
-      }
-      initialized = true;
-    });
-
-    // 2. Auth changes subscription for subsequent updates
     const {
       data: { subscription },
     } = onAuthStateChange((event, session) => {
-      console.log("[auth] auth state changed:", event, session?.user?.email);
+      if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN" && event !== "SIGNED_OUT") return;
 
-      if (event === "USER_UPDATED") {
-        return; // Ignore metadata updates (e.g. theme sync) to prevent accidental logouts
-      }
+      // Profile requests must run after Supabase releases its auth lock.
+      window.setTimeout(() => {
+        const user = session?.user;
+        const userId = user?.id ?? null;
+        if (stopped || userId === activeUserId) return;
+        activeUserId = userId;
 
-      if (!initialized) return; // Skip initial events, getSession handles the mount logic!
-
-      setTimeout(async () => {
-      if (session?.user) {
-        const user = await getCurrentUser();
         if (user) {
-          await processSessionUser(user);
+          if (event === "SIGNED_IN") haptic("success");
+          void processSessionUser(user);
         } else {
           setGoogleProfile(null);
           setProfile(null);
           setAuthUserId(null);
           setScreen("landing");
+          setProfileLoadFailed(false);
+          setIsAuthenticating(false);
           themeLoadedRef.current = false;
-          clearOnboardingStorage();
+          if (event === "SIGNED_OUT") clearOnboardingStorage();
         }
-      } else {
-        setGoogleProfile(null);
-        setProfile(null);
-        setAuthUserId(null);
-        setScreen("landing");
-        themeLoadedRef.current = false;
-        clearOnboardingStorage();
-      }
       }, 0);
     });
 
-    return () => subscription.unsubscribe();
-  }, [haptic]);
+    return () => {
+      stopped = true;
+      subscription.unsubscribe();
+    };
+  }, [haptic, profileLoadAttempt]);
 
   // Synchronize theme changes to Supabase user metadata when selected by user
   useEffect(() => {
@@ -1084,6 +1055,27 @@ function AntidoteApp() {
     return (
       <Shell>
         <AppSplash />
+      </Shell>
+    );
+  }
+
+  if (profileLoadFailed) {
+    return (
+      <Shell>
+        <section className="personal-screen">
+          <h1 className="personal-title">Profil sa nepodarilo načítať</h1>
+          <p className="personal-intro">Stále si prihlásený. Skontroluj pripojenie a skús to znova.</p>
+          <button
+            type="button"
+            className="match-card-action mt-4"
+            onClick={() => {
+              setIsAuthenticating(true);
+              setProfileLoadAttempt((attempt) => attempt + 1);
+            }}
+          >
+            Načítať profil znova
+          </button>
+        </section>
       </Shell>
     );
   }
@@ -2263,9 +2255,6 @@ function Briefing({ onBegin }: { onBegin: () => void }) {
 interface MatchCardProps {
   match: RankedMatch;
   profile: UserProfile;
-  similarityPct: number;
-  extLabel: string;
-  attachmentLabel: string;
   initiatedMatchIds?: Set<string>;
   onSelectMatch: (id: string) => void;
 }
@@ -2273,13 +2262,29 @@ interface MatchCardProps {
 function MatchCard({
   match,
   profile,
-  similarityPct,
-  extLabel,
-  attachmentLabel,
   initiatedMatchIds,
   onSelectMatch,
 }: MatchCardProps) {
   const haptic = useHaptic();
+  const similarityPct = Math.round(
+    (1.0 -
+      Math.sqrt(
+        Math.pow((profile.cognitiveDepth ?? 0.5) - match.cognitive_depth, 2) +
+          Math.pow((profile.conscientiousness ?? 0.5) - match.conscientiousness, 2),
+      ) /
+        Math.sqrt(2.0)) *
+      100,
+  );
+
+  const extSum = (profile.extraversion ?? 0.5) + match.extraversion;
+  let extLabel = "Vyvážená energia";
+  if (extSum < 0.6) extLabel = "Introvertný súlad";
+  else if (extSum > 1.4) extLabel = "Extrovertný súlad";
+
+  const isSecureMatch =
+    profile.attachmentStyle === "Secure" && match.attachment_style === "Secure";
+  const attachmentLabel = isSecureMatch ? "Bezpečný štýl väzby" : "Bežný štýl väzby";
+  const videoUrl = match.videoUrls?.find(Boolean);
   const sharedPriority =
     profile.topPriority && match.top_priority && profile.topPriority === match.top_priority;
 
@@ -2297,9 +2302,9 @@ function MatchCard({
           </p>
         </div>
         <div className="match-card-video">
-          {match.videoUrls && match.videoUrls.length > 0 ? (
+          {videoUrl ? (
             <video
-              src={match.videoUrls[0]}
+              src={videoUrl}
               autoPlay
               loop
               muted
@@ -2326,19 +2331,22 @@ function MatchCard({
         <p className="mt-2 text-sm leading-relaxed text-foreground/60">{match.bio}</p>
       </div>
 
-      <div className="match-card-facts">
-        <div>
-          <p className="text-xs font-medium text-foreground/65">Podobnosť odpovedí</p>
-          <p className="mt-2 font-display text-lg font-bold">{similarityPct} %</p>
+      <details className="match-card-details">
+        <summary>Prečo sme vás spojili</summary>
+        <div className="match-card-facts">
+          <div>
+            <p className="text-xs font-medium text-foreground/65">Podobnosť odpovedí</p>
+            <p className="mt-2 font-display text-lg font-bold">{similarityPct} %</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-foreground/65">Povaha spojenia</p>
+            <p className="mt-2 text-sm font-semibold leading-snug">{extLabel}</p>
+            <p className="mt-1 text-xs text-foreground/50">
+              {attachmentLabel}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs font-medium text-foreground/65">Povaha spojenia</p>
-          <p className="mt-2 text-sm font-semibold leading-snug">{extLabel}</p>
-          <p className="mt-1 text-xs text-foreground/50">
-            {attachmentLabel}
-          </p>
-        </div>
-      </div>
+      </details>
 
       <button
         type="button"
@@ -2379,8 +2387,10 @@ function Dashboard({
 }) {
   const haptic = useHaptic();
 
-  // Filter matches that are active/available
-  const availableMatches = matches.slice(0, 3); // limit to 3 curated daily matches
+  const [matchIndex, setMatchIndex] = useState(0);
+  const availableMatches = matches.slice(0, 3);
+  const activeIndex = Math.max(0, Math.min(matchIndex, availableMatches.length - 1));
+  const activeMatch = availableMatches[activeIndex];
 
   return (
     <div className="personal-screen">
@@ -2412,14 +2422,14 @@ function Dashboard({
         <span className="font-medium">Zoradiť podľa</span>
         <div className="personal-segments" role="group" aria-label="Zoradiť podľa">
           {([{ value: "ev", label: "Zhody" }, { value: "distance", label: "Vzdialenosti" }] as const).map(({ value, label }) => (
-            <button key={value} type="button" aria-pressed={sortBy === value} className="personal-segment" onClick={() => { haptic("tap"); onSortChange(value); }}>
+            <button key={value} type="button" aria-pressed={sortBy === value} className="personal-segment" onClick={() => { haptic("tap"); setMatchIndex(0); onSortChange(value); }}>
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      {availableMatches.length === 0 ? (
+      {!activeMatch ? (
         <div className="personal-section space-y-2">
           <Brain className="size-6 text-muted-foreground" />
           <h2 className="personal-heading">
@@ -2430,41 +2440,43 @@ function Dashboard({
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {availableMatches.map((match) => {
-            const similarityPct = Math.round(
-              (1.0 -
-                Math.sqrt(
-                  Math.pow((profile.cognitiveDepth ?? 0.5) - match.cognitive_depth, 2) +
-                    Math.pow((profile.conscientiousness ?? 0.5) - match.conscientiousness, 2),
-                ) /
-                  Math.sqrt(2.0)) *
-                100,
-            );
-
-            const extSum = (profile.extraversion ?? 0.5) + match.extraversion;
-            let extLabel = "Vyvážená energia";
-            if (extSum < 0.6) extLabel = "Introvertný súlad";
-            else if (extSum > 1.4) extLabel = "Extrovertný súlad";
-
-            const isSecureMatch =
-              profile.attachmentStyle === "Secure" && match.attachment_style === "Secure";
-            const attachmentLabel = isSecureMatch ? "Bezpečný štýl väzby" : "Bežný štýl väzby";
-
-            return (
-              <MatchCard
-                key={match.id}
-                match={match}
-                profile={profile}
-                similarityPct={similarityPct}
-                extLabel={extLabel}
-                attachmentLabel={attachmentLabel}
-                initiatedMatchIds={initiatedMatchIds}
-                onSelectMatch={onSelectMatch}
-              />
-            );
-          })}
-        </div>
+        <section className="match-deck" aria-label="Dnešné odporúčania">
+          {availableMatches.length > 1 && (
+            <div className="match-deck-nav">
+              <button
+                type="button"
+                aria-label="Predchádzajúci profil"
+                disabled={activeIndex === 0}
+                onClick={() => { haptic("tap"); setMatchIndex(activeIndex - 1); }}
+              >
+                <ChevronLeft aria-hidden="true" className="size-5" />
+              </button>
+              <div className="match-deck-position">
+                <span aria-live="polite">Profil {activeIndex + 1} z {availableMatches.length}</span>
+                <div className="match-deck-steps" aria-hidden="true">
+                  {availableMatches.map(({ id }, index) => (
+                    <span key={id} data-active={index === activeIndex} />
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Ďalší profil"
+                disabled={activeIndex === availableMatches.length - 1}
+                onClick={() => { haptic("tap"); setMatchIndex(activeIndex + 1); }}
+              >
+                <ChevronRight aria-hidden="true" className="size-5" />
+              </button>
+            </div>
+          )}
+          <MatchCard
+            key={activeMatch.id}
+            match={activeMatch}
+            profile={profile}
+            initiatedMatchIds={initiatedMatchIds}
+            onSelectMatch={onSelectMatch}
+          />
+        </section>
       )}
 
       {hasMessages && (
