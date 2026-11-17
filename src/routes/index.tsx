@@ -549,19 +549,13 @@ function AntidoteApp() {
         if (existingProfile) {
           setProfile(existingProfile);
           const savedScreen = localStorage.getItem("reson:active_screen") as Screen;
-          const validMainScreens: Screen[] = [
-            "chamber",
-            "noOne",
-            "messages",
-            "settings",
-            "profile-dossier",
-            "thread",
-            "autoMatch",
-          ];
-          if (savedScreen && validMainScreens.includes(savedScreen)) {
-            setScreen(savedScreen);
+          const validMainScreens: Screen[] = ["noOne", "messages", "settings", "profile-dossier", "autoMatch"];
+          if (savedScreen === "thread") {
+            setScreen("messages");
+          } else if (savedScreen === "chamber") {
+            setScreen("noOne");
           } else {
-            setScreen("autoMatch");
+            setScreen(validMainScreens.includes(savedScreen) ? savedScreen : "autoMatch");
           }
           clearOnboardingStorage(true);
         } else {
