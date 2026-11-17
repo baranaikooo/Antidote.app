@@ -101,6 +101,7 @@ import { AssetDossier } from "@/components/AssetDossier";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
+import { UpdateNotice } from "@/components/UpdateNotice";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
 
 export const Route = createFileRoute("/")({
@@ -1089,6 +1090,7 @@ function AntidoteApp() {
 
   return (
     <Shell landing={screen === "landing"} main={showNav}>
+      {showNav && <UpdateNotice />}
       {screen === "landing" && (
         <Landing
           onGoogle={(profile) => {

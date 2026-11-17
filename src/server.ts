@@ -40,6 +40,11 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      if (new URL(request.url).pathname === "/api/app-version") {
+        return Response.json({ version: __ANTIDOTE_BUILD_ID__ }, {
+          headers: { "Cache-Control": "no-store, max-age=0" },
+        });
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
