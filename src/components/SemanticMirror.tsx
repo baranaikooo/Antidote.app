@@ -159,20 +159,13 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
               key={idx}
               type="button"
               onClick={() => handleSelect(idx)}
-              className={`tactile-button flex w-full items-start gap-3.5 p-4 text-left cursor-pointer ${
-                isSelected ? "bg-cerebral text-white" : "bg-card text-foreground"
+              aria-pressed={isSelected}
+              className={`tactile-button flex min-h-24 w-full items-center justify-between gap-4 p-5 text-left cursor-pointer ${
+                isSelected ? "bg-cerebral text-background" : "bg-card text-foreground"
               }`}
             >
-              <span
-                className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border font-mono text-xs font-bold ${
-                  isSelected
-                    ? "border-white/70 bg-white/15 text-white"
-                    : "border-foreground/30 text-foreground/70"
-                }`}
-              >
-                {letter}
-              </span>
-              <span className="text-sm font-medium leading-relaxed">{opt.text}</span>
+              <span className="font-display text-lg font-bold leading-tight">{opt.text}</span>
+              <span className="shrink-0 font-mono text-sm">{letter}</span>
             </button>
           );
         })}

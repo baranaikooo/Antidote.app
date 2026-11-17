@@ -56,7 +56,7 @@ import {
 } from "@/lib/resonance";
 
 import { GoogleSignInButton, type GoogleProfile } from "@/components/GoogleSignInButton";
-import { Blobs, Chip, PillButton, SoftCard, HandNote } from "@/components/Playful";
+import { Chip, PillButton, SoftCard, HandNote } from "@/components/Playful";
 import { useHaptic } from "@/hooks/use-haptics";
 import {
   attachStreamToVideo,
@@ -146,7 +146,7 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
           width: size * 0.32,
           height: size * 0.32,
           background:
-            "radial-gradient(circle, var(--cerebral-glow, rgba(212,131,123,0.25)), rgba(212,131,123,0.03) 60%, transparent 70%)",
+            "radial-gradient(circle, var(--cerebral-glow), transparent 70%)",
         }}
       />
       <span
@@ -175,7 +175,7 @@ function AppSplash() {
       <div className="size-16 rounded-full border border-foreground/10 bg-foreground/[0.02] flex items-center justify-center animate-pulse">
         <span className="size-4 rounded-full bg-foreground/40 animate-ping" />
       </div>
-      <p className="mt-6 font-mono text-[10px] tracking-[0.32em] text-foreground/45 uppercase">
+      <p className="mt-6 font-mono text-xs tracking-[0.32em] text-foreground/45 uppercase">
         ANTIDOTE // SYSTÉM SA INICIALIZUJE
       </p>
     </div>
@@ -1610,47 +1610,33 @@ function BottomNav({
     return (
       <button
         onClick={onClick}
-        className="relative flex flex-1 flex-col items-center justify-center py-1.5 px-1.5 transition-all active:scale-90 cursor-pointer group"
+        aria-current={is ? "page" : undefined}
+        className={`group relative flex min-h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 transition-colors ${is ? "bg-foreground text-background" : "text-foreground/65 hover:text-foreground"}`}
       >
-        {is && (
-          <span className="absolute inset-x-2 bottom-0 h-[3px] bg-cerebral -z-10 transition-all duration-300" />
-        )}
         <span className="relative flex items-center justify-center size-7">
-          <span
-            className={`transition-colors duration-200 ${
-              is
-                ? "text-cerebral drop-shadow-[0_0_6px_var(--cerebral-glow)]"
-                : "text-foreground/45 group-hover:text-foreground/75"
-            }`}
-          >
-            {icon}
-          </span>
+          {icon}
           {!!badge && badge > 0 && (
-            <span className="absolute -top-1 -right-2 grid min-w-[15px] h-[15px] place-items-center px-1 text-[8px] font-bold text-white bg-cerebral rounded-full font-mono shadow-[0_0_6px_var(--cerebral-glow)]">
+            <span className={`absolute -top-1 -right-2 grid min-w-5 place-items-center rounded-full px-1 text-xs font-bold ${is ? "bg-background text-foreground" : "bg-foreground text-background"}`}>
               {badge}
             </span>
           )}
         </span>
         <span
-          className={`font-mono text-[9px] tracking-widest uppercase flex flex-col items-center transition-colors duration-200 ${
-            is ? "text-cerebral font-bold" : "text-foreground/45 font-medium"
-          }`}
+          className="text-xs font-semibold leading-none"
         >
           <span>{label}</span>
-          {is && (
-            <span className="size-1 rounded-full bg-cerebral mt-0.5 shadow-[0_0_6px_var(--cerebral)]" />
-          )}
         </span>
       </button>
     );
   };
   return (
     <nav
-      className={`fixed inset-x-0 bottom-5 z-40 px-4 flex justify-center pointer-events-none select-none transition-all duration-300 ${
+      aria-label="Hlavná navigácia"
+      className={`fixed inset-x-0 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-40 px-4 flex justify-center pointer-events-none select-none transition-all duration-300 ${
         isInputActive ? "opacity-0 translate-y-16 pointer-events-none" : "opacity-100 translate-y-0"
       }`}
     >
-      <div className="pointer-events-auto editorial-dock flex items-center justify-around w-full max-w-[380px] px-2.5 py-1.5 transition-all">
+      <div className="pointer-events-auto editorial-dock flex w-full max-w-md items-stretch p-1 transition-all">
         <Item
           id="home"
           icon={<Home className="size-5" />}
@@ -1676,7 +1662,7 @@ function BottomNav({
             <Item
               id="settings"
               icon={<SettingsIcon className="size-5" />}
-              label="Nastav."
+              label="Nastavenia"
               onClick={onSettings}
             />
           </>
@@ -1686,7 +1672,7 @@ function BottomNav({
             <Item
               id="settings"
               icon={<SettingsIcon className="size-5" />}
-              label="Nastav."
+              label="Nastavenia"
               onClick={onSettings}
             />
           </>
@@ -1752,7 +1738,7 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
             type="button"
             onClick={() => choose("travel")}
             className={`tactile-button flex min-h-24 items-center justify-between p-5 text-left ${
-              choice === "travel" ? "bg-cerebral text-white" : "bg-card text-foreground"
+              choice === "travel" ? "bg-cerebral text-background" : "bg-card text-foreground"
             }`}
           >
             <span className="font-display text-xl font-bold leading-tight">Možnosť cestovať</span>
@@ -2109,7 +2095,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
                 </div>
 
                 {/* Active Step Indicator Overlay */}
-                <div className="absolute inset-x-1 bottom-1.5 bg-black/85 border border-foreground/15 px-1.5 py-1 text-center text-[7px] font-mono leading-tight">
+                <div className="absolute inset-x-1 bottom-1.5 bg-black/85 border border-foreground/15 px-1.5 py-1 text-center text-xs font-mono leading-tight">
                   <div className="font-bold text-foreground mb-0.5 tracking-wider uppercase">
                     [ BIOMETRICKÝ SKEN ]
                   </div>
@@ -2150,7 +2136,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
                 {modelLoading ? (
                   <div className="flex flex-col items-center gap-3">
                     <div className="size-5 animate-spin border border-foreground border-t-transparent" />
-                    <span className="text-[10px] tracking-wider text-foreground/80 font-mono uppercase">
+                    <span className="text-xs tracking-wider text-foreground/80 font-mono uppercase">
                       ANALYZÁTOR...
                     </span>
                   </div>
@@ -2177,13 +2163,13 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
               </div>
             )}
             {phase === "recording" && challengeStep === "done" && (
-              <div className="absolute inset-x-0 top-3 mx-auto w-fit bg-red-600 px-2 py-0.5 font-mono text-[10px] tracking-widest text-white uppercase font-bold">
+              <div className="absolute inset-x-0 top-3 mx-auto w-fit bg-red-600 px-2 py-0.5 font-mono text-xs tracking-widest text-white uppercase font-bold">
                 ● REC
               </div>
             )}
             {phase === "verifying" && (
               <div className="absolute inset-0 bg-foreground/10 pointer-events-none grid place-items-center">
-                <span className="text-[10px] font-mono tracking-widest text-foreground animate-pulse font-bold">
+                <span className="text-xs font-mono tracking-widest text-foreground animate-pulse font-bold">
                   OVERUJEM...
                 </span>
               </div>
@@ -2191,7 +2177,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
           </div>
         </div>
 
-        <p className="font-mono text-[10px] tracking-widest text-foreground/50 uppercase mb-3">
+        <p className="font-mono text-xs tracking-widest text-foreground/50 uppercase mb-3">
           {phase === "idle" && "[ NEAKTÍVNY ]"}
           {phase === "countdown" && "[ PRIPRAV SA ]"}
           {phase === "recording" &&
@@ -2241,27 +2227,30 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
 
 function Briefing({ onBegin }: { onBegin: () => void }) {
   return (
-    <div className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 text-center animate-fade-up">
-      <div className="border border-foreground/20 p-6 max-w-sm w-full bg-card flex flex-col items-center">
-        <div className="font-mono text-[10px] tracking-widest text-foreground/50 uppercase mb-3">
-          Otázky · približne 2 minúty
-        </div>
-        <h2 className="font-sans text-sm font-bold uppercase tracking-tight text-foreground mb-3">
-          Poďme sa trochu spoznať
-        </h2>
-        <p className="text-xs leading-relaxed text-foreground/80 mb-5">
+    <div className="flex min-h-[80vh] flex-col px-1 py-3 animate-fade-up">
+      <header className="flex items-center justify-between"><Logo /><span className="font-mono text-xs text-foreground/35">02</span></header>
+      <main className="my-auto py-10">
+        <p className="editorial-kicker text-foreground/50">Otázky · približne 2 minúty</p>
+        <h1 className="mt-5 max-w-sm font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em]">
+          Poďme sa trochu spoznať.
+        </h1>
+        <div className="mt-8 border-t border-foreground/30 pt-6">
+        <p className="max-w-sm text-base leading-relaxed text-foreground/70">
           Čakajú ťa otázky o vzťahoch, hodnotách a o tom, ako sa rozhoduješ.
         </p>
-        <p className="text-[10px] leading-relaxed text-foreground/50 font-mono mb-6 uppercase">
+        <p className="mt-3 text-sm leading-relaxed text-foreground/50">
           Odpovedaj tak, ako to cítiš. Neexistujú správne odpovede.
         </p>
         <button
+          type="button"
           onClick={onBegin}
-          className="w-full bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 transition-all cursor-pointer"
+          className="tactile-button mt-8 flex min-h-20 w-full items-center justify-between bg-foreground p-5 text-left text-background"
         >
-          ZAČAŤ OTÁZKY
+          <span className="font-display text-xl font-bold">Začať otázky</span>
+          <ChevronRight className="size-5" aria-hidden="true" />
         </button>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
@@ -2421,7 +2410,7 @@ function Dashboard({
             zaznamenal váš útek a dočasne vám znížil skóre dôveryhodnosti. Môžete si ho však
             odpracovať späť – stačí, ak zvládnete ďalšie interakcie bez toho, aby ste ušli.
           </p>
-          <div className="mt-3 flex items-center justify-between text-[10px] tracking-widest text-red-500/80 uppercase font-mono border-t border-red-500/10 pt-3">
+          <div className="mt-3 flex items-center justify-between text-xs tracking-widest text-red-500/80 uppercase font-mono border-t border-red-500/10 pt-3">
             <span>Zostávajúce čestné interakcie:</span>
             <span className="font-bold bg-red-500/20 px-2 py-0.5 text-red-400">
               {profile.redemptionQuota} / 3
@@ -2431,7 +2420,7 @@ function Dashboard({
       ) : null}
 
       {/* Sort options */}
-      <div className="mb-6 flex justify-between items-center border border-foreground/10 bg-card p-3 rounded-none font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+      <div className="mb-6 flex justify-between items-center border border-foreground/10 bg-card p-3 rounded-none font-mono text-xs tracking-widest text-muted-foreground uppercase">
         <span>Zoradiť podľa:</span>
         <div className="flex gap-2">
           <button
@@ -2441,7 +2430,7 @@ function Dashboard({
             }}
             className={`px-2 py-1 border transition-all rounded-none font-bold ${
               sortBy === "ev"
-                ? "border-cerebral bg-cerebral text-white shadow-[0_0_8px_var(--cerebral-glow)]"
+                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
                 : "border-foreground/15 text-foreground hover:border-cerebral/40 hover:text-cerebral"
             }`}
           >
@@ -2454,7 +2443,7 @@ function Dashboard({
             }}
             className={`px-2 py-1 border transition-all rounded-none font-bold ${
               sortBy === "distance"
-                ? "border-cerebral bg-cerebral text-white shadow-[0_0_8px_var(--cerebral-glow)]"
+                ? "border-cerebral bg-cerebral text-background shadow-[0_0_8px_var(--cerebral-glow)]"
                 : "border-foreground/15 text-foreground hover:border-cerebral/40 hover:text-cerebral"
             }`}
           >
@@ -2528,7 +2517,7 @@ function Dashboard({
         <button
           type="button"
           onClick={onMessages}
-          className="mt-6 w-full border border-cerebral/30 bg-cerebral/5 py-4 text-sm tracking-widest text-foreground hover:bg-cerebral hover:text-white transition-all uppercase font-mono cursor-pointer"
+          className="mt-6 w-full border border-cerebral/30 bg-cerebral/5 py-4 text-sm tracking-widest text-foreground hover:bg-cerebral hover:text-background transition-all uppercase font-mono cursor-pointer"
         >
           Zobraziť uložené konverzácie
         </button>
@@ -2658,16 +2647,14 @@ function Test({ onComplete }: { onComplete: (a: FullAnswers) => void }) {
               onClick={() => pick(k.toUpperCase() as Answer)}
               className={`tactile-button group p-5 text-left cursor-pointer ${
                 k === "a"
-                  ? "bg-card text-foreground hover:bg-cerebral hover:text-white"
+                  ? "bg-card text-foreground hover:bg-cerebral hover:text-background"
                   : "bg-card text-foreground hover:bg-accent hover:text-accent-foreground"
               }`}
             >
-              <div className="flex items-start gap-4">
-                <span className="grid size-9 shrink-0 place-items-center rounded-full border border-current font-mono text-xs font-bold">
-                  {k.toUpperCase()}
-                </span>
-                <p className="pt-1 text-base font-medium leading-snug">{s[k]}</p>
-              </div>
+              <span className="flex min-h-14 items-center justify-between gap-4">
+                <span className="font-display text-xl font-bold leading-tight">{s[k]}</span>
+                <span className="shrink-0 font-mono text-sm">{k.toUpperCase()}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -2844,7 +2831,7 @@ function ProfileForm({
       }`}
     >
       {/* ASCII Progress Indicator */}
-      <div className="absolute top-4 right-4 font-mono text-[10px] tracking-widest text-foreground/45">
+      <div className="absolute top-4 right-4 font-mono text-xs tracking-widest text-foreground/45">
         STEP: [{progressMap[step].bar}] {progressMap[step].percent}
       </div>
 
@@ -2994,7 +2981,7 @@ function ProfileForm({
 
           <div className="text-left space-y-4">
             <div className="border-2 border-foreground p-4 bg-foreground/5 font-mono text-center">
-              <p className="text-[10px] text-foreground/50 uppercase tracking-widest mb-1">
+              <p className="text-xs text-foreground/50 uppercase tracking-widest mb-1">
                 // TVOJ VEK
               </p>
               <div className="text-lg font-bold tracking-tight text-foreground uppercase">
@@ -3218,33 +3205,29 @@ function AutoMatch({
 // ============ NoOne ============
 function NoOne({ onMessages }: { onMessages: (() => void) | null }) {
   return (
-    <div className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 text-center animate-fade-up">
-      <Blobs variant="warm" />
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="size-16 rounded-full border border-cerebral/30 bg-cerebral/5 grid place-items-center mb-2 shadow-[0_0_15px_var(--cerebral-glow)]">
-          <Brain className="size-8 text-cerebral animate-pulse" />
-        </div>
-        <h3 className="mt-4 font-sans text-lg font-bold tracking-tight text-foreground uppercase">
-          Zatiaľ tu pre teba nikto nie je
-        </h3>
-        <p className="mt-3 max-w-md text-xs font-mono leading-relaxed text-muted-foreground">
-          Algoritmus zvažuje vek, pohlavie aj orientáciu. Nikto nový momentálne nesadol — skús sa
-          staviť o chvíľu, kognitívne profily pribúdajú v reálnom čase.
+    <div className="flex min-h-[80vh] flex-col px-1 py-3 animate-fade-up">
+      <header><Logo /></header>
+      <main className="my-auto py-10">
+        <p className="editorial-kicker text-foreground/50">Tvoje spojenia</p>
+        <h1 className="mt-5 max-w-sm font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em]">
+          Zatiaľ tu pre teba nikto nie je.
+        </h1>
+        <div className="mt-8 border-t border-foreground/30 pt-6">
+        <p className="max-w-sm text-sm leading-relaxed text-foreground/60">
+          Momentálne sme nenašli ďalšie vhodné spojenie. Skús sa vrátiť neskôr.
         </p>
         {onMessages && (
-          <div className="mt-7 w-full max-w-xs">
             <button
+              type="button"
               onClick={onMessages}
-              className="w-full border border-cerebral/40 bg-cerebral/10 py-3.5 text-xs font-mono font-bold tracking-widest uppercase text-foreground hover:bg-cerebral hover:text-white transition-all cursor-pointer"
+              className="tactile-button mt-8 flex min-h-20 w-full items-center justify-between bg-foreground p-5 text-left text-background"
             >
-              OTVORIŤ SPRÁVY
+              <span className="font-display text-xl font-bold">Otvoriť správy</span>
+              <ChevronRight className="size-5" aria-hidden="true" />
             </button>
-          </div>
         )}
-        <p className="mt-4 font-mono text-[10px] tracking-widest text-cerebral uppercase">
-          // REZONANČNÝ ENGINE AKTÍVNY
-        </p>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
@@ -3316,8 +3299,8 @@ function MessagesList({
                     >
                       {m.name}
                     </h3>
-                    <span className="font-mono text-[10px] text-foreground/40">{m.age}</span>
-                    <span className="text-[10px] text-foreground/40">· {m.city}</span>
+                    <span className="font-mono text-xs text-foreground/40">{m.age}</span>
+                    <span className="text-xs text-foreground/40">· {m.city}</span>
                     {c.unread && (
                       <span className="size-2 rounded-full bg-cerebral shadow-[0_0_6px_var(--cerebral)] animate-pulse" />
                     )}
@@ -3338,7 +3321,7 @@ function MessagesList({
 
       <button
         onClick={onFindNew}
-        className="mt-8 w-full border border-cerebral/40 bg-cerebral/5 py-4 text-sm tracking-[0.3em] text-foreground hover:bg-cerebral hover:text-white transition-all cursor-pointer font-mono font-bold"
+        className="mt-8 w-full border border-cerebral/40 bg-cerebral/5 py-4 text-sm tracking-[0.3em] text-foreground hover:bg-cerebral hover:text-background transition-all cursor-pointer font-mono font-bold"
       >
         OBJAVIŤ SPOJENIE
       </button>

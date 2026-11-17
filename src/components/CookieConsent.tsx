@@ -82,7 +82,7 @@ export function CookieConsent() {
             />
           </button>
         </div>
-        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{desc}</p>
+        <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{desc}</p>
       </div>
     </div>
   );
@@ -135,7 +135,7 @@ export function CookieConsent() {
         <div className="flex items-center justify-between gap-2 px-5 pb-4 pt-3">
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="inline-flex items-center gap-1 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-xs font-medium tracking-wide text-muted-foreground hover:text-foreground"
           >
             {expanded ? "Skryť detaily" : "Prispôsobiť"}
             <ChevronDown
@@ -145,13 +145,13 @@ export function CookieConsent() {
           <div className="flex flex-1 justify-end gap-2">
             <button
               onClick={() => (expanded ? save("custom", prefs) : save("rejected"))}
-              className="border border-border/60 bg-background/40 px-3 py-2 text-[11px] font-mono font-medium tracking-[0.14em] text-foreground/80 hover:bg-background/60"
+              className="border border-border/60 bg-background/40 px-3 py-2 text-xs font-mono font-medium tracking-[0.14em] text-foreground/80 hover:bg-background/60"
             >
               {expanded ? "ULOŽIŤ" : "ODMIETNUŤ"}
             </button>
             <button
               onClick={() => save("accepted")}
-              className="cta-gradient cta-gradient-hover px-4 py-2 text-[11px] font-mono font-semibold tracking-[0.14em]"
+              className="cta-gradient cta-gradient-hover px-4 py-2 text-xs font-mono font-semibold tracking-[0.14em]"
             >
               <span className="relative z-10">PRIJAŤ VŠETKO</span>
             </button>

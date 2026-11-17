@@ -300,7 +300,7 @@ export function PressureChat({
             </span>
             <div>
               <p className="font-display text-sm font-bold leading-none">{scenario.sender}</p>
-              <p className="mt-1 text-[11px] text-foreground/50">
+              <p className="mt-1 text-xs text-foreground/50">
                 {isTyping ? "píše správu…" : "práve teraz"}
               </p>
             </div>

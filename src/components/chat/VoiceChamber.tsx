@@ -499,9 +499,9 @@ export function Chamber({
               } ${active ? "bg-foreground/[0.06]" : ""}`}
             >
               <span
-                className={`mx-auto mb-2 grid size-6 place-items-center rounded-full border font-mono text-[10px] ${
+                className={`mx-auto mb-2 grid size-6 place-items-center rounded-full border font-mono text-xs ${
                   complete
-                    ? "border-cerebral bg-cerebral text-white"
+                    ? "border-cerebral bg-cerebral text-background"
                     : active
                       ? "border-accent bg-accent text-accent-foreground"
                       : "border-foreground/20 text-foreground/35"
@@ -510,7 +510,7 @@ export function Chamber({
                 {complete ? "✓" : index + 1}
               </span>
               <span
-                className={`block text-[10px] leading-tight ${
+                className={`block text-xs leading-tight ${
                   active ? "font-semibold text-foreground" : "text-foreground/40"
                 }`}
               >
@@ -558,7 +558,7 @@ export function Chamber({
             )}
             <div className="absolute top-0.5 left-0.5 flex items-center gap-0.5 bg-black/75 px-1 py-0.5 border border-white/5">
               <span className="size-1 animate-pulse rounded-full bg-cerebral" />
-              <span className="font-mono text-[5px] tracking-tighter text-cerebral">LIVE</span>
+              <span className="font-mono text-xs tracking-tighter text-cerebral">LIVE</span>
             </div>
           </div>
           {myVideoUrl && (
@@ -572,12 +572,12 @@ export function Chamber({
                 className="size-full object-contain bg-black"
                 style={{ transform: "scaleX(-1)", filter: `blur(${blurPx}px)` }}
               />
-              <span className="absolute bottom-0.5 right-0.5 bg-background/60 px-1 font-mono text-[6px] tracking-widest text-foreground/70 uppercase">
+              <span className="absolute bottom-0.5 right-0.5 bg-background/60 px-1 font-mono text-xs tracking-widest text-foreground/70 uppercase">
                 TY
               </span>
               <div className="absolute top-0.5 left-0.5 flex items-center gap-0.5 bg-black/75 px-1 py-0.5 border border-white/5">
                 <span className="size-1 animate-pulse rounded-full bg-cerebral" />
-                <span className="font-mono text-[5px] tracking-tighter text-cerebral">LIVE</span>
+                <span className="font-mono text-xs tracking-tighter text-cerebral">LIVE</span>
               </div>
             </div>
           )}
@@ -923,7 +923,7 @@ export function Chamber({
                 haptic("success");
                 onSuccess(0);
               }}
-              className="tactile-button flex w-full items-center justify-between bg-cerebral px-5 py-4 text-white cursor-pointer"
+              className="tactile-button flex w-full items-center justify-between bg-cerebral px-5 py-4 text-background cursor-pointer"
             >
               <span className="font-display text-base font-bold">Otvoriť spoločný rozhovor</span>
               <ArrowRight className="size-5" />

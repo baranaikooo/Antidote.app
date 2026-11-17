@@ -76,7 +76,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 border px-3 py-1 text-[11px] font-mono font-medium tracking-wide",
+        "inline-flex items-center gap-1.5 border px-3 py-1 text-xs font-mono font-medium tracking-wide",
         CHIP_BG[tone],
         className,
       )}
@@ -146,7 +146,7 @@ export function HandNote({
   className?: string;
 }) {
   return (
-    <p className={cn("text-[11px] font-mono text-muted-foreground/80 leading-snug", className)}>
+    <p className={cn("text-xs font-mono text-muted-foreground/80 leading-snug", className)}>
       {children}
     </p>
   );

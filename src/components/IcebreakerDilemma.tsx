@@ -85,10 +85,10 @@ export function IcebreakerDilemma({
 
       <div className="flex items-center gap-3 text-xs text-foreground/45">
         <div className="flex -space-x-1">
-          <div className="size-6 rounded-full border border-foreground bg-foreground text-[8px] flex items-center justify-center text-background font-mono font-bold">
+          <div className="size-6 rounded-full border border-foreground bg-foreground text-xs flex items-center justify-center text-background font-mono font-bold">
             {userStyle[0]}
           </div>
-          <div className="size-6 rounded-full border border-foreground bg-accent text-[8px] flex items-center justify-center text-accent-foreground font-mono font-bold">
+          <div className="size-6 rounded-full border border-foreground bg-accent text-xs flex items-center justify-center text-accent-foreground font-mono font-bold">
             {matchStyle[0]}
           </div>
         </div>

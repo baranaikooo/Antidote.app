@@ -164,7 +164,7 @@ export function RecordButton({
                   previewAudioRef.current?.pause();
                   onSendDraft?.();
                 }}
-                className="tactile-button flex items-center justify-center gap-2 bg-cerebral px-4 py-3.5 font-display text-sm font-bold text-white disabled:opacity-40 cursor-pointer"
+                className="tactile-button flex items-center justify-center gap-2 bg-cerebral px-4 py-3.5 font-display text-sm font-bold text-background disabled:opacity-40 cursor-pointer"
               >
                 <span>{sending ? "Odosielam…" : "Odoslať"}</span>
                 <Send className="size-4" />
@@ -240,7 +240,7 @@ export function RecordButton({
                 onStart();
               }}
               aria-label="Nahrať hlasovú odpoveď"
-              className="grid size-16 place-items-center rounded-full bg-cerebral text-white transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cerebral disabled:opacity-35 cursor-pointer"
+              className="grid size-16 place-items-center rounded-full bg-cerebral text-background transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cerebral disabled:opacity-35 cursor-pointer"
             >
               <Mic className="size-6" aria-hidden="true" />
             </button>
