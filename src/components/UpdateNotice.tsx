@@ -33,21 +33,23 @@ function useAndroidRelease(automatic: boolean) {
   }, []);
 
   useEffect(() => {
-    if (!automatic || !installed) return;
+    if (!automatic || !platform || (platform === "native" && !installed)) return;
     let active = true;
     function check() {
       if (document.visibilityState !== "visible") return;
       void latestAndroidVersion().then((version) => {
-        if (active) setAvailable(version && version.code > installed.code ? version : null);
+        if (active) setAvailable(version && (platform === "legacy" || version.code > (installed?.code ?? 0)) ? version : null);
       }).catch(() => {});
     }
     check();
     const interval = window.setInterval(check, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", check);
     return () => {
       active = false;
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", check);
     };
-  }, [automatic, installed]);
+  }, [automatic, installed, platform]);
 
   async function checkNow() {
     setBusy(true);
@@ -77,7 +79,7 @@ function useAndroidRelease(automatic: boolean) {
       } else if (available) {
         const { state } = await installAndroidUpdate(available);
         setMessage(state === "permission"
-          ? "Povoľ inštaláciu z Antidote, potom sa vráť a ťukni na Aktualizovať znova."
+          ? "Povoľ inštaláciu z Antidote a po návrate spusti stiahnutie znova."
           : "Potvrď aktualizáciu v okne Androidu.");
       }
     } catch {
@@ -104,7 +106,7 @@ export function AndroidUpdateSettings() {
         disabled={update.busy}
         onClick={() => void (update.available || update.platform === "legacy" ? update.install() : update.checkNow())}
       >
-        {update.platform === "legacy" ? "Stiahnuť aktualizáciu" : update.available ? "Aktualizovať" : "Skontrolovať aktualizácie"}
+        {update.platform === "legacy" || update.available ? "Stiahnuť aktualizáciu" : "Skontrolovať aktualizácie"}
       </button>
       <p className="personal-intro" role="status">{update.message}</p>
     </section>
@@ -120,6 +122,7 @@ export function UpdateNotice() {
   const androidRelease = android.available?.code !== dismissedAndroidVersion ? android.available : null;
 
   useEffect(() => {
+    if (androidUpdatePlatform()) return;
     let active = true;
 
     try {
@@ -157,12 +160,12 @@ export function UpdateNotice() {
     };
   }, []);
 
-  if (androidRelease && notice !== "available") {
+  if (androidRelease) {
     return (
       <div className="update-notice" role="status">
         <RefreshCw size={18} aria-hidden="true" />
         <span>{android.message || `Android verzia ${androidRelease.name} je dostupná.`}</span>
-        <button type="button" onClick={() => void android.install()} disabled={android.busy}>Aktualizovať</button>
+        <button type="button" onClick={() => void android.install()} disabled={android.busy}>Stiahnuť</button>
         <button type="button" className="update-notice-close" onClick={() => setDismissedAndroidVersion(androidRelease.code)} aria-label="Zavrieť oznámenie">
           <X size={18} aria-hidden="true" />
         </button>
