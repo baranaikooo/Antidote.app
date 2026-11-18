@@ -584,14 +584,14 @@ html.dark {
 .app-main {
   --app-line: color-mix(in srgb, var(--foreground) 16%, transparent);
   --app-tint: color-mix(in srgb, var(--accent) 10%, var(--card));
-  --app-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  --app-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  --app-gutter: max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right));
   background: var(--background);
 }
 .app-main-viewport {
   padding-top: max(1rem, env(safe-area-inset-top));
-  padding-right: max(1.25rem, env(safe-area-inset-right));
+  padding-inline: var(--app-gutter);
   padding-bottom: calc(5rem + var(--app-bottom));
-  padding-left: max(1.25rem, env(safe-area-inset-left));
 }
 .update-notice { position: fixed; z-index: 45; top: max(0.75rem, env(safe-area-inset-top)); left: 50%; display: flex; width: min(calc(100% - 2rem), 28rem); align-items: center; gap: 0.5rem; padding: 0.5rem 0.5rem 0.5rem 0.75rem; transform: translateX(-50%); border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent); background: var(--card); color: var(--foreground); box-shadow: 0 4px 18px #0002; font-size: 0.875rem; }
 .update-notice > svg { flex: none; color: var(--accent); }
@@ -639,7 +639,7 @@ html.dark {
 .app-main .settings-disclosure, .app-main .profile-filters { border-top: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent); padding-block: 0.4rem; }
 .app-nav-dock {
   position: fixed;
-  inset: auto max(1.25rem, env(safe-area-inset-right)) var(--app-bottom) max(1.25rem, env(safe-area-inset-left));
+  inset: auto var(--app-gutter) var(--app-bottom);
   z-index: 40;
   max-width: 36rem;
   margin-inline: auto;
@@ -648,7 +648,8 @@ html.dark {
 }
 .app-nav-dock[data-hidden="true"] { pointer-events: none; opacity: 0; transform: translateY(100%); }
 .app-nav {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 0.25rem;
   border: 1px solid var(--app-line);
   border-radius: 0.625rem;
@@ -659,9 +660,9 @@ html.dark {
   display: grid;
   min-width: 0;
   min-height: 3.5rem;
-  flex: 1;
   place-content: center;
   justify-items: center;
+  text-align: center;
   gap: 0.15rem;
   color: var(--muted-foreground);
   font-size: 0.8125rem;
@@ -701,26 +702,6 @@ html.dark {
   background: var(--accent);
   color: var(--accent-foreground);
 }
-.discover-profile[aria-expanded="true"] { border-color: var(--accent); }
-.discover-profile[aria-expanded="true"] > svg { transform: rotate(180deg); }
-.discover-profile-popover {
-  width: min(19rem, var(--radix-popover-content-available-width));
-  border-color: color-mix(in srgb, var(--foreground) 16%, transparent);
-}
-.discover-profile-range {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
-  margin-block: 0.75rem;
-  padding-block: 0.65rem;
-  border-block: 1px solid color-mix(in srgb, var(--foreground) 13%, transparent);
-  font-size: 0.875rem;
-}
-.discover-profile-range > svg { color: var(--accent); }
-.discover-profile-range strong { margin-inline-start: auto; }
-.discover-profile-option { min-height: 2.75rem; border: 0; padding-inline: 0.375rem; border-radius: 0.375rem; }
-.discover-profile-option span > svg { color: var(--accent); }
 .discover-search {
   display: grid;
   gap: 0.75rem;
@@ -755,7 +736,7 @@ html.dark {
 }
 .discover-search button:disabled { opacity: 0.55; }
 @media (prefers-reduced-motion: no-preference) {
-  .discover-profile, .discover-profile > svg, .discover-refresh { transition: transform 130ms ease-out; }
+  .discover-profile, .discover-refresh { transition: transform 130ms ease-out; }
   .discover-profile:active, .discover-refresh:active:not(:disabled) { transform: scale(0.97); }
   .discover-search-icon[data-busy="true"] svg { animation: discover-scan 1.3s linear infinite; }
   @keyframes discover-scan { to { transform: rotate(1turn); } }

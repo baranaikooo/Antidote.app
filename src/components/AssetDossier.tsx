@@ -7,24 +7,20 @@ import { useHaptic } from "@/hooks/use-haptics";
 import { openCamera, recordStreamForMs, stopStream, attachStreamToVideo } from "@/lib/media";
 import { supabase } from "@/lib/supabase";
 
-export type ProfileSection = "moments" | "filters" | "personality";
-
 interface AssetDossierProps {
-  initialSection?: ProfileSection;
   user: UserProfile;
   onUpdateUser: React.Dispatch<React.SetStateAction<UserProfile | null>>;
   onBack: () => void;
 }
 
-export function AssetDossier({ user, onUpdateUser, onBack, initialSection }: AssetDossierProps) {
+export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) {
   const haptic = useHaptic();
+  const profileHeader = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (!initialSection) return;
-    const section = document.getElementById(`profile-${initialSection}`);
-    section?.scrollIntoView({ block: "start" });
-    section?.focus({ preventScroll: true });
-  }, [initialSection]);
+    profileHeader.current?.closest(".app-main-viewport")?.scrollTo({ top: 0 });
+    profileHeader.current?.querySelector("h1")?.focus({ preventScroll: true });
+  }, []);
 
   // Blur Toggle state: Pre-vote (blurred to 15px) vs Unlocked (sharp)
   const [isPreviewBlurred, setIsPreviewBlurred] = useState(true);
@@ -516,15 +512,15 @@ export function AssetDossier({ user, onUpdateUser, onBack, initialSection }: Ass
   return (
     <>
       <div className="personal-screen">
-        <header className="personal-header">
+        <header ref={profileHeader} className="personal-header">
           <button type="button" onClick={onBack} className="personal-action mb-3 inline-flex items-center gap-2">
             <ArrowLeft className="size-4" aria-hidden="true" />Späť do Spojení
           </button>
-          <h1 className="personal-title">{user.name}</h1>
-          <p className="personal-intro">Tvoj profil a nastavenia zoznamovania</p>
+          <h1 tabIndex={-1} className="personal-title">{user.name}</h1>
+          <p className="personal-intro">{[user.age && `${user.age} rokov`, user.city].filter(Boolean).join(" · ")}</p>
         </header>
 
-        <section id="profile-moments" tabIndex={-1} className="personal-section profile-moments" aria-labelledby="moments-title">
+        <section className="personal-section profile-moments" aria-labelledby="moments-title">
           <div className="flex flex-wrap items-center justify-between gap-x-3">
             <h2 id="moments-title" className="personal-heading">Tvoje momenty</h2>
             <button
@@ -548,7 +544,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, initialSection }: Ass
         </section>
 
         {/* Market Parameters (Moved from settings to DNA section) */}
-        <details id="profile-filters" tabIndex={-1} className="personal-section profile-filters" open>
+        <details className="personal-section profile-filters" open>
           <summary className="personal-summary"><span><span className="personal-heading">Koho chceš spoznať?</span><span className="summary-detail">{isGlobalMode ? "Celý svet" : `Do ${distance} km`}</span></span><ChevronDown className="size-5" aria-hidden="true" /></summary>
 
           <div className="space-y-3 pt-3">
@@ -632,7 +628,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, initialSection }: Ass
           </div>
         </details>
 
-        <details id="profile-personality" tabIndex={-1} className="personal-section group" open={initialSection === "personality"}>
+        <details className="personal-section group">
           <summary className="personal-summary">
             <h2 className="personal-heading">Tvoja osobnosť</h2>
             <ChevronDown className="size-5 group-open:rotate-180" aria-hidden="true" />

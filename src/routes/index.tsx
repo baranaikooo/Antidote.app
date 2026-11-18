@@ -1,4 +1,4 @@
-import { Capacitor, registerPlugin, SystemBars } from "@capacitor/core";
+import { Capacitor, registerPlugin, SystemBars, SystemBarType } from "@capacitor/core";
 import { createFileRoute } from "@tanstack/react-router";
 import type { User as AuthUser } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -102,12 +102,11 @@ import {
   COOKIES_BODY,
   CONTACT_BODY,
 } from "@/components/settings/LegalAndSettings";
-import { AssetDossier, type ProfileSection } from "@/components/AssetDossier";
+import { AssetDossier } from "@/components/AssetDossier";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
 import { UpdateNotice } from "@/components/UpdateNotice";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
 
 export const Route = createFileRoute("/")({
@@ -260,7 +259,8 @@ function useTheme(): [ThemeMode, (m: ThemeMode) => void] {
 
     applyTheme(systemTheme.matches);
     if (Capacitor.getPlatform() === "android" && Capacitor.isPluginAvailable("SystemBars")) {
-      void SystemBars.hide().catch(() => {});
+      void SystemBars.show({ bar: SystemBarType.StatusBar }).catch(() => {});
+      void SystemBars.hide({ bar: SystemBarType.NavigationBar }).catch(() => {});
     }
     try {
       localStorage.setItem("reson:theme", mode);
@@ -317,7 +317,6 @@ function AntidoteApp() {
   }, [theme]);
 
   const [screen, setScreen] = useState<Screen>("landing");
-  const [profileSection, setProfileSection] = useState<ProfileSection>();
   const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
 
   const [answers, setAnswers] = useState<Answers>(() => {
@@ -1031,9 +1030,8 @@ function AntidoteApp() {
     haptic("tap");
     setScreen("settings");
   }
-  function goProfile(section: ProfileSection) {
+  function goProfile() {
     haptic("tap");
-    setProfileSection(section);
     setScreen("profile-dossier");
   }
 
@@ -1480,7 +1478,6 @@ function AntidoteApp() {
         <div className="animate-kinetic-fade">
           <AssetDossier
             user={profile}
-            initialSection={profileSection}
             onBack={() => setScreen("noOne")}
             onUpdateUser={setProfile}
           />
@@ -2289,7 +2286,7 @@ function Dashboard({
   failed: boolean;
   onRefresh: () => void;
   onWidenSearch: () => Promise<void>;
-  onProfile: (section: ProfileSection) => void;
+  onProfile: () => void;
   sortBy: "ev" | "distance";
   onSortChange: (sort: "ev" | "distance") => void;
   onSelectMatch: (matchId: string) => void;
@@ -2333,34 +2330,11 @@ function Dashboard({
       <header className="discover-header">
         <div className="discover-topline">
           <AntidoteLogo markClassName="h-6" />
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" className="discover-profile" aria-label={`Môj profil, ${profile.name}`} onClick={() => haptic("tap")}>
-                <span className="discover-avatar" aria-hidden="true">{initial || <User className="size-4" />}</span>
-                <span>{profile.name}</span>
-                <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent aria-label="Profilové menu" align="end" sideOffset={8} className="discover-profile-popover motion-reduce:animate-none">
-              <p className="font-display text-xl font-bold break-words">{profile.name}</p>
-              <p className="mt-0.5 text-sm text-muted-foreground">{[profile.age && `${profile.age} rokov`, profile.city].filter(Boolean).join(" · ")}</p>
-              <div className="discover-profile-range">
-                <MapPin className="size-4 shrink-0" aria-hidden="true" />
-                <span>Dosah vyhľadávania</span>
-                <strong>{searchRange}</strong>
-              </div>
-              {([
-                ["moments", Camera, "Tvoje momenty"],
-                ["filters", MapPin, "Koho chceš spoznať?"],
-                ["personality", User, "Tvoja osobnosť"],
-              ] as const).map(([section, Icon, label]) => (
-                <button key={section} type="button" className="personal-link discover-profile-option" onClick={() => onProfile(section)}>
-                  <span><Icon className="size-4 shrink-0" aria-hidden="true" />{label}</span>
-                  <ChevronRight className="size-4" aria-hidden="true" />
-                </button>
-              ))}
-            </PopoverContent>
-          </Popover>
+          <button type="button" className="discover-profile" aria-label={`Otvoriť môj profil, ${profile.name}`} onClick={onProfile}>
+            <span className="discover-avatar" aria-hidden="true">{initial || <User className="size-4" />}</span>
+            <span>{profile.name}</span>
+            <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
+          </button>
         </div>
         <h1 className="personal-title">Dnešné spojenia</h1>
       </header>
