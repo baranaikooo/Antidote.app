@@ -719,6 +719,8 @@ html.dark {
 }
 .discover-profile-range > svg { color: var(--accent); }
 .discover-profile-range strong { margin-inline-start: auto; }
+.discover-profile-option { min-height: 2.75rem; border: 0; padding-inline: 0.375rem; border-radius: 0.375rem; }
+.discover-profile-option span > svg { color: var(--accent); }
 .discover-search {
   display: grid;
   gap: 0.75rem;
