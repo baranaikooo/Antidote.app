@@ -1,10 +1,12 @@
 import { Browser } from "@capacitor/browser";
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 
 export type AndroidVersion = { code: number; name: string };
+export type AndroidUpdateProgress = { stage: "preparing" | "permission" | "downloading" | "verifying"; received?: number; total?: number };
 
 const updater = registerPlugin<{
   getVersion(): Promise<AndroidVersion>;
+  addListener(event: "downloadProgress", listener: (progress: AndroidUpdateProgress) => void): Promise<PluginListenerHandle>;
   install(version: AndroidVersion): Promise<{ state: "permission" | "installer" }>;
 }>("AndroidUpdater");
 
@@ -14,7 +16,17 @@ export function androidUpdatePlatform() {
 }
 
 export const installedAndroidVersion = () => updater.getVersion();
-export const installAndroidUpdate = (version: AndroidVersion) => updater.install(version);
+export async function installAndroidUpdate(
+  version: AndroidVersion,
+  onProgress: (progress: AndroidUpdateProgress) => void,
+) {
+  const listener = await updater.addListener("downloadProgress", onProgress).catch(() => undefined);
+  try {
+    return await updater.install(version);
+  } finally {
+    void listener?.remove().catch(() => {});
+  }
+}
 
 export async function latestAndroidVersion(): Promise<AndroidVersion | null> {
   const response = await fetch("/api/android-update");

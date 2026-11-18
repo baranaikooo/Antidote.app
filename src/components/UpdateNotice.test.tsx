@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { androidUpdatePlatform, downloadAndroidUpdater, installAndroidUpdate, installedAndroidVersion, latestAndroidVersion } from "@/lib/android-updates";
-import { AndroidUpdateSettings, UpdateNotice } from "./UpdateNotice";
+import { androidUpdatePlatform, downloadAndroidUpdater, installAndroidUpdate, installedAndroidVersion, latestAndroidVersion, type AndroidUpdateProgress } from "@/lib/android-updates";
+import { AndroidUpdateProvider, AndroidUpdateSettings, UpdateNotice } from "./UpdateNotice";
 
 describe("UpdateNotice", () => {
   beforeEach(() => {
@@ -63,13 +63,12 @@ describe("Android app updates", () => {
     vi.mocked(installedAndroidVersion).mockResolvedValue({ code: 4, name: "1.0.3" });
     vi.mocked(latestAndroidVersion).mockResolvedValue(latest);
     vi.mocked(installAndroidUpdate).mockResolvedValue({ state: "permission" });
-    render(<AndroidUpdateSettings />);
+    render(<AndroidUpdateProvider enabled><AndroidUpdateSettings /></AndroidUpdateProvider>);
     expect(await screen.findByText("Nainštalovaná verzia 1.0.3")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Skontrolovať aktualizácie" }));
     expect(await screen.findByText("Dostupná verzia 1.0.4")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Stiahnuť aktualizáciu" }));
     expect(await screen.findByText(/Povoľ inštaláciu z Antidote/)).toBeInTheDocument();
-    expect(installAndroidUpdate).toHaveBeenCalledWith(latest);
+    expect(installAndroidUpdate).toHaveBeenCalledWith(latest, expect.any(Function));
   });
 
   it("downloads a native release directly from the notification", async () => {
@@ -79,14 +78,26 @@ describe("Android app updates", () => {
     vi.mocked(androidUpdatePlatform).mockReturnValue("native");
     vi.mocked(installedAndroidVersion).mockResolvedValue({ code: 6, name: "1.0.5" });
     vi.mocked(latestAndroidVersion).mockResolvedValue(latest);
-    vi.mocked(installAndroidUpdate).mockResolvedValue({ state: "installer" });
-    render(<UpdateNotice />);
+    let report!: (progress: AndroidUpdateProgress) => void;
+    let openInstaller!: () => void;
+    vi.mocked(installAndroidUpdate).mockImplementation((_version, onProgress) => {
+      report = onProgress;
+      return new Promise((resolve) => { openInstaller = () => resolve({ state: "installer" }); });
+    });
+    render(<AndroidUpdateProvider enabled><UpdateNotice /></AndroidUpdateProvider>);
     expect(await screen.findByText("Android verzia 1.0.6 je dostupná.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Obnoviť" })).not.toBeInTheDocument();
     expect(fetchWeb).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Stiahnuť" }));
+    expect(screen.getByRole("progressbar")).not.toHaveAttribute("aria-valuenow");
+    act(() => report({ stage: "downloading", received: 400, total: 1000 }));
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
+    act(() => report({ stage: "verifying" }));
+    expect(screen.getByRole("progressbar", { name: "Overujem APK…" })).toBeInTheDocument();
+    act(() => openInstaller());
     expect(await screen.findByText("Potvrď aktualizáciu v okne Androidu.")).toBeInTheDocument();
-    expect(installAndroidUpdate).toHaveBeenCalledWith(latest);
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(installAndroidUpdate).toHaveBeenCalledWith(latest, expect.any(Function));
     vi.unstubAllGlobals();
   });
 
@@ -94,7 +105,7 @@ describe("Android app updates", () => {
     vi.mocked(androidUpdatePlatform).mockReturnValue("legacy");
     vi.mocked(latestAndroidVersion).mockResolvedValue({ code: 7, name: "1.0.6" });
     vi.mocked(downloadAndroidUpdater).mockResolvedValue(undefined);
-    render(<UpdateNotice />);
+    render(<AndroidUpdateProvider enabled><UpdateNotice /></AndroidUpdateProvider>);
     fireEvent.click(await screen.findByRole("button", { name: "Stiahnuť" }));
     expect(await screen.findByText(/Po stiahnutí otvor APK/)).toBeInTheDocument();
     expect(downloadAndroidUpdater).toHaveBeenCalled();

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.net.Uri;
 import android.os.Build;
+import android.os.SystemClock;
 import android.provider.Settings;
 import androidx.activity.result.ActivityResult;
 import androidx.core.content.FileProvider;
@@ -55,6 +56,7 @@ public class AndroidUpdaterPlugin extends Plugin {
         PackageManager packages = getContext().getPackageManager();
         String packageName = getContext().getPackageName();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packages.canRequestPackageInstalls()) {
+            reportProgress("permission", 0, 0);
             Intent permission = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + packageName));
             getActivity().runOnUiThread(() -> {
                 try {
@@ -100,6 +102,7 @@ public class AndroidUpdaterPlugin extends Plugin {
             PackageInfo installed = packages.getPackageInfo(packageName, flags);
             if (code <= PackageInfoCompat.getLongVersionCode(installed)) throw new IOException("Update is not newer");
             download(new URL(DOWNLOAD_ROOT + "Antidote-" + code + "-" + name + ".apk"), apk);
+            reportProgress("verifying", 0, 0);
             PackageInfo update = packages.getPackageArchiveInfo(apk.getAbsolutePath(), flags);
             if (update == null || !packageName.equals(update.packageName) ||
                 code != PackageInfoCompat.getLongVersionCode(update) || !name.equals(update.versionName) ||
@@ -139,7 +142,12 @@ public class AndroidUpdaterPlugin extends Plugin {
         return signatures;
     }
 
-    private static void download(URL url, File target) throws IOException {
+    private void reportProgress(String stage, long received, long total) {
+        JSObject progress = new JSObject().put("stage", stage).put("received", received).put("total", total);
+        execute(() -> notifyListeners("downloadProgress", progress));
+    }
+
+    private void download(URL url, File target) throws IOException {
         for (int redirects = 0; redirects < 4; redirects++) {
             if (!"https".equals(url.getProtocol()) ||
                 (!"github.com".equals(url.getHost()) && !"release-assets.githubusercontent.com".equals(url.getHost()))) {
@@ -158,13 +166,22 @@ public class AndroidUpdaterPlugin extends Plugin {
                     continue;
                 }
                 if (status != 200) throw new IOException("Update download failed");
+                long expected = Math.max(0, connection.getContentLength());
+                if (expected > MAX_BYTES) throw new IOException("Update exceeds the size limit");
+                reportProgress("downloading", 0, expected);
                 try (InputStream input = connection.getInputStream(); FileOutputStream output = new FileOutputStream(target)) {
                     byte[] buffer = new byte[32768];
                     long total = 0;
+                    long lastProgress = SystemClock.elapsedRealtime();
                     for (int read; (read = input.read(buffer)) != -1;) {
                         total += read;
                         if (total > MAX_BYTES) throw new IOException("Update exceeds the size limit");
                         output.write(buffer, 0, read);
+                        long now = SystemClock.elapsedRealtime();
+                        if (now - lastProgress >= 120 || (expected > 0 && total == expected)) {
+                            reportProgress("downloading", total, expected);
+                            lastProgress = now;
+                        }
                     }
                 }
                 return;
