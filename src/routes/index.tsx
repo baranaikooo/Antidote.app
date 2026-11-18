@@ -1,3 +1,4 @@
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { createFileRoute } from "@tanstack/react-router";
 import type { User as AuthUser } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -18,7 +19,8 @@ import {
   MapPin,
   ArrowLeft,
   Home,
-  Brain,
+  RefreshCw,
+  Radar,
   Trash2,
   Settings as SettingsIcon,
   Sun,
@@ -105,6 +107,7 @@ import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
 import { UpdateNotice } from "@/components/UpdateNotice";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
 
 export const Route = createFileRoute("/")({
@@ -236,6 +239,8 @@ type Screen =
   | "profile-dossier";
 
 type ThemeMode = "system" | "dark" | "light";
+const AppChrome = registerPlugin<{ setTheme(options: { dark: boolean }): Promise<void> }>("AppChrome");
+
 function useTheme(): [ThemeMode, (m: ThemeMode) => void] {
   const [mode, setMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") return "system";
@@ -243,30 +248,26 @@ function useTheme(): [ThemeMode, (m: ThemeMode) => void] {
   });
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.documentElement.classList.remove("dark", "light");
-    if (mode === "system") {
-      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.classList.add(isDark ? "dark" : "light");
-    } else {
-      document.documentElement.classList.add(mode);
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+    function applyTheme(systemDark: boolean) {
+      const dark = mode === "system" ? systemDark : mode === "dark";
+      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.classList.toggle("light", !dark);
+      if (Capacitor.isPluginAvailable("AppChrome")) {
+        void AppChrome.setTheme({ dark }).catch(() => {});
+      }
     }
+
+    applyTheme(systemTheme.matches);
     try {
       localStorage.setItem("reson:theme", mode);
     } catch {
       /* ignore */
     }
-  }, [mode]);
-
-  useEffect(() => {
-    if (mode !== "system" || typeof window === "undefined") return;
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      document.documentElement.classList.remove("dark", "light");
-      document.documentElement.classList.add(e.matches ? "dark" : "light");
-    };
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
+    if (mode !== "system") return;
+    const onSystemTheme = (event: MediaQueryListEvent) => applyTheme(event.matches);
+    systemTheme.addEventListener("change", onSystemTheme);
+    return () => systemTheme.removeEventListener("change", onSystemTheme);
   }, [mode]);
 
   return [mode, setMode];
@@ -810,15 +811,19 @@ function AntidoteApp() {
 
   const [liveCandidates, setLiveCandidates] = useState<RankedMatch[]>([]);
   const [initiatedMatchIds, setInitiatedMatchIds] = useState<Set<string>>(new Set());
-  const [isLoadingMarket, setIsLoadingMarket] = useState(false);
+  const [isLoadingMarket, setIsLoadingMarket] = useState(true);
+  const [marketFailed, setMarketFailed] = useState(false);
+  const [marketRevision, setMarketRevision] = useState(0);
 
   useEffect(() => {
     if (!profile) return;
+    let cancelled = false;
 
     async function fetchLiveMarket() {
       const p = profile;
       if (!p) return;
       setIsLoadingMarket(true);
+      setMarketFailed(false);
       try {
         const { data, error } = await supabase.rpc("get_recommended_matches", {
           caller_id: p.id,
@@ -852,7 +857,7 @@ function AntidoteApp() {
             row.latitude && row.longitude ? { lat: row.latitude, lon: row.longitude } : undefined,
         }));
 
-        setLiveCandidates(mapped);
+        if (!cancelled) setLiveCandidates(mapped);
 
         // Fetch matches where user is a participant to check for sent messages
         const { data: myMatches } = await supabase
@@ -887,15 +892,28 @@ function AntidoteApp() {
             });
           }
         }
-        setInitiatedMatchIds(initiatedPartners);
+        if (!cancelled) setInitiatedMatchIds(initiatedPartners);
       } catch (err) {
         console.error("Market fetch failed:", err);
+        if (!cancelled) setMarketFailed(true);
       } finally {
-        setIsLoadingMarket(false);
+        if (!cancelled) setIsLoadingMarket(false);
       }
     }
-    fetchLiveMarket();
-  }, [profile]);
+
+    void fetchLiveMarket();
+    return () => { cancelled = true; };
+  }, [profile, marketRevision]);
+
+  async function widenSearch() {
+    const id = profile?.id;
+    if (id && id !== "00000000-0000-0000-0000-000000000001") {
+      const { error } = await supabase.from("profiles").update({ radius_km: 500 }).eq("id", id);
+      if (error) throw error;
+    }
+    setIsLoadingMarket(true);
+    setProfile((current) => current && current.id === id ? { ...current, radiusKm: 500 } : current);
+  }
 
   const rankedMatches = useMemo(() => {
     if (!profile) return [];
@@ -1380,6 +1398,12 @@ function AntidoteApp() {
             profile={profile}
             matches={rankedMatches}
             loading={isLoadingMarket}
+            failed={marketFailed}
+            onRefresh={() => {
+              setIsLoadingMarket(true);
+              setMarketRevision((revision) => revision + 1);
+            }}
+            onWidenSearch={widenSearch}
             onProfile={goProfile}
             sortBy={sortBy}
             onSortChange={setSortBy}
@@ -2260,6 +2284,9 @@ function Dashboard({
   profile,
   matches,
   loading,
+  failed,
+  onRefresh,
+  onWidenSearch,
   onProfile,
   sortBy,
   onSortChange,
@@ -2271,6 +2298,9 @@ function Dashboard({
   profile: UserProfile;
   matches: RankedMatch[];
   loading: boolean;
+  failed: boolean;
+  onRefresh: () => void;
+  onWidenSearch: () => Promise<void>;
   onProfile: () => void;
   sortBy: "ev" | "distance";
   onSortChange: (sort: "ev" | "distance") => void;
@@ -2282,6 +2312,24 @@ function Dashboard({
   const haptic = useHaptic();
 
   const [matchIndex, setMatchIndex] = useState(0);
+  const [widening, setWidening] = useState(false);
+  const [widenFailed, setWidenFailed] = useState(false);
+  const nearby = profile.radiusKm !== undefined && profile.radiusKm < 500;
+  const searchRange = nearby ? `Do ${profile.radiusKm} km` : "Celý svet";
+  const initial = Array.from(profile.name.trim())[0]?.toLocaleUpperCase("sk");
+
+  async function handleWidenSearch() {
+    haptic("tap");
+    setWidening(true);
+    setWidenFailed(false);
+    try {
+      await onWidenSearch();
+    } catch {
+      setWidenFailed(true);
+    } finally {
+      setWidening(false);
+    }
+  }
   const availableMatches = matches.slice(0, 3);
   const activeIndex = Math.max(0, Math.min(matchIndex, availableMatches.length - 1));
   const activeMatch = availableMatches[activeIndex];
@@ -2295,7 +2343,30 @@ function Dashboard({
   return (
     <div className="personal-screen discover-screen">
       <header className="discover-header">
-        <AntidoteLogo markClassName="h-6" />
+        <div className="discover-topline">
+          <AntidoteLogo markClassName="h-6" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="discover-profile" aria-label={`Môj profil, ${profile.name}`} onClick={() => haptic("tap")}>
+                <span className="discover-avatar" aria-hidden="true">{initial || <User className="size-4" />}</span>
+                <span>{profile.name}</span>
+                <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent aria-label="Prehľad môjho profilu" align="end" sideOffset={8} className="discover-profile-popover motion-reduce:animate-none">
+              <p className="font-display text-xl font-bold break-words">{profile.name}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{[profile.age && `${profile.age} rokov`, profile.city].filter(Boolean).join(" · ")}</p>
+              <div className="discover-profile-range">
+                <MapPin className="size-4 shrink-0" aria-hidden="true" />
+                <span>Dosah vyhľadávania</span>
+                <strong>{searchRange}</strong>
+              </div>
+              <button type="button" className="match-card-action" onClick={onProfile}>
+                Otvoriť môj profil <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
+              </button>
+            </PopoverContent>
+          </Popover>
+        </div>
         <h1 className="personal-title">Dnešné spojenia</h1>
       </header>
 
@@ -2369,14 +2440,39 @@ function Dashboard({
           )}
           <p className="sr-only" role="status">Profil {activeIndex + 1} z {availableMatches.length}, {activeMatch.name}</p>
         </section>
-      ) : loading ? (
-        <p className="app-empty" role="status">Načítavam odporúčania…</p>
       ) : (
-        <section className="app-empty">
-          <Brain className="size-6" aria-hidden="true" />
-          <h2 className="personal-heading">Žiadne nové spojenia</h2>
-          <p>Skús to neskôr alebo v profile zväčši vzdialenosť vyhľadávania.</p>
-          <button type="button" className="personal-action" onClick={onProfile}>Otvoriť profil</button>
+        <section className="discover-search" aria-busy={loading || widening}>
+          <div className="discover-search-icon" data-busy={loading || widening}>
+            <Radar className="size-6" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="discover-search-range"><MapPin className="size-4" aria-hidden="true" /> {searchRange}</p>
+            <h2 className="personal-heading">
+              {loading ? "Hľadám nové spojenia…" : failed ? "Spojenia sa nepodarilo načítať" : "Zatiaľ žiadne nové spojenia"}
+            </h2>
+            <p className="discover-search-copy">
+              {failed ? "Skontroluj pripojenie a skús hľadať znova." :
+                nearby ? "Rozšír dosah a spoznaj ľudí aj mimo svojho okolia." :
+                "Máš zapnuté hľadanie bez obmedzenia vzdialenosti."}
+            </p>
+          </div>
+
+          {nearby && !failed && (
+            <button type="button" className="match-card-action" disabled={loading || widening} onClick={handleWidenSearch}>
+              {widening ? "Ukladám dosah…" : "Hľadať po celom svete"}
+              <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
+            </button>
+          )}
+          {widenFailed && <p role="alert">Dosah sa nepodarilo uložiť. Skús to znova.</p>}
+          <button
+            type="button"
+            className="discover-refresh"
+            disabled={loading || widening}
+            onClick={() => { haptic("tap"); onRefresh(); }}
+          >
+            <RefreshCw className="size-4 shrink-0" aria-hidden="true" />
+            Hľadať znova
+          </button>
         </section>
       )}
 
