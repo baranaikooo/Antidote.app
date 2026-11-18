@@ -47,6 +47,7 @@ public class AppChromePlugin extends Plugin {
             window.setNavigationBarDividerColor(Color.TRANSPARENT);
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.setStatusBarContrastEnforced(false);
             window.setNavigationBarContrastEnforced(false);
         }
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
