@@ -3,6 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
@@ -35,6 +36,19 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     status: 500,
     headers: { "content-type": "text/html; charset=utf-8" },
   });
+}
+
+
+function findLatestAndroidAsset(assets: { name: string; state: string }[]) {
+  let latest: { code: number; name: string } | null = null;
+  for (const asset of assets) {
+    const match = /^Antidote-([1-9]\d{0,9})-(\d{1,9}\.\d{1,9}\.\d{1,9})\.apk$/.exec(asset.name);
+    if (asset.state !== "uploaded" || !match) continue;
+    const code = Number(match[1]);
+    if (code > 2147483647) continue;
+    if (!latest || code > latest.code) latest = { code, name: match[2] };
+  }
+  return latest;
 }
 
 export default {
@@ -78,6 +92,21 @@ ${validCode ? '<script>location.replace(document.getElementById("open-app").href
             "Referrer-Policy": "no-referrer",
           },
         });
+      }
+      if (request.method === "GET" && url.pathname === "/api/android-update") {
+        try {
+          const release = await fetch("https://api.github.com/repos/baranaikooo/Antidote.app/releases/tags/v1.0.0-alpha", {
+            headers: { Accept: "application/vnd.github+json" },
+            signal: AbortSignal.timeout(5000),
+          });
+          if (!release.ok) throw new Error("Release unavailable");
+          const { assets } = await release.json();
+          return Response.json(findLatestAndroidAsset(assets), {
+            headers: { "Cache-Control": "public, max-age=60, s-maxage=300" },
+          });
+        } catch {
+          return Response.json(null, { status: 503, headers: { "Cache-Control": "no-store" } });
+        }
       }
       if (url.pathname === "/api/app-version") {
         return Response.json({ version: __ANTIDOTE_BUILD_ID__ }, {

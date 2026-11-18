@@ -1,3 +1,4 @@
+import { AndroidUpdateSettings } from "@/components/UpdateNotice";
 import React, { useState, useEffect } from "react";
 import {
   LogOut,
@@ -304,6 +305,8 @@ export function SystemConfig({
           </div>
         </div>
       </section>
+
+      <AndroidUpdateSettings />
 
       <details className="personal-section settings-disclosure">
         <summary className="personal-summary"><span><span className="personal-heading">Súkromie a povolenia</span><span className="summary-detail">Kamera, mikrofón a poloha</span></span><ChevronRight className="size-5" aria-hidden="true" /></summary>

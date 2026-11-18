@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { UpdateNotice } from "./UpdateNotice";
+import { androidUpdatePlatform, installAndroidUpdate, installedAndroidVersion, latestAndroidVersion } from "@/lib/android-updates";
+import { AndroidUpdateSettings, UpdateNotice } from "./UpdateNotice";
 
 describe("UpdateNotice", () => {
   beforeEach(() => {
@@ -39,5 +40,35 @@ describe("UpdateNotice", () => {
     expect(screen.getByText("Aplikácia bola aktualizovaná.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Obnoviť" })).not.toBeInTheDocument();
     await waitFor(() => expect(localStorage.getItem("antidote:seen-build")).toBe("current-build"));
+  });
+});
+
+vi.mock("@/lib/android-updates", () => ({
+  androidUpdatePlatform: vi.fn(() => null),
+  downloadAndroidUpdater: vi.fn(),
+  installedAndroidVersion: vi.fn(),
+  installAndroidUpdate: vi.fn(),
+  latestAndroidVersion: vi.fn(),
+}));
+
+describe("Android app updates", () => {
+  afterEach(() => {
+    cleanup();
+    vi.mocked(androidUpdatePlatform).mockReturnValue(null);
+  });
+
+  it("offers a newer APK and explains the system permission step", async () => {
+    const latest = { code: 5, name: "1.0.4" };
+    vi.mocked(androidUpdatePlatform).mockReturnValue("native");
+    vi.mocked(installedAndroidVersion).mockResolvedValue({ code: 4, name: "1.0.3" });
+    vi.mocked(latestAndroidVersion).mockResolvedValue(latest);
+    vi.mocked(installAndroidUpdate).mockResolvedValue({ state: "permission" });
+    render(<AndroidUpdateSettings />);
+    expect(await screen.findByText("Nainštalovaná verzia 1.0.3")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Skontrolovať aktualizácie" }));
+    expect(await screen.findByText("Dostupná verzia 1.0.4")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Aktualizovať" }));
+    expect(await screen.findByText(/Povoľ inštaláciu z Antidote/)).toBeInTheDocument();
+    expect(installAndroidUpdate).toHaveBeenCalledWith(latest);
   });
 });
