@@ -678,7 +678,7 @@ html.dark {
 .discover-sort { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-block: 0.75rem; }
 .discover-sort > span { color: var(--muted-foreground); font-size: 0.875rem; }
 .discover-sort .personal-segments { border-radius: 0.375rem; padding: 0.125rem; }
-.discover-sort .personal-segment { border-radius: 0.25rem; padding-inline: 0.625rem; }
+.discover-sort .personal-segment { flex: 1 0 auto; min-width: 4rem; border-radius: 0.25rem; padding-inline: 0.625rem; }
 .match-card {
   display: grid;
   gap: 0.75rem;
