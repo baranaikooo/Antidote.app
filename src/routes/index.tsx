@@ -1,4 +1,4 @@
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin, SystemBars } from "@capacitor/core";
 import { createFileRoute } from "@tanstack/react-router";
 import type { User as AuthUser } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -102,7 +102,7 @@ import {
   COOKIES_BODY,
   CONTACT_BODY,
 } from "@/components/settings/LegalAndSettings";
-import { AssetDossier } from "@/components/AssetDossier";
+import { AssetDossier, type ProfileSection } from "@/components/AssetDossier";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
@@ -259,6 +259,9 @@ function useTheme(): [ThemeMode, (m: ThemeMode) => void] {
     }
 
     applyTheme(systemTheme.matches);
+    if (Capacitor.getPlatform() === "android" && Capacitor.isPluginAvailable("SystemBars")) {
+      void SystemBars.hide().catch(() => {});
+    }
     try {
       localStorage.setItem("reson:theme", mode);
     } catch {
@@ -314,6 +317,7 @@ function AntidoteApp() {
   }, [theme]);
 
   const [screen, setScreen] = useState<Screen>("landing");
+  const [profileSection, setProfileSection] = useState<ProfileSection>();
   const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
 
   const [answers, setAnswers] = useState<Answers>(() => {
@@ -1027,27 +1031,14 @@ function AntidoteApp() {
     haptic("tap");
     setScreen("settings");
   }
-  function goProfile() {
+  function goProfile(section: ProfileSection) {
     haptic("tap");
+    setProfileSection(section);
     setScreen("profile-dossier");
   }
 
-  const navActive: "home" | "test" | "messages" | "settings" | "profile" =
-    screen === "messages"
-      ? "messages"
-      : screen === "profile-dossier"
-        ? "profile"
-        : (
-              [
-                "settings",
-                "legal-terms",
-                "legal-privacy",
-                "legal-cookies",
-                "legal-contact",
-              ] as Screen[]
-            ).includes(screen)
-          ? "settings"
-          : "home";
+  const settingsScreens: Screen[] = ["settings", "legal-terms", "legal-privacy", "legal-cookies", "legal-contact"];
+  const navActive = screen === "messages" ? "messages" : settingsScreens.includes(screen) ? "settings" : "home";
 
   if (isAuthenticating) {
     return (
@@ -1489,7 +1480,8 @@ function AntidoteApp() {
         <div className="animate-kinetic-fade">
           <AssetDossier
             user={profile}
-            onBack={() => setScreen("autoMatch")}
+            initialSection={profileSection}
+            onBack={() => setScreen("noOne")}
             onUpdateUser={setProfile}
           />
         </div>
@@ -1503,7 +1495,6 @@ function AntidoteApp() {
           onHome={goHome}
           onMessages={goMessages}
           onSettings={goSettings}
-          onProfile={goProfile}
         />
       )}
     </Shell>
@@ -1580,21 +1571,18 @@ function BottomNav({
   onHome,
   onMessages,
   onSettings,
-  onProfile,
 }: {
-  active: "home" | "test" | "messages" | "settings" | "profile";
+  active: "home" | "messages" | "settings";
   unread: number;
   testDone: boolean;
   onHome: () => void;
   onMessages: () => void;
   onSettings: () => void;
-  onProfile: () => void;
 }) {
   const isInputActive = useIsKeyboardOrInputActive();
   const items = [
     { id: "home", icon: Home, label: testDone ? "Spojenia" : "Domov", onClick: onHome },
     { id: "messages", icon: MessageCircle, label: "Správy", onClick: onMessages, badge: unread },
-    ...(testDone ? [{ id: "profile", icon: User, label: "Profil", onClick: onProfile }] : []),
     { id: "settings", icon: SettingsIcon, label: "Nastavenia", onClick: onSettings },
   ];
 
@@ -2301,7 +2289,7 @@ function Dashboard({
   failed: boolean;
   onRefresh: () => void;
   onWidenSearch: () => Promise<void>;
-  onProfile: () => void;
+  onProfile: (section: ProfileSection) => void;
   sortBy: "ev" | "distance";
   onSortChange: (sort: "ev" | "distance") => void;
   onSelectMatch: (matchId: string) => void;
@@ -2353,7 +2341,7 @@ function Dashboard({
                 <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
               </button>
             </PopoverTrigger>
-            <PopoverContent aria-label="Prehľad môjho profilu" align="end" sideOffset={8} className="discover-profile-popover motion-reduce:animate-none">
+            <PopoverContent aria-label="Profilové menu" align="end" sideOffset={8} className="discover-profile-popover motion-reduce:animate-none">
               <p className="font-display text-xl font-bold break-words">{profile.name}</p>
               <p className="mt-0.5 text-sm text-muted-foreground">{[profile.age && `${profile.age} rokov`, profile.city].filter(Boolean).join(" · ")}</p>
               <div className="discover-profile-range">
@@ -2361,9 +2349,16 @@ function Dashboard({
                 <span>Dosah vyhľadávania</span>
                 <strong>{searchRange}</strong>
               </div>
-              <button type="button" className="match-card-action" onClick={onProfile}>
-                Otvoriť môj profil <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
-              </button>
+              {([
+                ["moments", Camera, "Tvoje momenty"],
+                ["filters", MapPin, "Koho chceš spoznať?"],
+                ["personality", User, "Tvoja osobnosť"],
+              ] as const).map(([section, Icon, label]) => (
+                <button key={section} type="button" className="personal-link discover-profile-option" onClick={() => onProfile(section)}>
+                  <span><Icon className="size-4 shrink-0" aria-hidden="true" />{label}</span>
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </button>
+              ))}
             </PopoverContent>
           </Popover>
         </div>
