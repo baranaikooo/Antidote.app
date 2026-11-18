@@ -7,12 +7,14 @@ import android.content.pm.Signature;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import androidx.activity.result.ActivityResult;
 import androidx.core.content.FileProvider;
 import androidx.core.content.pm.PackageInfoCompat;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -54,10 +56,31 @@ public class AndroidUpdaterPlugin extends Plugin {
         String packageName = getContext().getPackageName();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packages.canRequestPackageInstalls()) {
             Intent permission = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + packageName));
-            launch(call, permission, "permission");
+            getActivity().runOnUiThread(() -> {
+                try {
+                    startActivityForResult(call, permission, "installPermissionResult");
+                } catch (RuntimeException error) {
+                    call.reject("Unable to open Android installation settings", error);
+                }
+            });
             return;
         }
 
+        startDownload(call, name, code);
+    }
+
+    @ActivityCallback
+    private void installPermissionResult(PluginCall call, ActivityResult result) {
+        if (call == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !getContext().getPackageManager().canRequestPackageInstalls()) {
+            call.resolve(new JSObject().put("state", "permission"));
+            return;
+        }
+        startDownload(call, call.getString("name", ""), call.getInt("code", 0));
+    }
+
+    private void startDownload(PluginCall call, String name, int code) {
         if (!downloading.compareAndSet(false, true)) {
             call.reject("An update is already downloading");
             return;

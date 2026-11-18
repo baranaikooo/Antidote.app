@@ -606,25 +606,30 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
               />
             </div>
 
-            {/* Target Demographic Select Dropdown */}
-            <div>
-              <label htmlFor="profile-target-market" className="mb-2 block font-medium">
-                Koho hľadáš
-              </label>
-              <select
-                id="profile-target-market"
-                value={getTargetMarket(user.gender, orientation)}
-                onChange={(e) => {
-                  const val = e.target.value as "male" | "female" | "all";
-                  handleTargetMarketChange(val);
-                }}
-                className="w-full border border-foreground/10 bg-background px-4 py-3 text-base text-foreground"
-              >
-                <option value="male">Mužov</option>
-                <option value="female">Ženy</option>
-                <option value="all">Všetkých</option>
-              </select>
-            </div>
+            <fieldset>
+              <legend className="mb-2 font-medium">Koho hľadáš</legend>
+              <div className="personal-segments profile-target-choices">
+                {([
+                  ["male", "Mužov"],
+                  ["female", "Ženy"],
+                  ["all", "Všetkých"],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className="personal-segment"
+                    aria-pressed={getTargetMarket(user.gender, orientation) === value}
+                    onClick={() => {
+                      if (getTargetMarket(user.gender, orientation) === value) return;
+                      haptic("tap");
+                      void handleTargetMarketChange(value);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
           </div>
         </details>
 
