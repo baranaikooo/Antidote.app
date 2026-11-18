@@ -5,6 +5,7 @@ import {
   Mic,
   Send,
   Phone,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -165,7 +166,7 @@ function Shell({ children, landing = false, main = false }: { children: React.Re
     <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : ""}`}>
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
-      <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : "pb-28 pt-5"}`}>
+      <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : "pb-28 pt-5"}`}>
         {children}
       </div>
     </div>
@@ -1000,21 +1001,6 @@ function AntidoteApp() {
       setScreen("landing");
     }
   }
-  function goTest() {
-    haptic("tap");
-    if (!profile) {
-      setScreen("landing");
-      return;
-    }
-    // Once the cognitive test is complete, lock re-entry — the user keeps
-    // their original Cognitive DNA and the Test icon is hidden from the nav.
-    if (hasAnswers) {
-      goToNextMatch();
-      return;
-    }
-    setAnswers({});
-    setScreen("briefing");
-  }
   function goMessages() {
     haptic("tap");
     setScreen("messages");
@@ -1393,6 +1379,8 @@ function AntidoteApp() {
           <Dashboard
             profile={profile}
             matches={rankedMatches}
+            loading={isLoadingMarket}
+            onProfile={goProfile}
             sortBy={sortBy}
             onSortChange={setSortBy}
             onSelectMatch={(id) => {
@@ -1489,7 +1477,6 @@ function AntidoteApp() {
           unread={unreadCount}
           testDone={hasAnswers}
           onHome={goHome}
-          onTest={goTest}
           onMessages={goMessages}
           onSettings={goSettings}
           onProfile={goProfile}
@@ -1567,7 +1554,6 @@ function BottomNav({
   unread,
   testDone,
   onHome,
-  onTest,
   onMessages,
   onSettings,
   onProfile,
@@ -1576,97 +1562,30 @@ function BottomNav({
   unread: number;
   testDone: boolean;
   onHome: () => void;
-  onTest: () => void;
   onMessages: () => void;
   onSettings: () => void;
   onProfile: () => void;
 }) {
   const isInputActive = useIsKeyboardOrInputActive();
+  const items = [
+    { id: "home", icon: Home, label: testDone ? "Spojenia" : "Domov", onClick: onHome },
+    { id: "messages", icon: MessageCircle, label: "Správy", onClick: onMessages, badge: unread },
+    ...(testDone ? [{ id: "profile", icon: User, label: "Profil", onClick: onProfile }] : []),
+    { id: "settings", icon: SettingsIcon, label: "Nastavenia", onClick: onSettings },
+  ];
 
-  const Item = ({
-    id,
-    icon,
-    label,
-    onClick,
-    badge,
-  }: {
-    id: string;
-    icon: React.ReactNode;
-    label: string;
-    onClick: () => void;
-    badge?: number;
-  }) => {
-    const is = id === active;
-    return (
-      <button
-        onClick={onClick}
-        aria-current={is ? "page" : undefined}
-        className="app-nav-item"
-      >
-        <span className="relative flex items-center justify-center size-7">
-          {icon}
-          {!!badge && badge > 0 && (
-            <span className={`absolute -top-1 -right-2 grid min-w-5 place-items-center rounded-full px-1 text-xs font-bold ${is ? "bg-background text-foreground" : "bg-foreground text-background"}`}>
-              {badge}
-            </span>
-          )}
-        </span>
-        <span
-          className="text-xs font-semibold leading-none"
-        >
-          <span>{label}</span>
-        </span>
-      </button>
-    );
-  };
   return (
-    <nav
-      aria-label="Hlavná navigácia"
-      className={`fixed inset-x-0 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-40 px-4 flex justify-center pointer-events-none select-none transition-all duration-300 ${
-        isInputActive ? "opacity-0 translate-y-16 pointer-events-none" : "opacity-100 translate-y-0"
-      }`}
-    >
-      <div className="app-nav pointer-events-auto flex w-full max-w-md items-stretch">
-        <Item
-          id="home"
-          icon={<Home className="size-5" />}
-          label={testDone ? "Spojenia" : "Domov"}
-          onClick={onHome}
-        />
-        <Item
-          id="messages"
-          icon={<MessageCircle className="size-5" />}
-          label="Správy"
-          onClick={onMessages}
-          badge={unread}
-        />
-
-        {testDone && (
-          <>
-            <Item
-              id="profile"
-              icon={<User className="size-5" />}
-              label="Profil"
-              onClick={onProfile}
-            />
-            <Item
-              id="settings"
-              icon={<SettingsIcon className="size-5" />}
-              label="Nastavenia"
-              onClick={onSettings}
-            />
-          </>
-        )}
-        {!testDone && (
-          <>
-            <Item
-              id="settings"
-              icon={<SettingsIcon className="size-5" />}
-              label="Nastavenia"
-              onClick={onSettings}
-            />
-          </>
-        )}
+    <nav aria-label="Hlavná navigácia" className="app-nav-dock" data-hidden={isInputActive} inert={isInputActive}>
+      <div className="app-nav">
+        {items.map(({ id, icon: Icon, label, onClick, badge }) => (
+          <button key={id} type="button" onClick={onClick} aria-current={id === active ? "page" : undefined} className="app-nav-item">
+            <span className="app-nav-icon">
+              <Icon className="size-5" aria-hidden="true" />
+              {!!badge && <span className="app-nav-badge">{badge}</span>}
+            </span>
+            {label}
+          </button>
+        ))}
       </div>
     </nav>
   );
@@ -2284,77 +2203,54 @@ function MatchCard({
 
   return (
     <article className="match-card">
-      <div className="match-card-header">
+      <header className="match-card-header">
         <div>
-          <h3 className="match-card-name">
-            {match.name}
-            <span className="ml-2 text-base font-medium text-foreground/50">{match.age}</span>
-          </h3>
-          <p className="mt-2 text-sm text-foreground/70">
-            {match.city}
-            {match.distanceKm !== undefined && ` · ${Math.round(match.distanceKm)} km`}
-          </p>
-        </div>
-        <div className="match-card-video">
-          {videoUrl ? (
-            <video
-              src={videoUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="size-full object-cover bg-black blur-[6px] scale-110"
-              style={{ transform: "scaleX(-1)" }}
-            />
-          ) : (
-            <img
-              src={match.img}
-              alt={match.name}
-              className="size-full object-cover blur-md scale-125"
-            />
+          <h2 className="match-card-name">{match.name}<span>{match.age}</span></h2>
+          {(match.city || match.distanceKm !== undefined) && (
+            <p className="match-card-location">
+              {[match.city, match.distanceKm !== undefined && `${Math.round(match.distanceKm)} km`].filter(Boolean).join(" · ")}
+            </p>
           )}
         </div>
-      </div>
-
-      <div className="match-card-story">
-        <p className="match-card-highlight">
-          {sharedPriority
-            ? `Obaja dávate na prvé miesto hodnotu „${profile.topPriority}“.`
-            : `Vaše odpovede sa podobajú na ${similarityPct} %.`}
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-foreground/60">{match.bio}</p>
-      </div>
+        <div className="match-card-video" aria-hidden="true">
+          {videoUrl ? (
+            <video src={videoUrl} autoPlay loop muted playsInline className="size-full object-cover blur-md scale-125" />
+          ) : (
+            <span>{Array.from(match.name)[0]?.toLocaleUpperCase("sk")}</span>
+          )}
+        </div>
+      </header>
 
       <details className="match-card-details">
-        <summary>Prečo sme vás spojili</summary>
+        <summary onClick={() => haptic("tap")}>
+          <span>Čo vás spája?</span>
+          <ChevronDown className="size-5 shrink-0" aria-hidden="true" />
+        </summary>
         <div className="match-card-facts">
-          <div>
-            <p className="text-xs font-medium text-foreground/65">Podobnosť odpovedí</p>
-            <p className="mt-2 font-display text-lg font-bold">{similarityPct} %</p>
+          {sharedPriority && <p>Obaja dávate na prvé miesto hodnotu <strong>„{profile.topPriority}“</strong>.</p>}
+          <p className="match-score">
+            <span>Podobnosť odpovedí</span>
+            <strong>{similarityPct} %</strong>
+          </p>
+          <div className="match-score-track" aria-hidden="true">
+            <span style={{ width: `${Math.max(0, Math.min(100, similarityPct))}%` }} />
           </div>
-          <div>
-            <p className="text-xs font-medium text-foreground/65">Povaha spojenia</p>
-            <p className="mt-2 text-sm font-semibold leading-snug">{extLabel}</p>
-            <p className="mt-1 text-xs text-foreground/50">
-              {attachmentLabel}
-            </p>
-          </div>
+          <p>{extLabel} · {attachmentLabel}</p>
         </div>
       </details>
 
+      {match.bio && <p className="match-card-bio">{match.bio}</p>}
+
       <button
         type="button"
-        onClick={(e) => {
-          e.stopPropagation();
+        onClick={() => {
           haptic("medium");
           onSelectMatch(match.id);
         }}
         className="match-card-action"
       >
-        <span className="font-display text-base font-bold">
-          {initiatedMatchIds?.has(match.id) ? "Pokračovať v rozhovore" : "Odpovedať hlasom"}
-        </span>
-        <Mic className="size-5" />
+        {initiatedMatchIds?.has(match.id) ? "Pokračovať v rozhovore" : "Začať hlasom"}
+        <Mic className="size-5 shrink-0" aria-hidden="true" />
       </button>
     </article>
   );
@@ -2363,6 +2259,8 @@ function MatchCard({
 function Dashboard({
   profile,
   matches,
+  loading,
+  onProfile,
   sortBy,
   onSortChange,
   onSelectMatch,
@@ -2372,6 +2270,8 @@ function Dashboard({
 }: {
   profile: UserProfile;
   matches: RankedMatch[];
+  loading: boolean;
+  onProfile: () => void;
   sortBy: "ev" | "distance";
   onSortChange: (sort: "ev" | "distance") => void;
   onSelectMatch: (matchId: string) => void;
@@ -2386,12 +2286,17 @@ function Dashboard({
   const activeIndex = Math.max(0, Math.min(matchIndex, availableMatches.length - 1));
   const activeMatch = availableMatches[activeIndex];
 
+  function selectProfile(index: number) {
+    if (index === activeIndex) return;
+    haptic("tap");
+    setMatchIndex(index);
+  }
+
   return (
-    <div className="personal-screen">
-      <header className="personal-header">
-        <p className="personal-eyebrow">Antidote / Spojenia</p>
+    <div className="personal-screen discover-screen">
+      <header className="discover-header">
+        <AntidoteLogo markClassName="h-6" />
         <h1 className="personal-title">Dnešné spojenia</h1>
-        <p className="personal-intro">Ľudia, ktorých môžeš dnes spoznať</p>
       </header>
 
       {profile.redemptionQuota && profile.redemptionQuota > 0 ? (
@@ -2412,57 +2317,25 @@ function Dashboard({
         </div>
       ) : null}
 
-      <div className="personal-setting my-3">
-        <span className="font-medium">Zoradiť podľa</span>
-        <div className="personal-segments" role="group" aria-label="Zoradiť podľa">
-          {([{ value: "ev", label: "Zhody" }, { value: "distance", label: "Vzdialenosti" }] as const).map(({ value, label }) => (
-            <button key={value} type="button" aria-pressed={sortBy === value} className="personal-segment" onClick={() => { haptic("tap"); setMatchIndex(0); onSortChange(value); }}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {!activeMatch ? (
-        <div className="personal-section space-y-2">
-          <Brain className="size-6 text-muted-foreground" />
-          <h2 className="personal-heading">
-            Žiadne nové spojenia
-          </h2>
-          <p className="leading-relaxed text-muted-foreground">
-            Skús to neskôr alebo v profile zväčši vzdialenosť vyhľadávania.
-          </p>
-        </div>
-      ) : (
+      {activeMatch ? (
         <section className="match-deck" aria-label="Dnešné odporúčania">
-          {availableMatches.length > 1 && (
-            <div className="match-deck-nav">
-              <button
-                type="button"
-                aria-label="Predchádzajúci profil"
-                disabled={activeIndex === 0}
-                onClick={() => { haptic("tap"); setMatchIndex(activeIndex - 1); }}
-              >
-                <ChevronLeft aria-hidden="true" className="size-5" />
-              </button>
-              <div className="match-deck-position">
-                <span aria-live="polite">Profil {activeIndex + 1} z {availableMatches.length}</span>
-                <div className="match-deck-steps" aria-hidden="true">
-                  {availableMatches.map(({ id }, index) => (
-                    <span key={id} data-active={index === activeIndex} />
-                  ))}
-                </div>
-              </div>
-              <button
-                type="button"
-                aria-label="Ďalší profil"
-                disabled={activeIndex === availableMatches.length - 1}
-                onClick={() => { haptic("tap"); setMatchIndex(activeIndex + 1); }}
-              >
-                <ChevronRight aria-hidden="true" className="size-5" />
-              </button>
+          <div className="discover-sort">
+            <span>Zoradiť podľa</span>
+            <div className="personal-segments" role="group" aria-label="Zoradiť podľa">
+              {([{ value: "ev", label: "Zhody" }, { value: "distance", label: "Vzdialenosti" }] as const).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={sortBy === value}
+                  className="personal-segment"
+                  onClick={() => { haptic("tap"); setMatchIndex(0); onSortChange(value); }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+
           <MatchCard
             key={activeMatch.id}
             match={activeMatch}
@@ -2470,22 +2343,53 @@ function Dashboard({
             initiatedMatchIds={initiatedMatchIds}
             onSelectMatch={onSelectMatch}
           />
+
+          {availableMatches.length > 1 && (
+            <div className="match-deck-nav" role="group" aria-label="Výber profilu">
+              <button type="button" aria-label="Predchádzajúci profil" disabled={activeIndex === 0} onClick={() => selectProfile(activeIndex - 1)}>
+                <ChevronLeft aria-hidden="true" className="size-5" />
+              </button>
+              <div className="match-deck-steps">
+                {availableMatches.map(({ id, name }, index) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-label={`Profil ${index + 1} z ${availableMatches.length}, ${name}`}
+                    aria-current={index === activeIndex || undefined}
+                    onClick={() => selectProfile(index)}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+              <button type="button" aria-label="Ďalší profil" disabled={activeIndex === availableMatches.length - 1} onClick={() => selectProfile(activeIndex + 1)}>
+                <ChevronRight aria-hidden="true" className="size-5" />
+              </button>
+            </div>
+          )}
+          <p className="sr-only" role="status">Profil {activeIndex + 1} z {availableMatches.length}, {activeMatch.name}</p>
+        </section>
+      ) : loading ? (
+        <p className="app-empty" role="status">Načítavam odporúčania…</p>
+      ) : (
+        <section className="app-empty">
+          <Brain className="size-6" aria-hidden="true" />
+          <h2 className="personal-heading">Žiadne nové spojenia</h2>
+          <p>Skús to neskôr alebo v profile zväčši vzdialenosť vyhľadávania.</p>
+          <button type="button" className="personal-action" onClick={onProfile}>Otvoriť profil</button>
         </section>
       )}
 
       {hasMessages && (
-        <button
-          type="button"
-          onClick={onMessages}
-          className="mt-6 w-full border border-cerebral/30 bg-cerebral/5 py-4 text-sm tracking-widest text-foreground hover:bg-cerebral hover:text-background transition-all uppercase font-mono cursor-pointer"
-        >
-          Zobraziť uložené konverzácie
+        <button type="button" onClick={onMessages} className="discover-messages">
+          <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
+          Uložené konverzácie
+          <ChevronRight className="ml-auto size-5 shrink-0" aria-hidden="true" />
         </button>
       )}
     </div>
   );
 }
-
 // ============ Test ============
 // Each question runs as a two-phase staggered timer:
 //   PHASE 1 "read"   — 10s, only the scenario is visible (answers hidden).
@@ -3175,13 +3079,13 @@ function MessagesList({
   return (
     <div className="personal-screen">
       <header className="personal-header">
-        <p className="personal-eyebrow">Antidote</p>
-        <h1 className="personal-title">Správy</h1>
+        <AntidoteLogo markClassName="h-6" />
+        <h1 className="personal-title mt-3">Správy</h1>
       </header>
 
       {conversations.length === 0 ? (
-        <div className="personal-section">
-          <MessageCircle className="size-7 text-cerebral" aria-hidden="true" />
+        <div className="app-empty">
+          <MessageCircle className="size-6" aria-hidden="true" />
           <h2 className="personal-heading mt-2">Zatiaľ žiadne správy</h2>
           <p className="personal-intro">
             Keď sa obaja rozhodnete pokračovať, váš rozhovor nájdeš tu.
