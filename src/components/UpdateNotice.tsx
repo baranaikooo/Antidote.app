@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { RefreshCw, X } from "lucide-react";
 
 import {
@@ -8,16 +8,19 @@ import {
   installAndroidUpdate,
   latestAndroidVersion,
   type AndroidVersion,
+  type AndroidUpdateProgress as UpdateProgress,
 } from "@/lib/android-updates";
 
-function useAndroidRelease(automatic: boolean) {
+function useAndroidRelease(enabled: boolean) {
   const [platform, setPlatform] = useState<ReturnType<typeof androidUpdatePlatform>>(null);
   const [installed, setInstalled] = useState<AndroidVersion | null>(null);
   const [available, setAvailable] = useState<AndroidVersion | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [progress, setProgress] = useState<UpdateProgress | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const platform = androidUpdatePlatform();
     setPlatform(platform);
     if (platform !== "native") return;
@@ -30,10 +33,10 @@ function useAndroidRelease(automatic: boolean) {
 
     void loadInstalled().catch(() => {});
     return () => { active = false; };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
-    if (!automatic || !platform || (platform === "native" && !installed)) return;
+    if (!enabled || !platform || (platform === "native" && !installed)) return;
     let active = true;
     function check() {
       if (document.visibilityState !== "visible") return;
@@ -49,7 +52,7 @@ function useAndroidRelease(automatic: boolean) {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", check);
     };
-  }, [automatic, installed, platform]);
+  }, [enabled, installed, platform]);
 
   async function checkNow() {
     setBusy(true);
@@ -71,13 +74,14 @@ function useAndroidRelease(automatic: boolean) {
   async function install() {
     if (busy || (!available && platform !== "legacy")) return;
     setBusy(true);
-    setMessage("Sťahujem aktualizáciu…");
+    setMessage("");
+    setProgress({ stage: "preparing" });
     try {
       if (platform === "legacy") {
         await downloadAndroidUpdater();
         setMessage("Po stiahnutí otvor APK a potvrď aktualizáciu. Ďalšie verzie nainštaluješ priamo tu.");
       } else if (available) {
-        const { state } = await installAndroidUpdate(available);
+        const { state } = await installAndroidUpdate(available, setProgress);
         setMessage(state === "permission"
           ? "Povoľ inštaláciu z Antidote a po návrate spusti stiahnutie znova."
           : "Potvrď aktualizáciu v okne Androidu.");
@@ -86,15 +90,48 @@ function useAndroidRelease(automatic: boolean) {
       setMessage("Aktualizáciu sa nepodarilo pripraviť. Skús to znova.");
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   }
 
-  return { platform, installed, available, busy, message, checkNow, install };
+  return { platform, installed, available, busy, message, progress, checkNow, install };
+}
+
+const AndroidUpdateContext = createContext<ReturnType<typeof useAndroidRelease> | null>(null);
+
+export function AndroidUpdateProvider({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  const update = useAndroidRelease(enabled);
+  return <AndroidUpdateContext.Provider value={update}>{children}</AndroidUpdateContext.Provider>;
+}
+
+function AndroidProgress({ progress }: { progress: UpdateProgress }) {
+  const { stage, received = 0, total = 0 } = progress;
+  const fraction = stage === "downloading" && total > 0 ? Math.min(1, Math.max(0, received / total)) : null;
+  const percentage = fraction === null ? undefined : Math.floor(fraction * 100);
+  const label = {
+    preparing: "Pripravujem aktualizáciu…",
+    permission: "Povoľ inštaláciu v Androide",
+    downloading: "Sťahujem APK…",
+    verifying: "Overujem APK…",
+  }[stage];
+
+  return (
+    <div className="update-progress">
+      <div className="update-progress-label">
+        <span role="status">{label}</span>
+        {percentage !== undefined && <span aria-hidden="true">{percentage} %</span>}
+      </div>
+      <div className="update-progress-track" role="progressbar" aria-label={label}
+        aria-valuenow={percentage} data-indeterminate={fraction === null}>
+        <span style={{ transform: `scaleX(${fraction ?? 1})` }} />
+      </div>
+    </div>
+  );
 }
 
 export function AndroidUpdateSettings() {
-  const update = useAndroidRelease(false);
-  if (!update.platform) return null;
+  const update = useContext(AndroidUpdateContext);
+  if (!update?.platform) return null;
   return (
     <section className="personal-section settings-disclosure" aria-labelledby="android-updates-heading">
       <h2 className="personal-heading mb-2" id="android-updates-heading">Aktualizácie aplikácie</h2>
@@ -108,18 +145,19 @@ export function AndroidUpdateSettings() {
       >
         {update.platform === "legacy" || update.available ? "Stiahnuť aktualizáciu" : "Skontrolovať aktualizácie"}
       </button>
-      <p className="personal-intro" role="status">{update.message}</p>
+      {update.progress && <AndroidProgress progress={update.progress} />}
+      {update.message && <p className="personal-intro" role="status">{update.message}</p>}
     </section>
   );
 }
 
 const VERSION_KEY = "antidote:seen-build";
 
-export function UpdateNotice() {
+export function UpdateNotice({ showAndroid = true }: { showAndroid?: boolean }) {
   const [notice, setNotice] = useState<"available" | "installed" | null>(null);
-  const android = useAndroidRelease(true);
+  const android = useContext(AndroidUpdateContext);
   const [dismissedAndroidVersion, setDismissedAndroidVersion] = useState<number>();
-  const androidRelease = android.available?.code !== dismissedAndroidVersion ? android.available : null;
+  const androidRelease = android?.available?.code !== dismissedAndroidVersion ? android?.available : null;
 
   useEffect(() => {
     if (androidUpdatePlatform()) return;
@@ -160,13 +198,14 @@ export function UpdateNotice() {
     };
   }, []);
 
-  if (androidRelease) {
+  if (showAndroid && android && androidRelease) {
     return (
-      <div className="update-notice" role="status">
+      <div className="update-notice">
         <RefreshCw size={18} aria-hidden="true" />
-        <span>{android.message || `Android verzia ${androidRelease.name} je dostupná.`}</span>
+        {android.progress ? <AndroidProgress progress={android.progress} /> :
+          <span role="status">{android.message || `Android verzia ${androidRelease.name} je dostupná.`}</span>}
         <button type="button" onClick={() => void android.install()} disabled={android.busy}>Stiahnuť</button>
-        <button type="button" className="update-notice-close" onClick={() => setDismissedAndroidVersion(androidRelease.code)} aria-label="Zavrieť oznámenie">
+        <button type="button" className="update-notice-close" onClick={() => setDismissedAndroidVersion(androidRelease.code)} disabled={android.busy} aria-label="Zavrieť oznámenie">
           <X size={18} aria-hidden="true" />
         </button>
       </div>
