@@ -157,7 +157,8 @@ export function MessageThread({
   }
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    bottomRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
   }, [conversation.messages.length, typing]);
 
   // Monitor message count for In-Chat Pressure triggers
@@ -268,28 +269,28 @@ export function MessageThread({
   const blurPx = Math.round((conversation.blurLevel / 100) * 24);
 
   return (
-    <div className="conversation-screen flex h-[100dvh] flex-col bg-background">
-      <div className="sticky top-0 z-10 border-b border-foreground/10 bg-background/80 px-4 py-3 backdrop-blur-md">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="conversation-screen">
+      <div className="z-10 shrink-0 border-b border-foreground/10 bg-card px-3 py-3 sm:px-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button
               onClick={onBack}
               aria-label="Späť na správy"
-              className="grid size-10 place-items-center rounded-none bg-foreground/5 hover:bg-foreground/10 active:scale-95"
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-foreground/5 hover:bg-foreground/10 active:scale-95"
             >
               <ArrowLeft className="size-5 text-foreground" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="relative size-10 overflow-hidden border border-foreground/10 bg-card">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <div className="relative size-10 shrink-0 overflow-hidden rounded-full bg-muted">
                 <img
                   src={match.img}
-                  alt={match.name}
+                  alt=""
                   className="size-full object-cover scale-110"
                   style={{ filter: `blur(${blurPx}px)` }}
                 />
               </div>
-              <div className="flex flex-col">
-                <span className="font-semibold text-foreground text-sm tracking-tight">
+              <div className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
+                <span className="font-semibold text-foreground text-sm tracking-tight break-words">
                   {match.name}
                 </span>
                 <span className="text-sm text-muted-foreground">
@@ -303,14 +304,14 @@ export function MessageThread({
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Možnosti rozhovoru"
               aria-expanded={menuOpen}
-              className="grid size-10 place-items-center rounded-none hover:bg-foreground/5"
+              className="grid size-11 place-items-center rounded-full hover:bg-foreground/5"
             >
               <MoreVertical className="size-5 text-foreground" />
             </button>
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-12 z-50 w-48 border border-foreground/10 bg-card py-2 shadow-2xl animate-fade-up">
+                <div className="absolute right-0 top-12 z-50 w-52 max-w-[75vw] rounded-[0.75rem] border border-foreground/10 bg-card py-1 shadow-lg animate-kinetic-fade">
                   {conversation.status !== "closed" && (
                     <button
                       onClick={() => {
@@ -338,7 +339,7 @@ export function MessageThread({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
         <div className="mb-5 border-b border-foreground/15 pb-3 text-sm leading-relaxed text-muted-foreground">
           Každá odoslaná správa zníži rozmazanie profilu o {THREAD_BLUR_STEP} percentuálnych bodov.
         </div>
@@ -365,18 +366,18 @@ export function MessageThread({
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[85%] rounded-none px-4 py-3 text-sm leading-relaxed ${
+                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                   mine
-                    ? "bg-foreground text-background"
-                    : "bg-card border border-foreground/10 text-foreground"
+                    ? "rounded-br-[0.375rem] bg-accent text-accent-foreground"
+                    : "rounded-bl-[0.375rem] bg-card text-foreground"
                 }`}
               >
                 {m.media && m.media.kind === "gif" && (
                   <img src={m.media.url} alt="gif" className="mb-2 max-w-full rounded-sm" />
                 )}
-                <p className="break-words">{m.text}</p>
+                <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.text}</p>
                 <span
-                  className={`block mt-1.5 text-right font-mono text-xs ${mine ? "text-background/60" : "text-foreground/40"}`}
+                  className={`block mt-1.5 text-right font-mono text-xs ${mine ? "text-accent-foreground" : "text-muted-foreground"}`}
                 >
                   {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
@@ -394,7 +395,7 @@ export function MessageThread({
         <div ref={bottomRef} className="h-4" />
       </div>
 
-      <div className="bg-background/95 backdrop-blur-md border-t border-foreground/10 z-20">
+      <div className="conversation-composer z-20 shrink-0">
         {showGifs && (
           <div className="border-t border-foreground/5 bg-background/40 p-3 animate-fade-up">
             <div className="flex justify-between items-center mb-2">
@@ -406,12 +407,12 @@ export function MessageThread({
                 ZAVRIEŤ
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid max-h-[28dvh] grid-cols-3 gap-2 overflow-y-auto">
               {MOCK_GIFS.map((g) => (
                 <button
                   key={g}
                   onClick={() => sendMedia({ kind: "gif", url: g })}
-                  className="overflow-hidden rounded-xl border border-foreground/10 transition-all hover:border-foreground/60 active:scale-95"
+                  className="overflow-hidden rounded-[0.75rem] border border-foreground/10 transition-all hover:border-foreground/60 active:scale-95"
                 >
                   <img src={g} alt="gif" className="aspect-square w-full object-cover" />
                 </button>
@@ -424,17 +425,20 @@ export function MessageThread({
           <div className="relative">
             <button
               onClick={() => setShowGifs(!showGifs)}
-              className="grid size-10 shrink-0 place-items-center rounded-none bg-foreground/5 text-foreground hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-foreground"
+              aria-label="GIFy"
+              aria-expanded={showGifs}
+              className="conversation-gif-button"
             >
-              <Sparkles className="size-5 text-cerebral" />
+              <Sparkles className="size-5" aria-hidden="true" />
             </button>
           </div>
           <textarea
+            aria-label="Správa"
             value={input}
             disabled={pressureActive || conversation.status === "closed"}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 send();
               }
@@ -447,13 +451,13 @@ export function MessageThread({
                   ? "Táto konverzácia je uzavretá."
                   : "Napíš správu…"
             }
-            className="max-h-32 min-h-10 flex-1 resize-none rounded-xl border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm outline-none focus:border-cerebral disabled:opacity-50 disabled:pointer-events-none transition-colors"
+            className="conversation-input"
           />
           <button
             onClick={send}
             disabled={pressureActive || !input.trim() || conversation.status === "closed"}
             aria-label="Odoslať správu"
-            className="grid size-10 shrink-0 place-items-center rounded-none bg-cerebral text-background disabled:opacity-30 disabled:bg-foreground disabled:text-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-cerebral transition-all shadow-[0_0_8px_var(--cerebral-glow)] cursor-pointer"
+            className="conversation-send"
           >
             <Send className="size-4" />
           </button>

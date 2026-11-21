@@ -273,7 +273,6 @@ export function SystemConfig({
   return (
     <div className="personal-screen">
       <header className="personal-header">
-        <p className="personal-eyebrow">Antidote / Nastavenia</p>
         <h1 className="personal-title">Nastavenia</h1>
       </header>
 
