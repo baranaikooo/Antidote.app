@@ -38,19 +38,30 @@ function useAndroidRelease(enabled: boolean) {
   useEffect(() => {
     if (!enabled || !platform || (platform === "native" && !installed)) return;
     let active = true;
-    function check() {
-      if (document.visibilityState !== "visible") return;
-      void latestAndroidVersion().then((version) => {
-        if (active) setAvailable(version && (platform === "legacy" || version.code > (installed?.code ?? 0)) ? version : null);
-      }).catch(() => {});
+    let checking = false;
+    async function check() {
+      if (checking || document.visibilityState !== "visible") return;
+      checking = true;
+      try {
+        const version = await latestAndroidVersion();
+        if (active) {
+          setAvailable(version && (platform === "legacy" || version.code > (installed?.code ?? 0)) ? version : null);
+        }
+      } catch {
+        // Keep the last known release during temporary network failures.
+      } finally {
+        checking = false;
+      }
     }
-    check();
-    const interval = window.setInterval(check, 5 * 60 * 1000);
+    void check();
+    const interval = window.setInterval(check, 15_000);
     document.addEventListener("visibilitychange", check);
+    window.addEventListener("online", check);
     return () => {
       active = false;
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("online", check);
     };
   }, [enabled, installed, platform]);
 
@@ -153,7 +164,7 @@ export function AndroidUpdateSettings() {
 
 const VERSION_KEY = "antidote:seen-build";
 
-export function UpdateNotice({ showAndroid = true }: { showAndroid?: boolean }) {
+export function UpdateNotice() {
   const [notice, setNotice] = useState<"available" | "installed" | null>(null);
   const android = useContext(AndroidUpdateContext);
   const [dismissedAndroidVersion, setDismissedAndroidVersion] = useState<number>();
@@ -198,7 +209,7 @@ export function UpdateNotice({ showAndroid = true }: { showAndroid?: boolean }) 
     };
   }, []);
 
-  if (showAndroid && android && androidRelease) {
+  if (android && androidRelease) {
     return (
       <div className="update-notice">
         <RefreshCw size={18} aria-hidden="true" />

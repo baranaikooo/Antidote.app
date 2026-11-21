@@ -101,6 +101,21 @@ describe("Android app updates", () => {
     vi.unstubAllGlobals();
   });
 
+  it("checks for a newer APK immediately after reconnecting", async () => {
+    const installed = { code: 8, name: "1.0.7" };
+    vi.mocked(androidUpdatePlatform).mockReturnValue("native");
+    vi.mocked(installedAndroidVersion).mockResolvedValue(installed);
+    vi.mocked(latestAndroidVersion).mockReset().mockResolvedValueOnce(installed)
+      .mockResolvedValue({ code: 9, name: "1.0.8" });
+
+    render(<AndroidUpdateProvider enabled><UpdateNotice /></AndroidUpdateProvider>);
+    await waitFor(() => expect(latestAndroidVersion).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("button", { name: "Stiahnuť" })).not.toBeInTheDocument();
+
+    fireEvent(window, new Event("online"));
+    expect(await screen.findByText("Android verzia 1.0.8 je dostupná.")).toBeInTheDocument();
+  });
+
   it("offers a direct APK download to older Android builds", async () => {
     vi.mocked(androidUpdatePlatform).mockReturnValue("legacy");
     vi.mocked(latestAndroidVersion).mockResolvedValue({ code: 7, name: "1.0.6" });

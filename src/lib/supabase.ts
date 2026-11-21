@@ -511,7 +511,7 @@ export async function fetchChatMessages(
   }
 
   const messagesWithSignedUrls = await Promise.all(
-    (data || []).map(async (m: any) => {
+    (data ?? []).map(async (m): Promise<ChatMessage> => {
       let resolvedMediaUrl = m.media_url;
       if (resolvedMediaUrl && m.duration) {
         resolvedMediaUrl = await getSignedMediaUrl("voice-messages", resolvedMediaUrl);
@@ -522,7 +522,7 @@ export async function fetchChatMessages(
         text: m.message_text || "",
         ts: new Date(m.created_at).getTime(),
         media: resolvedMediaUrl
-          ? { kind: (m.duration ? "audio" : "gif") as "audio" | "gif", url: resolvedMediaUrl, duration: m.duration }
+          ? { kind: m.duration ? "audio" : "gif", url: resolvedMediaUrl, duration: m.duration }
           : undefined,
       };
     })

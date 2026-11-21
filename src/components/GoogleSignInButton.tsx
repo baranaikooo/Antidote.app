@@ -167,10 +167,10 @@ export function GoogleSignInButton({
           type="button"
           disabled={disabled || launching}
           onClick={handleSupabaseSignIn}
-          className="flex w-full items-center justify-center gap-3 rounded-none border border-foreground/20 bg-foreground text-background px-4 py-3.5 transition-all hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-3 rounded-[0.75rem] border border-foreground/20 bg-foreground text-background px-4 py-3.5 transition-[background-color,transform] hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-40"
         >
           <GoogleMark />
-          <span className="text-sm font-mono font-bold uppercase">Pokračovať cez Google</span>
+          <span className="text-sm font-semibold">Pokračovať cez Google</span>
         </button>
         {launchFailed && <p role="alert" className="mt-2 text-sm">Google prihlásenie sa nepodarilo spustiť. Skús to znova.</p>}
       </>
@@ -181,11 +181,11 @@ export function GoogleSignInButton({
     return (
       <div className={`relative w-full ${disabled ? "pointer-events-none opacity-40" : ""}`}>
         <div
-          className="flex w-full items-center justify-center gap-3 rounded-none border border-foreground/20 bg-foreground text-background px-4 py-3.5"
+          className="flex w-full items-center justify-center gap-3 rounded-[0.75rem] border border-foreground/20 bg-foreground text-background px-4 py-3.5"
           aria-hidden
         >
           <GoogleMark />
-          <span className="text-sm font-mono font-bold uppercase">Pokračovať cez Google</span>
+          <span className="text-sm font-semibold">Pokračovať cez Google</span>
         </div>
         <div
           ref={overlayRef}
@@ -201,10 +201,10 @@ export function GoogleSignInButton({
       type="button"
       disabled={disabled}
       onClick={() => onSuccess({ name: "Google Demo", email: "demo@gmail.com" })}
-      className="flex w-full items-center justify-center gap-3 rounded-none border border-foreground/20 bg-foreground text-background px-4 py-3.5 transition-all hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-40"
+      className="flex w-full items-center justify-center gap-3 rounded-[0.75rem] border border-foreground/20 bg-foreground text-background px-4 py-3.5 transition-[background-color,transform] hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-40"
     >
       <GoogleMark />
-      <span className="text-sm font-mono font-bold uppercase">Pokračovať cez Google</span>
+      <span className="text-sm font-semibold">Pokračovať cez Google</span>
     </button>
   );
 }

@@ -7,6 +7,8 @@ import {
   Send,
   Phone,
   ChevronDown,
+  Compass,
+  Heart,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -163,12 +165,12 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
   );
 }
 
-function Shell({ children, landing = false, main = false }: { children: React.ReactNode; landing?: boolean; main?: boolean }) {
+function Shell({ children, landing = false, main = false, thread = false }: { children: React.ReactNode; landing?: boolean; main?: boolean; thread?: boolean }) {
   return (
-    <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : ""}`}>
+    <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : ""}`}>
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
-      <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : "pb-28 pt-5"}`}>
+      <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : "pb-28 pt-5"}`}>
         {children}
       </div>
     </div>
@@ -1067,10 +1069,12 @@ function AntidoteApp() {
     );
   }
 
+  const showUpdateNotice = showNav || (screen === "landing" && Capacitor.getPlatform() === "android");
+
   return (
-    <Shell landing={screen === "landing"} main={showNav}>
-      <AndroidUpdateProvider enabled={showNav}>
-      {showNav && <UpdateNotice showAndroid={screen !== "settings"} />}
+    <Shell landing={screen === "landing"} main={showNav} thread={screen === "thread"}>
+      <AndroidUpdateProvider enabled={showUpdateNotice}>
+      {showUpdateNotice && <UpdateNotice />}
       {screen === "landing" && (
         <Landing
           onGoogle={(profile) => {
@@ -1587,7 +1591,7 @@ function BottomNav({
 
   return (
     <nav aria-label="Hlavná navigácia" className="app-nav-dock" data-hidden={isInputActive} inert={isInputActive}>
-      <div className="app-nav">
+      <div className="app-nav" data-active={active}>
         {items.map(({ id, icon: Icon, label, onClick, badge }) => (
           <button key={id} type="button" onClick={onClick} aria-current={id === active ? "page" : undefined} className="app-nav-item">
             <span className="app-nav-icon">
@@ -1640,59 +1644,37 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   };
 
   return (
-    <div className="flex min-h-full flex-col px-1">
-      <header className="flex items-center justify-between">
-        <AntidoteLogo markClassName="h-9" />
-        <span className="font-mono text-xs text-foreground/35">01</span>
-      </header>
-
-      <main className="landing-main my-auto">
-        <div className="landing-question max-w-sm">
-          <h1 className="landing-title font-display font-extrabold leading-[0.96] tracking-[-0.055em] text-foreground">
-            Čo by si radšej stratil/a na jeden rok?
-          </h1>
-        </div>
-
-        <div className="landing-options grid gap-3">
-          <button
-            type="button"
-            onClick={() => choose("travel")}
-            aria-pressed={choice === "travel"}
-            className={`tactile-button landing-option flex items-center justify-between gap-2 text-left ${
-              choice === "travel" ? "bg-cerebral text-background" : "bg-card text-foreground"
-            }`}
-          >
-            <span className="font-display text-xl font-bold leading-tight">Možnosť cestovať</span>
-            <span className="font-mono text-sm">A</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => choose("love")}
-            aria-pressed={choice === "love"}
-            className={`tactile-button landing-option flex items-center justify-between gap-2 text-left ${
-              choice === "love" ? "bg-accent text-accent-foreground" : "bg-card text-foreground"
-            }`}
-          >
-            <span className="font-display text-xl font-bold leading-tight">
-              Možnosť zamilovať sa
-            </span>
-            <span className="font-mono text-sm">B</span>
-          </button>
-        </div>
-
-        {choice && (
-          <div className="landing-result animate-fade-in border-t border-foreground/30">
-            <p className="font-display text-xl font-semibold leading-tight tracking-[-0.035em]">
-              Toto nebola náhodná otázka.
-            </p>
-            <p className="mt-1 text-sm leading-snug text-foreground/60">
-              Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
-            </p>
-            <div className="landing-sign-in">
-              <GoogleSignInButton onSuccess={onGoogle} />
-            </div>
+    <div className="landing-layout">
+      <header className="landing-brand"><AntidoteLogo markClassName="h-8" /></header>
+      <main className="landing-main">
+        <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
+        <div className="landing-interaction">
+          <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
+            {([
+              { value: "travel", label: "Možnosť cestovať", icon: Compass },
+              { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
+            ] as const).map(({ value, label, icon: Icon }) => (
+              <button key={value} type="button" onClick={() => choose(value)} aria-pressed={choice === value} className="landing-option">
+                <span className="landing-option-icon"><Icon size={23} aria-hidden="true" /></span>
+                <span>{label}</span>
+                <span className="landing-option-state" aria-hidden="true">
+                  {choice === value ? <Check size={19} /> : <ChevronRight size={19} />}
+                </span>
+              </button>
+            ))}
           </div>
-        )}
+          {choice && (
+            <div className="landing-result">
+              <div role="status">
+                <p className="font-display text-xl font-bold leading-tight">Toto nebola náhodná otázka.</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
+                </p>
+              </div>
+              <div className="landing-sign-in"><GoogleSignInButton onSuccess={onGoogle} /></div>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
@@ -2299,6 +2281,7 @@ function Dashboard({
   const haptic = useHaptic();
 
   const [matchIndex, setMatchIndex] = useState(0);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [widening, setWidening] = useState(false);
   const [widenFailed, setWidenFailed] = useState(false);
   const nearby = profile.radiusKm !== undefined && profile.radiusKm < 500;
@@ -2322,7 +2305,7 @@ function Dashboard({
   const activeMatch = availableMatches[activeIndex];
 
   function selectProfile(index: number) {
-    if (index === activeIndex) return;
+    if (index === activeIndex || index < 0 || index >= availableMatches.length) return;
     haptic("tap");
     setMatchIndex(index);
   }
@@ -2378,13 +2361,37 @@ function Dashboard({
             </div>
           </div>
 
-          <MatchCard
-            key={activeMatch.id}
-            match={activeMatch}
-            profile={profile}
-            initiatedMatchIds={initiatedMatchIds}
-            onSelectMatch={onSelectMatch}
-          />
+          <div
+            className="match-swipe-area"
+            onTouchStart={(event) => {
+              swipeStart.current = null;
+              if (
+                event.touches.length !== 1 ||
+                (event.target instanceof Element && event.target.closest("button, summary"))
+              ) return;
+              const touch = event.touches[0];
+              swipeStart.current = { x: touch.clientX, y: touch.clientY };
+            }}
+            onTouchCancel={() => { swipeStart.current = null; }}
+            onTouchEnd={(event) => {
+              const start = swipeStart.current;
+              swipeStart.current = null;
+              const touch = event.changedTouches[0];
+              if (!start || !touch || event.touches.length) return;
+              const delta = touch.clientX - start.x;
+              if (Math.abs(delta) >= 48 && Math.abs(delta) > Math.abs(touch.clientY - start.y) * 1.5) {
+                selectProfile(activeIndex + (delta < 0 ? 1 : -1));
+              }
+            }}
+          >
+            <MatchCard
+              key={activeMatch.id}
+              match={activeMatch}
+              profile={profile}
+              initiatedMatchIds={initiatedMatchIds}
+              onSelectMatch={onSelectMatch}
+            />
+          </div>
 
           {availableMatches.length > 1 && (
             <div className="match-deck-nav" role="group" aria-label="Výber profilu">
@@ -3159,7 +3166,7 @@ function MessagesList({
           </p>
         </div>
       ) : (
-        <div className="grid">
+        <div className="message-list">
           {conversations.map((c) => {
             const m = matches.find((x) => x.id === c.matchId);
             if (!m) return null;
@@ -3169,12 +3176,13 @@ function MessagesList({
               <button
                 key={c.id}
                 onClick={() => onOpen(c.id)}
-                className="personal-link group gap-3 py-2.5"
+                className="message-list-row group"
+                data-unread={!!c.unread}
               >
-                <div className="relative size-12 shrink-0 overflow-hidden">
+                <div className="relative size-12 shrink-0 overflow-hidden rounded-full bg-muted">
                   <img
                     src={m.img}
-                    alt={m.name}
+                    alt=""
                     className="size-full object-cover"
                     style={{
                       filter: `blur(${blurPx}px) saturate(0.9)`,
@@ -3193,7 +3201,10 @@ function MessagesList({
                     <span className="shrink-0 text-sm text-muted-foreground">{m.age}</span>
                     <span className="truncate text-sm text-muted-foreground">· {m.city}</span>
                     {c.unread && (
-                      <span className="size-2 rounded-full bg-cerebral shadow-[0_0_6px_var(--cerebral)] animate-pulse" />
+                      <>
+                        <span className="size-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+                        <span className="sr-only">Neprečítané</span>
+                      </>
                     )}
                   </div>
                   <p className="mt-1 flex items-center gap-2 text-sm text-foreground/70">
