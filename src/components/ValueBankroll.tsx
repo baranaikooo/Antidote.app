@@ -74,13 +74,13 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md px-1 py-6 animate-fade-up">
+    <div className="mx-auto w-full max-w-md px-1 pb-6 animate-fade-up">
       <header className="border-b border-foreground/30 pb-5">
-        <p className="editorial-kicker text-cerebral">Hodnotový bankroll · 02</p>
-        <h2 className="mt-3 font-display text-4xl font-extrabold leading-[0.95] tracking-[-0.06em]">
+        <p className="editorial-kicker text-cerebral">Hodnoty a priority · 02</p>
+        <h2 className="mt-3 font-display text-4xl font-extrabold leading-[0.95] tracking-[-0.04em]">
           Na čom ti záleží, keď sa musíš rozhodnúť?
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-foreground/60">
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
           Máš desať žetónov. Rozdeľ ich medzi veci, ktoré chceš chrániť aj v náročnom období.
         </p>
       </header>
@@ -88,12 +88,11 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
       <section className="my-6 border-y border-foreground/25 py-5" aria-live="polite">
         <div className="mb-4 flex items-end justify-between">
           <div>
-            <p className="editorial-kicker text-foreground/45">Žetóny, ktoré ešte držíš</p>
             <p className="mt-1 font-display text-xl font-bold">
               {remainingTokens === 0 ? "Všetky sú rozdelené" : `Zostáva ${remainingTokens} z 10`}
             </p>
           </div>
-          <span className="font-mono text-xs text-foreground/45">1 žetón = 10 bodov</span>
+          <span className="text-xs text-muted-foreground">1 žetón = 10 bodov</span>
         </div>
         <div className="grid grid-cols-10 gap-1.5" aria-hidden>
           {Array.from({ length: TOTAL_TOKENS }).map((_, index) => (
@@ -101,7 +100,7 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
               key={index}
               className={`aspect-square rounded-full border-2 transition-all duration-200 ${
                 index < remainingTokens
-                  ? "border-foreground bg-cerebral shadow-[2px_2px_0_var(--foreground)]"
+                  ? "border-foreground bg-cerebral"
                   : "scale-75 border-foreground/15 bg-transparent"
               }`}
             />
@@ -117,7 +116,7 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
           return (
             <section
               key={category.id}
-              className={`border transition-colors ${
+              className={`overflow-hidden rounded-[0.875rem] border transition-colors ${
                 value > 0 ? "border-foreground bg-card" : "border-foreground/20 bg-transparent"
               }`}
             >
@@ -128,14 +127,14 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
                 className="flex w-full items-start gap-4 p-4 text-left disabled:cursor-default"
                 aria-label={`Pridať žetón: ${category.label}`}
               >
-                <span className="font-mono text-xs text-foreground/35">
+                <span className="text-xs text-muted-foreground">
                   {String(categoryIndex + 1).padStart(2, "0")}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block font-display text-xl font-bold tracking-[-0.035em]">
                     {category.label}
                   </span>
-                  <span className="mt-1 block text-xs leading-relaxed text-foreground/50">
+                  <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
                     {category.desc}
                   </span>
                 </span>
@@ -162,7 +161,7 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
                         disabled={!allocated}
                         className={`aspect-square rounded-full border-2 transition-all ${
                           allocated
-                            ? "border-foreground bg-cerebral shadow-[2px_2px_0_var(--foreground)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                            ? "border-foreground bg-cerebral active:scale-95"
                             : "border-dashed border-foreground/15"
                         }`}
                         aria-label={
@@ -178,7 +177,7 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
                   type="button"
                   onClick={() => updateCategory(category.id, -1)}
                   disabled={value === 0}
-                  className="grid size-9 shrink-0 place-items-center border border-foreground/20 text-foreground/45 disabled:opacity-20"
+                  className="grid size-9 shrink-0 place-items-center border border-foreground/20 text-muted-foreground disabled:opacity-20"
                   aria-label={`Odobrať žetón: ${category.label}`}
                 >
                   <Minus className="size-4" />
@@ -201,7 +200,7 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
         {remainingTokens === 0 ? (
           <Check className="size-5" />
         ) : (
-          <span className="font-mono text-sm">{remainingTokens}/10</span>
+          <span className="text-sm tabular-nums">{remainingTokens}/10</span>
         )}
       </button>
     </div>

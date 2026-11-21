@@ -233,7 +233,7 @@ export function VoiceBubble({
             type="button"
             onClick={toggleSpeed}
             aria-label="Rýchlosť prehrávania"
-            className="shrink-0 border border-foreground/20 px-2 py-1 font-mono text-xs text-foreground/65 transition-colors hover:border-foreground/45 hover:text-foreground cursor-pointer"
+            className="shrink-0 border border-foreground/20 px-2 py-1 text-xs text-foreground/65 transition-colors hover:border-foreground/45 hover:text-foreground cursor-pointer"
           >
             {speed}×
           </button>
@@ -241,7 +241,7 @@ export function VoiceBubble({
 
         <div className="mt-2 flex items-center justify-between text-xs text-foreground/50">
           <span>{mine ? "Tvoja odpoveď" : "Hlasová správa"}</span>
-          <span className="inline-flex items-center gap-1.5 font-mono">
+          <span className="inline-flex items-center gap-1.5 tabular-nums">
             {!mine && listened && (
               <span className="inline-flex items-center gap-0.5 text-xs text-accent">
                 <Check className="size-3" />

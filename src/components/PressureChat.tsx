@@ -238,16 +238,16 @@ export function PressureChat({
 
   if (showIntro) {
     return (
-      <div className="mx-auto flex min-h-[78vh] w-full max-w-md flex-col justify-center px-1 py-6 animate-fade-up">
+      <div className="onboarding-panel mx-auto w-full max-w-md animate-fade-up">
         <p className="editorial-kicker text-cerebral">Spontánna reakcia · 03</p>
-        <h2 className="mt-3 font-display text-4xl font-extrabold leading-[0.95] tracking-[-0.06em] text-foreground">
+        <h2 className="mt-3 font-display text-4xl font-extrabold leading-[0.95] tracking-[-0.04em] text-foreground">
           Ako odpovieš na správu?
         </h2>
         <p className="mt-4 text-sm leading-relaxed text-foreground/65">
           Prečítaš si správu z bežnej situácie vo vzťahu. Vyber odpoveď, ktorú by si poslal/a ako prvú. Žiadna nie je správna ani nesprávna.
         </p>
 
-        <div className="my-7 border-y border-foreground/25 py-4 text-xs text-foreground/55">
+        <div className="my-7 border-y border-foreground/25 py-4 text-xs text-muted-foreground">
           Prvý dotyk odošle odpoveď. Na prečítanie a výber máš približne 14 sekúnd.
         </div>
 
@@ -267,15 +267,15 @@ export function PressureChat({
   }
 
   return (
-    <div className="mx-auto w-full max-w-md px-1 py-6 animate-fade-up">
+    <div className="mx-auto w-full max-w-md px-1 pb-6 animate-fade-up">
       <header className="mb-4 flex items-end justify-between">
         <div>
           <p className="editorial-kicker text-cerebral">Spontánna reakcia · 03</p>
-          <p className="mt-1 text-xs text-foreground/55">{scenario.context}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{scenario.context}</p>
         </div>
         <span
-          className={`font-mono text-xs ${
-            isClosingSoon ? "font-semibold text-cerebral" : "text-foreground/50"
+          className={`text-xs tabular-nums ${
+            isClosingSoon ? "font-semibold text-cerebral" : "text-muted-foreground"
           }`}
         >
           {isTyping ? "prichádza správa…" : `${Math.ceil(timeLeft)} s`}
@@ -294,12 +294,12 @@ export function PressureChat({
       <div className="editorial-panel mb-6 p-5">
         <div className="mb-4 flex items-center justify-between border-b border-foreground/15 pb-3">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-8 place-items-center rounded-full bg-foreground font-mono text-xs font-bold text-background">
+            <span className="grid size-8 place-items-center rounded-full bg-foreground text-xs font-bold text-background">
               <MessageCircle className="size-4" />
             </span>
             <div>
               <p className="font-display text-sm font-bold leading-none">{scenario.sender}</p>
-              <p className="mt-1 text-xs text-foreground/50">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {isTyping ? "píše správu…" : "práve teraz"}
               </p>
             </div>
@@ -310,15 +310,15 @@ export function PressureChat({
           {isTyping ? (
             <div className="inline-flex items-center gap-1.5 border border-foreground/15 bg-foreground/[0.04] px-4 py-3">
               <span
-                className="size-1.5 rounded-full bg-foreground/45 animate-bounce"
+                className="size-1.5 rounded-full bg-foreground/45 motion-safe:animate-pulse"
                 style={{ animationDelay: "0ms" }}
               />
               <span
-                className="size-1.5 rounded-full bg-foreground/45 animate-bounce"
+                className="size-1.5 rounded-full bg-foreground/45 motion-safe:animate-pulse"
                 style={{ animationDelay: "150ms" }}
               />
               <span
-                className="size-1.5 rounded-full bg-foreground/45 animate-bounce"
+                className="size-1.5 rounded-full bg-foreground/45 motion-safe:animate-pulse"
                 style={{ animationDelay: "300ms" }}
               />
             </div>
@@ -332,7 +332,7 @@ export function PressureChat({
         </div>
       </div>
 
-      <p className="mb-3 text-xs text-foreground/55">
+      <p className="mb-3 text-xs text-muted-foreground">
         {isTyping ? "Počkaj na správu…" : "Ťuknutím odošleš vybranú odpoveď."}
       </p>
 

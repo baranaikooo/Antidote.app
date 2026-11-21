@@ -76,7 +76,7 @@ export function Chip({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 border px-3 py-1 text-xs font-mono font-medium tracking-wide",
+        "inline-flex items-center gap-1.5 border px-3 py-1 text-xs font-medium tracking-wide",
         CHIP_BG[tone],
         className,
       )}
@@ -105,7 +105,7 @@ export function PillButton({
   type?: "button" | "submit";
 }) {
   const base =
-    "inline-flex w-full items-center justify-center gap-2 px-6 py-4 text-sm font-bold font-mono tracking-wide uppercase transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed";
+    "inline-flex w-full items-center justify-center gap-2 px-6 py-4 text-sm font-bold tracking-wide uppercase transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed";
   const variants: Record<PillVariant, string> = {
     primary: "bg-foreground text-background hover:bg-foreground/90",
     ghost: "border border-foreground/20 bg-transparent text-foreground hover:bg-foreground/5",
@@ -146,7 +146,7 @@ export function HandNote({
   className?: string;
 }) {
   return (
-    <p className={cn("text-xs font-mono text-muted-foreground/80 leading-snug", className)}>
+    <p className={cn("text-xs text-muted-foreground/80 leading-snug", className)}>
       {children}
     </p>
   );

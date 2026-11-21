@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 
 import { useHaptic } from "@/hooks/use-haptics";
 
@@ -121,16 +121,16 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
   const current = prompts[step];
 
   return (
-    <div className="mx-auto w-full max-w-md px-1 py-6 animate-fade-up">
+    <div className="mx-auto w-full max-w-md px-1 pb-6 animate-fade-up">
       <header className="mb-6 flex items-end justify-between border-b border-foreground/25 pb-4">
         <div>
           <p className="editorial-kicker text-cerebral">Spôsob uvažovania · 01</p>
-          <p className="mt-1 font-display text-2xl font-bold tracking-[-0.05em]">
+          <p className="mt-1 font-display text-2xl font-bold tracking-[-0.04em]">
             {String(step + 1).padStart(2, "0")}{" "}
             <span className="text-foreground/30">/ {String(prompts.length).padStart(2, "0")}</span>
           </p>
         </div>
-        <span className="text-xs text-foreground/50">Vyber, čo ti je najbližšie</span>
+        <span className="text-xs text-muted-foreground">Vyber, čo ti je najbližšie</span>
       </header>
 
       <div className="mb-8 flex gap-1.5" aria-hidden>
@@ -144,10 +144,10 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
         ))}
       </div>
 
-      <div className="mb-7 border-y-2 border-foreground py-7">
-        <h3 className="font-display text-[clamp(1.75rem,7vw,2.5rem)] font-bold leading-[1.04] tracking-[-0.05em] text-foreground">
+      <div className="onboarding-panel mb-5">
+        <h1 className="font-display text-[clamp(1.75rem,7vw,2.5rem)] font-bold leading-[1.04] tracking-[-0.04em] text-foreground">
           {current.text}
-        </h3>
+        </h1>
       </div>
 
       <div className="space-y-3">
@@ -160,12 +160,14 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
               type="button"
               onClick={() => handleSelect(idx)}
               aria-pressed={isSelected}
-              className={`tactile-button flex min-h-24 w-full items-center justify-between gap-4 p-5 text-left cursor-pointer ${
+              className={`tactile-button flex min-h-16 w-full items-center justify-between gap-4 p-4 text-left cursor-pointer ${
                 isSelected ? "bg-cerebral text-background" : "bg-card text-foreground"
               }`}
             >
               <span className="font-display text-lg font-bold leading-tight">{opt.text}</span>
-              <span className="shrink-0 font-mono text-sm">{letter}</span>
+              <span className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-sm" aria-hidden="true">
+                {isSelected ? <Check size={16} /> : letter}
+              </span>
             </button>
           );
         })}

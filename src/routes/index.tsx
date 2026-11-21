@@ -165,13 +165,42 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
   );
 }
 
-function Shell({ children, landing = false, main = false, thread = false }: { children: React.ReactNode; landing?: boolean; main?: boolean; thread?: boolean }) {
+function Shell({
+  children,
+  landing = false,
+  main = false,
+  thread = false,
+  onboardingStage = -1,
+}: {
+  children: React.ReactNode;
+  landing?: boolean;
+  main?: boolean;
+  thread?: boolean;
+  onboardingStage?: number;
+}) {
+  const onboarding = onboardingStage >= 0;
   return (
-    <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : ""}`}>
+    <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}>
       {landing && <img className="landing-art" src="/antidote-fold.jpg" alt="" width={1536} height={1024} fetchPriority="high" />}
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
-      <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : "pb-28 pt-5"}`}>
+      <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}>
+        {onboarding && (
+          <header className="onboarding-header">
+            <AntidoteLogo markClassName="h-6" />
+            <ol className="onboarding-progress" aria-label="Postup registrácie">
+              {ONBOARDING_STAGES.map(({ label }, index) => (
+                <li
+                  key={label}
+                  aria-current={index === onboardingStage ? "step" : undefined}
+                  data-reached={index <= onboardingStage}
+                >
+                  {label}
+                </li>
+              ))}
+            </ol>
+          </header>
+        )}
         {children}
       </div>
     </div>
@@ -184,7 +213,7 @@ function AppSplash() {
       <div className="size-16 rounded-full border border-foreground/10 bg-foreground/[0.02] flex items-center justify-center animate-pulse">
         <span className="size-4 rounded-full bg-foreground/40 animate-ping" />
       </div>
-      <p className="mt-6 font-mono text-xs tracking-[0.32em] text-foreground/45 uppercase">
+      <p className="mt-6 text-sm font-medium text-muted-foreground">
         Načítavam Antidote…
       </p>
     </div>
@@ -239,6 +268,16 @@ type Screen =
   | "legal-cookies"
   | "legal-contact"
   | "profile-dossier";
+
+const ONBOARDING_STAGES: { label: string; screens: Screen[] }[] = [
+  { label: "Overenie", screens: ["liveness"] },
+  { label: "Profil", screens: ["profile", "snippets-onboarding"] },
+  { label: "Dotazník", screens: ["briefing", "mirror", "bankroll", "pressure", "processing"] },
+];
+
+function getOnboardingStage(screen: Screen) {
+  return ONBOARDING_STAGES.findIndex(({ screens }) => screens.includes(screen));
+}
 
 type ThemeMode = "system" | "dark" | "light";
 const AppChrome = registerPlugin<{ setTheme(options: { dark: boolean }): Promise<void> }>("AppChrome");
@@ -312,7 +351,8 @@ function clearOnboardingStorage(preserveActiveScreen = false) {
 
 function AntidoteApp() {
   const [screen, setScreen] = useState<Screen>("landing");
-  const [theme, setTheme] = useTheme(screen === "landing");
+  const onboardingStage = getOnboardingStage(screen);
+  const [theme, setTheme] = useTheme(screen === "landing" || onboardingStage >= 0);
   const themeLoadedRef = useRef(false);
   const themeRef = useRef(theme);
 
@@ -568,17 +608,7 @@ function AntidoteApp() {
           clearOnboardingStorage(true);
         } else {
           const savedScreen = localStorage.getItem("reson:active_screen") as Screen;
-          const validOnboardingScreens: Screen[] = [
-            "liveness",
-            "profile",
-            "snippets-onboarding",
-            "briefing",
-            "mirror",
-            "bankroll",
-            "pressure",
-            "processing",
-          ];
-          if (savedScreen && validOnboardingScreens.includes(savedScreen)) {
+          if (savedScreen && getOnboardingStage(savedScreen) >= 0) {
             setScreen(savedScreen);
           } else {
             setScreen("liveness");
@@ -998,19 +1028,9 @@ function AntidoteApp() {
     : null;
 
   const hasAnswers = profile?.cognitiveDepth !== undefined;
-  const onboardingScreens: Screen[] = [
-    "landing",
-    "liveness",
-    "profile",
-    "snippets-onboarding",
-    "briefing",
-    "mirror",
-    "bankroll",
-    "pressure",
-  ];
   const focusScreens: Screen[] = ["test", "chamber", "thread"];
   const showNav =
-    profile !== null && !onboardingScreens.includes(screen) && !focusScreens.includes(screen);
+    profile !== null && screen !== "landing" && onboardingStage < 0 && !focusScreens.includes(screen);
   const unreadCount = conversations.filter((c) => c.unread).length;
 
   // Removed proactive mic priming on startup to support Just-in-Time (JIT) permissions
@@ -1073,7 +1093,7 @@ function AntidoteApp() {
   const showUpdateNotice = showNav || (screen === "landing" && Capacitor.getPlatform() === "android");
 
   return (
-    <Shell landing={screen === "landing"} main={showNav} thread={screen === "thread"}>
+    <Shell landing={screen === "landing"} main={showNav} thread={screen === "thread"} onboardingStage={onboardingStage}>
       <AndroidUpdateProvider enabled={showUpdateNotice}>
       {showUpdateNotice && <UpdateNotice />}
       {screen === "landing" && (
@@ -1626,7 +1646,7 @@ function PrimaryButton({
     <button
       disabled={disabled}
       onClick={onClick}
-      className={`cta-gradient cta-gradient-hover py-4 text-xs tracking-widest uppercase font-mono font-bold active:scale-[0.97] hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed ${className ?? ""}`}
+      className={`cta-gradient cta-gradient-hover py-4 text-xs tracking-wide font-bold active:scale-[0.97] hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed ${className ?? ""}`}
     >
       <span className="relative z-10 inline-flex items-center justify-center gap-2">
         {children}
@@ -1657,11 +1677,11 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
             { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
           ] as const).map(({ value, label, icon: Icon }) => (
             <button key={value} type="button" onClick={() => choose(value)} aria-pressed={choice === value} className="landing-option">
-              <span className="landing-option-top" aria-hidden="true">
-                <Icon size={25} />
-                <span className="landing-option-state">{choice === value && <Check size={15} />}</span>
-              </span>
+              <span className="landing-option-icon" aria-hidden="true"><Icon size={21} /></span>
               <span>{label}</span>
+              <span className="landing-option-state" aria-hidden="true">
+                {choice === value ? <Check size={19} /> : <ChevronRight size={19} />}
+              </span>
             </button>
           ))}
         </div>
@@ -1957,173 +1977,170 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
   }
 
   return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center text-center animate-fade-up">
-      <div className="border border-foreground/20 p-6 max-w-sm w-full bg-card flex flex-col items-center">
-        <p className="mb-3 text-xs font-medium text-foreground/65">Overenie profilu</p>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-foreground mb-2">
-          Najprv krátke overenie
-        </h2>
-        <p className="text-sm text-foreground/75 leading-relaxed mb-4">
-          Kameru použijeme na krátke video a overenie, že si skutočná osoba. Po spustení ťa prehliadač požiada o prístup ku kamere.
-        </p>
+    <div className="onboarding-panel mx-auto flex w-full max-w-md flex-col items-center text-center animate-fade-up">
+      <h2 className="font-display text-2xl font-bold tracking-tight text-foreground mb-2">
+        Najprv krátke overenie
+      </h2>
+      <p className="text-sm text-foreground/75 leading-relaxed mb-4">
+        Krátkym videom overíme, že si skutočná osoba. Po spustení overenia povoľ prístup ku kamere.
+      </p>
 
-        <div className="relative my-4 grid place-items-center">
-          <div className="relative w-48 aspect-[3/4] overflow-hidden border border-foreground/25 bg-black">
-            {phase !== "ready" && stream && (
-              <div className="relative w-full h-full">
-                <video
-                  ref={videoRef}
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                  style={{ transform: "scaleX(-1)" }}
-                />
-                {/* Dashed guide oval */}
-                <div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
-                  <svg className="w-[85%] h-[80%] text-foreground/40" viewBox="0 0 100 100">
-                    <ellipse
-                      cx="50"
-                      cy="50"
-                      rx="38"
-                      ry="45"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeDasharray="4 3"
-                      className={`transition-colors duration-300 ${
-                        challengeStep === "center"
-                          ? "text-green-500 animate-pulse"
-                          : "text-foreground/40"
-                      }`}
-                    />
-                  </svg>
-                </div>
-
-                {/* Active Step Indicator Overlay */}
-                <div className="absolute inset-x-1 bottom-1.5 bg-black/85 border border-foreground/15 px-1.5 py-1 text-center text-xs font-mono leading-tight">
-                  <div className="mb-0.5 font-semibold text-white">
-                    Pohyb hlavy
-                  </div>
-                  <div className="flex flex-col gap-0.5 text-left text-white">
-                    <div
-                      className={
-                        challengeStep === "center"
-                          ? "text-green-400 font-bold"
-                          : "text-white/75"
-                      }
-                    >
-                      {challengeStep === "center" ? "● " : "○ "}1. Pozri do kamery
-                    </div>
-                    <div
-                      className={
-                        challengeStep === "turn_right"
-                          ? "text-green-400 font-bold"
-                          : "text-white/75"
-                      }
-                    >
-                      {challengeStep === "turn_right" ? "● " : "○ "}2. Otoč hlavu doprava
-                    </div>
-                    <div
-                      className={
-                        challengeStep === "turn_left"
-                          ? "text-green-400 font-bold"
-                          : "text-white/75"
-                      }
-                    >
-                      {challengeStep === "turn_left" ? "● " : "○ "}3. Otoč hlavu doľava
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            {phase !== "ready" && !stream && (
-              <div className="absolute inset-0 grid place-items-center bg-foreground/5 text-foreground/20">
-                {modelLoading ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="size-5 animate-spin border border-foreground border-t-transparent" />
-                    <span className="text-xs tracking-wider text-foreground/80 font-mono uppercase">
-                      Pripravujem overenie…
-                    </span>
-                  </div>
-                ) : (
-                  <User className="size-12 animate-pulse" />
-                )}
-              </div>
-            )}
-            {phase === "ready" && recordedUrl && (
+      <div className="relative my-4 grid place-items-center">
+        <div className="relative w-40 max-w-full aspect-[3/4] overflow-hidden rounded-[0.875rem] border border-foreground/25 bg-background">
+          {phase !== "ready" && stream && (
+            <div className="relative w-full h-full">
               <video
-                ref={previewRef}
-                src={recordedUrl}
-                autoPlay
-                loop
-                muted
+                ref={videoRef}
                 playsInline
-                className="w-full h-full object-contain"
+                muted
+                className="w-full h-full object-cover"
                 style={{ transform: "scaleX(-1)" }}
               />
-            )}
-            {phase === "countdown" && (
-              <div className="absolute inset-0 grid place-items-center bg-foreground/10 backdrop-blur-sm">
-                <span className="font-mono text-3xl text-foreground font-black">{countdown}</span>
+              {/* Dashed guide oval */}
+              <div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
+                <svg className="w-[85%] h-[80%] text-foreground/40" viewBox="0 0 100 100">
+                  <ellipse
+                    cx="50"
+                    cy="50"
+                    rx="38"
+                    ry="45"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeDasharray="4 3"
+                    className={`transition-colors duration-300 ${
+                      challengeStep === "center"
+                        ? "text-green-500 animate-pulse"
+                        : "text-foreground/40"
+                    }`}
+                  />
+                </svg>
               </div>
-            )}
-            {phase === "recording" && challengeStep === "done" && (
-              <div className="absolute inset-x-0 top-3 mx-auto w-fit bg-red-600 px-2 py-0.5 font-mono text-xs tracking-widest text-white uppercase font-bold">
-                Nahráva sa
+
+              {/* Active Step Indicator Overlay */}
+              <div className="absolute inset-x-1 bottom-1.5 bg-black/85 border border-foreground/15 px-1.5 py-1 text-center text-xs leading-tight">
+                <div className="mb-0.5 font-semibold text-white">
+                  Pohyb hlavy
+                </div>
+                <div className="flex flex-col gap-0.5 text-left text-white">
+                  <div
+                    className={
+                      challengeStep === "center"
+                        ? "text-green-400 font-bold"
+                        : "text-white/75"
+                    }
+                  >
+                    {challengeStep === "center" ? "● " : "○ "}1. Pozri do kamery
+                  </div>
+                  <div
+                    className={
+                      challengeStep === "turn_right"
+                        ? "text-green-400 font-bold"
+                        : "text-white/75"
+                    }
+                  >
+                    {challengeStep === "turn_right" ? "● " : "○ "}2. Otoč hlavu doprava
+                  </div>
+                  <div
+                    className={
+                      challengeStep === "turn_left"
+                        ? "text-green-400 font-bold"
+                        : "text-white/75"
+                    }
+                  >
+                    {challengeStep === "turn_left" ? "● " : "○ "}3. Otoč hlavu doľava
+                  </div>
+                </div>
               </div>
-            )}
-            {phase === "verifying" && (
-              <div className="absolute inset-0 bg-foreground/10 pointer-events-none grid place-items-center">
-                <span className="text-xs font-mono tracking-widest text-foreground animate-pulse font-bold">
-                  Overujem…
-                </span>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
+          {phase !== "ready" && !stream && (
+            <div className="absolute inset-0 grid place-items-center bg-foreground/5 text-foreground/20">
+              {modelLoading ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="size-5 animate-spin border border-foreground border-t-transparent" />
+                  <span className="text-xs tracking-wider text-foreground/80 uppercase">
+                    Pripravujem overenie…
+                  </span>
+                </div>
+              ) : (
+                <Camera className="size-12 text-muted-foreground" aria-hidden="true" />
+              )}
+            </div>
+          )}
+          {phase === "ready" && recordedUrl && (
+            <video
+              ref={previewRef}
+              src={recordedUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-contain"
+              style={{ transform: "scaleX(-1)" }}
+            />
+          )}
+          {phase === "countdown" && (
+            <div className="absolute inset-0 grid place-items-center bg-foreground/10 backdrop-blur-sm">
+              <span className="text-3xl text-foreground font-black tabular-nums">{countdown}</span>
+            </div>
+          )}
+          {phase === "recording" && challengeStep === "done" && (
+            <div className="absolute inset-x-0 top-3 mx-auto w-fit bg-red-600 px-2 py-0.5 text-xs tracking-widest text-white uppercase font-bold">
+              Nahráva sa
+            </div>
+          )}
+          {phase === "verifying" && (
+            <div className="absolute inset-0 bg-foreground/10 pointer-events-none grid place-items-center">
+              <span className="text-xs tracking-widest text-foreground animate-pulse font-bold">
+                Overujem…
+              </span>
+            </div>
+          )}
         </div>
+      </div>
 
-        <p role="status" className="mb-3 text-base text-muted-foreground">
-          {phase === "countdown" && "Priprav sa"}
-          {phase === "recording" &&
-            (challengeStep === "done" ? "Nahrávam video…" : "Postupuj podľa pokynov pri kamere.")}
-          {phase === "verifying" && "Overujem video…"}
-          {phase === "ready" && "Video je pripravené"}
-          {phase === "error" && "Overenie sa nepodarilo"}
-        </p>
+      <p role="status" className="mb-3 text-base text-muted-foreground">
+        {phase === "countdown" && "Priprav sa"}
+        {phase === "recording" &&
+          (challengeStep === "done" ? "Nahrávam video…" : "Postupuj podľa pokynov pri kamere.")}
+        {phase === "verifying" && "Overujem video…"}
+        {phase === "ready" && "Video je pripravené"}
+        {phase === "error" && "Overenie sa nepodarilo"}
+      </p>
 
-        {phase === "error" && <p className="text-xs text-red-500 mb-4 leading-relaxed">{errMsg}</p>}
+      {phase === "error" && <p className="text-xs text-red-500 mb-4 leading-relaxed">{errMsg}</p>}
 
-        <div className="w-full space-y-2">
-          {(phase === "idle" || phase === "error") && (
+      <div className="w-full space-y-2">
+        {(phase === "idle" || phase === "error") && (
+          <button
+            disabled={modelLoading}
+            onClick={() => {
+              if (phase === "error") retake();
+              else runScan();
+            }}
+            className="w-full bg-foreground text-background font-bold text-sm tracking-wide py-4 hover:bg-foreground/90 disabled:opacity-20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Camera className="size-4" />
+            {modelLoading ? "Pripravujem overenie…" : phase === "error" ? "Skúsiť znova" : "Spustiť overenie"}
+          </button>
+        )}
+        {phase === "ready" && (
+          <>
             <button
-              disabled={modelLoading}
-              onClick={() => {
-                if (phase === "error") retake();
-                else runScan();
-              }}
-              className="w-full bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 disabled:opacity-20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => onDone(recordedUrl)}
+              className="w-full bg-foreground text-background font-bold text-sm tracking-wide py-4 hover:bg-foreground/90 transition-all cursor-pointer"
             >
-              <Camera className="size-4" />
-              {modelLoading ? "Pripravujem overenie…" : phase === "error" ? "Skúsiť znova" : "Spustiť overenie"}
+              Pokračovať
             </button>
-          )}
-          {phase === "ready" && (
-            <>
-              <button
-                onClick={() => onDone(recordedUrl)}
-                className="w-full bg-foreground text-background font-mono font-bold text-sm tracking-widest uppercase py-4 hover:bg-foreground/90 transition-all cursor-pointer"
-              >
-                POKRAČOVAŤ
-              </button>
-              <button
-                onClick={retake}
-                className="w-full border border-foreground/20 py-3 text-sm tracking-widest text-foreground/60 hover:bg-foreground/5 font-bold font-mono uppercase cursor-pointer"
-              >
-                ZRUŠIŤ
-              </button>
-            </>
-          )}
-        </div>
+            <button
+              onClick={retake}
+              className="w-full border border-foreground/20 py-3 text-sm tracking-widest text-foreground/60 hover:bg-foreground/5 font-bold uppercase cursor-pointer"
+            >
+              Zrušiť
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -2131,31 +2148,28 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
 
 function Briefing({ onBegin }: { onBegin: () => void }) {
   return (
-    <div className="flex min-h-[80vh] flex-col px-1 py-3 animate-fade-up">
-      <header className="flex items-center justify-between"><Logo /><span className="font-mono text-xs text-foreground/35">02</span></header>
-      <main className="my-auto py-10">
-        <p className="editorial-kicker text-foreground/50">Otázky · približne 2 minúty</p>
-        <h1 className="mt-5 max-w-sm font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em]">
-          Poďme sa trochu spoznať.
-        </h1>
-        <div className="mt-8 border-t border-foreground/30 pt-6">
-        <p className="max-w-sm text-base leading-relaxed text-foreground/70">
+    <main className="onboarding-panel mx-auto max-w-md animate-fade-up">
+      <h1 className="mb-2 max-w-sm font-display text-[clamp(2.35rem,10vw,3.5rem)] font-extrabold leading-none tracking-[-0.04em]">
+        Poďme sa trochu spoznať.
+      </h1>
+      <p className="text-sm font-medium text-accent">Približne 2 minúty</p>
+      <div className="mt-6 border-t border-foreground/20 pt-5 text-muted-foreground">
+        <p className="max-w-sm text-base leading-relaxed">
           Čakajú ťa otázky o vzťahoch, hodnotách a o tom, ako sa rozhoduješ.
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-foreground/50">
+        <p className="mt-3 text-sm leading-relaxed">
           Odpovedaj tak, ako to cítiš. Neexistujú správne odpovede.
         </p>
-        <button
-          type="button"
-          onClick={onBegin}
-          className="tactile-button mt-8 flex min-h-20 w-full items-center justify-between bg-foreground p-5 text-left text-background"
-        >
-          <span className="font-display text-xl font-bold">Začať</span>
-          <ChevronRight className="size-5" aria-hidden="true" />
-        </button>
-        </div>
-      </main>
-    </div>
+      </div>
+      <button
+        type="button"
+        onClick={onBegin}
+        className="tactile-button mt-6 flex min-h-14 w-full items-center justify-between bg-accent p-4 text-left text-accent-foreground"
+      >
+        <span className="font-display text-xl font-bold">Začať</span>
+        <ChevronRight className="size-5" aria-hidden="true" />
+      </button>
+    </main>
   );
 }
 
@@ -2537,7 +2551,7 @@ function Test({ onComplete }: { onComplete: (a: FullAnswers) => void }) {
       <div className="mb-8 flex items-end justify-between border-b border-foreground/25 pb-3">
         <div>
           <p className="editorial-kicker text-cerebral">Dilema</p>
-          <p className="mt-1 font-display text-2xl font-bold tracking-[-0.05em]">
+          <p className="mt-1 font-display text-2xl font-bold tracking-[-0.04em]">
             {String(idx + 1).padStart(2, "0")} <span className="text-foreground/30">/ 06</span>
           </p>
         </div>
@@ -2545,7 +2559,7 @@ function Test({ onComplete }: { onComplete: (a: FullAnswers) => void }) {
           <span className="editorial-kicker text-foreground/45">
             {phase === "read" ? "Najprv iba čítaj" : "Teraz sa rozhodni"}
           </span>
-          <p className={`mt-1 font-mono text-sm font-semibold ${danger ? "text-cerebral" : ""}`}>
+          <p className={`mt-1 text-sm font-semibold tabular-nums ${danger ? "text-cerebral" : ""}`}>
             {timeLeft} sek.
           </p>
         </div>
@@ -2568,7 +2582,7 @@ function Test({ onComplete }: { onComplete: (a: FullAnswers) => void }) {
       </div>
 
       <div className="min-h-52 border-y-2 border-foreground py-8">
-        <p className="font-display text-[clamp(1.8rem,8vw,2.8rem)] font-bold leading-[1.02] tracking-[-0.055em] text-foreground">
+        <p className="font-display text-[clamp(1.8rem,8vw,2.8rem)] font-bold leading-[1.02] tracking-[-0.04em] text-foreground">
           {s.text}
         </p>
       </div>
@@ -2592,7 +2606,7 @@ function Test({ onComplete }: { onComplete: (a: FullAnswers) => void }) {
             >
               <span className="flex min-h-14 items-center justify-between gap-4">
                 <span className="font-display text-xl font-bold leading-tight">{s[k]}</span>
-                <span className="shrink-0 font-mono text-sm">{k.toUpperCase()}</span>
+                <span className="shrink-0 text-sm">{k.toUpperCase()}</span>
               </span>
             </button>
           ))}
@@ -2619,9 +2633,9 @@ function Processing({
   }, [onDone]);
 
   return (
-    <div className="flex min-h-[72vh] flex-col justify-center px-1 sm:min-h-[80vh]">
+    <div className="onboarding-panel mx-auto max-w-md">
       <p className="editorial-kicker text-cerebral">Tvoj profil je hotový</p>
-      <h2 className="mt-4 max-w-lg font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.065em] sm:text-6xl">
+      <h2 className="mt-4 max-w-lg font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.04em] sm:text-6xl">
         Tvoj štýl rozhovoru
       </h2>
       <div className="mt-10 border-y border-foreground/30 py-5">
@@ -2779,7 +2793,7 @@ function ProfileForm({
               triggerError("Meno alebo prezývka musí mať aspoň 2 znaky.");
             }
           }}
-          className="w-full border-t-2 border-foreground pt-4"
+          className="onboarding-panel"
         >
           <h1 className="personal-title">Predstav sa</h1>
           <p className="personal-intro mb-5">
@@ -2831,7 +2845,7 @@ function ProfileForm({
               triggerError("Zadaj dátum narodenia.");
             }
           }}
-          className="w-full border-t-2 border-foreground pt-4"
+          className="onboarding-panel"
         >
           <h1 className="personal-title">Kedy máš narodeniny?</h1>
           <p className="personal-intro mb-5">
@@ -2893,7 +2907,7 @@ function ProfileForm({
               triggerError("Skontroluj dátum narodenia. Zadaný vek musí byť od 18 do 99 rokov.");
             }
           }}
-          className="w-full border-t-2 border-foreground pt-4"
+          className="onboarding-panel"
         >
           <h1 className="personal-title">Skontroluj si vek</h1>
           <p className="personal-intro mb-5">
@@ -2966,7 +2980,7 @@ function ProfileForm({
               triggerError("Vyber, ako sa chceš uvádzať a koho hľadáš.");
             }
           }}
-          className="w-full border-t-2 border-foreground pt-4"
+          className="onboarding-panel"
         >
           <h1 className="personal-title">Koho chceš spoznať?</h1>
           <p className="personal-intro mb-5">
@@ -3081,7 +3095,7 @@ function AutoMatch({
   return (
     <div className="flex min-h-[70vh] flex-col justify-center animate-fade-up">
       <p className="editorial-kicker text-cerebral">Hlasové spojenie</p>
-      <h2 className="mt-4 font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.065em]">
+      <h2 className="mt-4 font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.04em]">
         Pripravujeme rozhovor
       </h2>
       <div className="my-10 flex h-24 items-end gap-2" aria-hidden>
@@ -3111,7 +3125,7 @@ function NoOne({ onMessages }: { onMessages: (() => void) | null }) {
       <header><Logo /></header>
       <main className="my-auto py-10">
         <p className="editorial-kicker text-foreground/50">Tvoje spojenia</p>
-        <h1 className="mt-5 max-w-sm font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.055em]">
+        <h1 className="mt-5 max-w-sm font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.04em]">
           Žiadne nové spojenia
         </h1>
         <div className="mt-8 border-t border-foreground/30 pt-6">

@@ -272,7 +272,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
           Pridaj 1 až 4 trojsekundové videá. Vyber ich z galérie alebo ich nahraj kamerou. Pri nahrávaní ťa zariadenie požiada o prístup ku kamere.
         </p>
       </header>
-      <section className="personal-section" aria-label="Videá profilu">
+      <section className="onboarding-panel" aria-label="Videá profilu">
         <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} />
       </section>
 
@@ -306,7 +306,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
               setIsSubmitting(false);
             }
           }}
-          className={`w-full border border-foreground py-3.5 text-base font-bold transition-colors ${
+          className={`w-full rounded-[0.625rem] border border-foreground py-3.5 text-base font-bold transition-colors ${
             snippets.filter(Boolean).length === 0 || isSubmitting
               ? "opacity-40 cursor-not-allowed bg-foreground/20 text-muted-foreground border-foreground/20"
               : "text-background bg-foreground hover:bg-foreground/90 cursor-pointer"
