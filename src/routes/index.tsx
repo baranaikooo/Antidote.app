@@ -168,6 +168,7 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
 function Shell({ children, landing = false, main = false, thread = false }: { children: React.ReactNode; landing?: boolean; main?: boolean; thread?: boolean }) {
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : ""}`}>
+      {landing && <img className="landing-art" src="/antidote-fold.jpg" alt="" width={1536} height={1024} fetchPriority="high" />}
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
       <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : "pb-28 pt-5"}`}>
@@ -1644,42 +1645,39 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   };
 
   return (
-    <div className="landing-layout">
-      <header className="landing-brand"><AntidoteLogo markClassName="h-8" /></header>
-      <main className="landing-main">
-        <div className="landing-hero">
-          <img className="landing-art" src="/antidote-resonance.jpg" alt="" width={1536} height={1024} fetchPriority="high" />
+    <main className="landing-main">
+      <div className="landing-hero">
+        <header className="landing-brand"><AntidoteLogo markClassName="h-8" /></header>
         <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
+      </div>
+      <div className="landing-interaction">
+        <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
+          {([
+            { value: "travel", label: "Možnosť cestovať", icon: Compass },
+            { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
+          ] as const).map(({ value, label, icon: Icon }) => (
+            <button key={value} type="button" onClick={() => choose(value)} aria-pressed={choice === value} className="landing-option">
+              <span className="landing-option-top" aria-hidden="true">
+                <Icon size={25} />
+                <span className="landing-option-state">{choice === value && <Check size={15} />}</span>
+              </span>
+              <span>{label}</span>
+            </button>
+          ))}
         </div>
-        <div className="landing-interaction">
-          <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
-            {([
-              { value: "travel", label: "Možnosť cestovať", icon: Compass },
-              { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
-            ] as const).map(({ value, label, icon: Icon }) => (
-              <button key={value} type="button" onClick={() => choose(value)} aria-pressed={choice === value} className="landing-option">
-                <span className="landing-option-top" aria-hidden="true">
-                  <Icon size={25} />
-                  <span className="landing-option-state">{choice === value && <Check size={15} />}</span>
-                </span>
-                <span>{label}</span>
-              </button>
-            ))}
-          </div>
-          {choice && (
-            <div className="landing-result">
-              <div role="status">
-                <p className="font-display text-xl font-bold leading-tight">Toto nebola náhodná otázka.</p>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
-                </p>
-              </div>
-              <div className="landing-sign-in"><GoogleSignInButton onSuccess={onGoogle} /></div>
+        {choice && (
+          <div className="landing-result">
+            <div role="status">
+              <p className="font-display text-xl font-bold leading-tight">Toto nebola náhodná otázka.</p>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
+              </p>
             </div>
-          )}
-        </div>
-      </main>
-    </div>
+            <div className="landing-sign-in"><GoogleSignInButton onSuccess={onGoogle} /></div>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
 

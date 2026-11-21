@@ -559,34 +559,38 @@ html.dark {
   --app-ice: #bfceff;
 }
 
-.app-welcome { background: var(--app-ink); color: var(--app-paper); }
+.app-welcome {
+  isolation: isolate;
+  background: var(--app-ink);
+  color: var(--app-paper);
+}
 .landing-viewport {
   max-width: 76rem;
   padding-inline: max(clamp(1rem, 4vw, 3rem), env(safe-area-inset-left), env(safe-area-inset-right));
   padding-top: max(clamp(0.75rem, 3dvh, 2rem), env(safe-area-inset-top));
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
-.landing-brand { display: flex; margin-bottom: clamp(0.625rem, 2dvh, 1.75rem); }
+.landing-brand { display: flex; }
 .landing-brand svg circle, .discover-topline > div svg circle { fill: var(--app-ice); }
 .landing-main { display: grid; gap: 0.75rem; }
 .landing-hero {
-  display: grid;
-  gap: 0.75rem;
-  overflow: hidden;
-  padding-bottom: 1rem;
-  border-radius: 1rem;
-  background: #080f1e;
+  display: flex;
+  min-height: clamp(15rem, 43dvh, 24rem);
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(1rem, 5vw, 2rem);
 }
 .landing-art {
-  display: block;
+  position: absolute;
+  z-index: -1;
+  inset: 0;
   width: 100%;
-  height: clamp(8rem, 27dvh, 22rem);
+  height: 100%;
   object-fit: cover;
-  object-position: center 52%;
 }
 .landing-title {
   max-width: 17ch;
-  padding-inline: clamp(0.875rem, 4vw, 2rem);
   font-size: clamp(2rem, 8.8vw, 4.5rem);
   font-weight: 780;
   line-height: 1.01;
@@ -641,14 +645,15 @@ html.dark {
 }
 @media (min-width: 760px), (orientation: landscape) and (max-height: 500px) and (min-width: 560px) {
   .landing-main { grid-template-columns: 1.3fr 1fr; align-items: center; gap: clamp(0.875rem, 3vw, 2.75rem); }
-  .landing-hero { padding-bottom: clamp(1rem, 4dvh, 2rem); }
-  .landing-art { height: clamp(9rem, 42dvh, 26rem); }
+  .landing-hero { min-height: clamp(20rem, 65dvh, 37rem); }
   .landing-title { font-size: clamp(2rem, 5vw, 4.5rem); }
 }
+@media (min-width: 760px) and (min-height: 641px) {
+  .landing-hero { justify-content: flex-start; }
+  .landing-title { margin-block: auto; }
+}
 @media (max-height: 640px) {
-  .landing-brand { margin-bottom: 0.625rem; }
-  .landing-hero { gap: 0.5rem; padding-bottom: 0.75rem; }
-  .landing-art { height: clamp(5.25rem, 18dvh, 7rem); }
+  .landing-hero { min-height: clamp(12rem, 40dvh, 16rem); gap: 1.25rem; }
   .landing-title { font-size: clamp(1.75rem, 6vw, 2.5rem); }
   .landing-interaction { padding: 0.625rem; }
   .landing-option { min-height: 5.25rem; }
@@ -656,9 +661,7 @@ html.dark {
   .landing-sign-in { margin-top: 0.5rem; }
 }
 @media (max-height: 420px) {
-  .landing-art { height: clamp(5.5rem, 31dvh, 8rem); }
   .landing-viewport { padding-top: 0.5rem; }
-  .landing-brand { margin-bottom: 0.5rem; }
   .landing-interaction { padding: 0.625rem; }
   .landing-option { min-height: 4.75rem; font-size: 0.9375rem; }
   .landing-option-top > svg { width: 1.25rem; height: 1.25rem; }
