@@ -270,15 +270,15 @@ export function MessageThread({
 
   return (
     <div className="conversation-screen">
-      <div className="z-10 shrink-0 border-b border-foreground/10 bg-card px-3 py-3 sm:px-4">
+      <div className="conversation-header z-10 shrink-0 px-3 py-3 sm:px-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button
               onClick={onBack}
               aria-label="Späť na správy"
-              className="grid size-11 shrink-0 place-items-center rounded-full bg-foreground/5 hover:bg-foreground/10 active:scale-95"
+              className="conversation-header-action shrink-0"
             >
-              <ArrowLeft className="size-5 text-foreground" />
+              <ArrowLeft className="size-5" aria-hidden="true" />
             </button>
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <div className="relative size-10 shrink-0 overflow-hidden rounded-full bg-muted">
@@ -290,10 +290,10 @@ export function MessageThread({
                 />
               </div>
               <div className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
-                <span className="font-semibold text-foreground text-sm tracking-tight break-words">
+                <span className="font-display text-lg font-bold tracking-tight">
                   {match.name}
                 </span>
-                <span className="text-sm text-muted-foreground">
+                <span className="conversation-privacy">
                   Rozmazanie: {conversation.blurLevel} %
                 </span>
               </div>
@@ -304,9 +304,9 @@ export function MessageThread({
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Možnosti rozhovoru"
               aria-expanded={menuOpen}
-              className="grid size-11 place-items-center rounded-full hover:bg-foreground/5"
+              className="conversation-header-action"
             >
-              <MoreVertical className="size-5 text-foreground" />
+              <MoreVertical className="size-5" aria-hidden="true" />
             </button>
             {menuOpen && (
               <>

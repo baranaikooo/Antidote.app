@@ -242,7 +242,7 @@ type Screen =
 type ThemeMode = "system" | "dark" | "light";
 const AppChrome = registerPlugin<{ setTheme(options: { dark: boolean }): Promise<void> }>("AppChrome");
 
-function useTheme(): [ThemeMode, (m: ThemeMode) => void] {
+function useTheme(darkChrome: boolean): [ThemeMode, (m: ThemeMode) => void] {
   const [mode, setMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") return "system";
     return (localStorage.getItem("reson:theme") as ThemeMode) || "system";
@@ -255,7 +255,7 @@ function useTheme(): [ThemeMode, (m: ThemeMode) => void] {
       document.documentElement.classList.toggle("dark", dark);
       document.documentElement.classList.toggle("light", !dark);
       if (Capacitor.isPluginAvailable("AppChrome")) {
-        void AppChrome.setTheme({ dark }).catch(() => {});
+        void AppChrome.setTheme({ dark: darkChrome || dark }).catch(() => {});
       }
     }
 
@@ -273,7 +273,7 @@ function useTheme(): [ThemeMode, (m: ThemeMode) => void] {
     const onSystemTheme = (event: MediaQueryListEvent) => applyTheme(event.matches);
     systemTheme.addEventListener("change", onSystemTheme);
     return () => systemTheme.removeEventListener("change", onSystemTheme);
-  }, [mode]);
+  }, [darkChrome, mode]);
 
   return [mode, setMode];
 }
@@ -310,7 +310,8 @@ function clearOnboardingStorage(preserveActiveScreen = false) {
 }
 
 function AntidoteApp() {
-  const [theme, setTheme] = useTheme();
+  const [screen, setScreen] = useState<Screen>("landing");
+  const [theme, setTheme] = useTheme(screen === "landing");
   const themeLoadedRef = useRef(false);
   const themeRef = useRef(theme);
 
@@ -318,7 +319,6 @@ function AntidoteApp() {
     themeRef.current = theme;
   }, [theme]);
 
-  const [screen, setScreen] = useState<Screen>("landing");
   const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
 
   const [answers, setAnswers] = useState<Answers>(() => {
@@ -1647,7 +1647,10 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
     <div className="landing-layout">
       <header className="landing-brand"><AntidoteLogo markClassName="h-8" /></header>
       <main className="landing-main">
+        <div className="landing-hero">
+          <img className="landing-art" src="/antidote-resonance.jpg" alt="" width={1536} height={1024} fetchPriority="high" />
         <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
+        </div>
         <div className="landing-interaction">
           <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
             {([
@@ -1655,11 +1658,11 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
               { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
             ] as const).map(({ value, label, icon: Icon }) => (
               <button key={value} type="button" onClick={() => choose(value)} aria-pressed={choice === value} className="landing-option">
-                <span className="landing-option-icon"><Icon size={23} aria-hidden="true" /></span>
-                <span>{label}</span>
-                <span className="landing-option-state" aria-hidden="true">
-                  {choice === value ? <Check size={19} /> : <ChevronRight size={19} />}
+                <span className="landing-option-top" aria-hidden="true">
+                  <Icon size={25} />
+                  <span className="landing-option-state">{choice === value && <Check size={15} />}</span>
                 </span>
+                <span>{label}</span>
               </button>
             ))}
           </div>
