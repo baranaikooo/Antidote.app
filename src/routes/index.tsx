@@ -168,6 +168,7 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
 function Shell({ children, landing = false, main = false, thread = false }: { children: React.ReactNode; landing?: boolean; main?: boolean; thread?: boolean }) {
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : ""}`}>
+      {landing && <img className="landing-art" src="/antidote-fold.jpg" alt="" width={1536} height={1024} fetchPriority="high" />}
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
       <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : "pb-28 pt-5"}`}>
@@ -1646,7 +1647,6 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   return (
     <main className="landing-main">
       <div className="landing-hero">
-        <img className="landing-art" src="/antidote-fold.jpg" alt="" width={1536} height={1024} fetchPriority="high" />
         <header className="landing-brand"><AntidoteLogo markClassName="h-8" /></header>
         <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
       </div>
