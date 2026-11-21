@@ -102,7 +102,7 @@ ${validCode ? '<script>location.replace(document.getElementById("open-app").href
           if (!release.ok) throw new Error("Release unavailable");
           const { assets } = await release.json();
           return Response.json(findLatestAndroidAsset(assets), {
-            headers: { "Cache-Control": "public, max-age=60, s-maxage=300" },
+            headers: { "Cache-Control": "public, max-age=0, s-maxage=60" },
           });
         } catch {
           return Response.json(null, { status: 503, headers: { "Cache-Control": "no-store" } });

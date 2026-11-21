@@ -1069,10 +1069,12 @@ function AntidoteApp() {
     );
   }
 
+  const showUpdateNotice = showNav || (screen === "landing" && Capacitor.getPlatform() === "android");
+
   return (
     <Shell landing={screen === "landing"} main={showNav} thread={screen === "thread"}>
-      <AndroidUpdateProvider enabled={showNav}>
-      {showNav && <UpdateNotice showAndroid={screen !== "settings"} />}
+      <AndroidUpdateProvider enabled={showUpdateNotice}>
+      {showUpdateNotice && <UpdateNotice />}
       {screen === "landing" && (
         <Landing
           onGoogle={(profile) => {
