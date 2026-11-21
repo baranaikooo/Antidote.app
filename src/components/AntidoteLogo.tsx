@@ -20,7 +20,7 @@ export function AntidoteLogo({ className, markClassName, showWordmark = true }: 
         <circle cx="38" cy="48" r="4.5" className="fill-cerebral" />
       </svg>
       {showWordmark && (
-        <span className="font-display text-xl font-extrabold tracking-[-0.065em]">ANTIDOTE</span>
+        <span className="font-brand text-xl font-extrabold tracking-[-0.065em]">ANTIDOTE</span>
       )}
     </div>
   );

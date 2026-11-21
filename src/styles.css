@@ -43,9 +43,9 @@
   --color-vc-pink: var(--cerebral);
   --text-xs: 0.875rem;
   --text-xs--line-height: 1.25rem;
-  --font-display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --font-display: var(--font-sans);
+  --font-brand: "Bricolage Grotesque", system-ui, sans-serif;
   --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 :root {
@@ -603,36 +603,39 @@ html.dark {
   --muted-foreground: var(--app-ice);
   min-width: 0;
 }
-.landing-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+.landing-options { display: grid; gap: 0.5rem; }
 .landing-option {
   display: grid;
   min-width: 0;
-  min-height: 6.75rem;
-  align-content: space-between;
-  gap: 0.625rem;
-  padding: clamp(0.55rem, 2.5vw, 1rem);
-  border: 1px solid color-mix(in srgb, var(--app-ice) 48%, var(--app-ink));
-  border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--app-ink) 78%, transparent);
+  min-height: 3.75rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--app-ice) 42%, var(--app-ink));
+  border-radius: 0.875rem;
+  background: color-mix(in srgb, var(--app-ink) 84%, transparent);
   color: var(--app-paper);
   font: 700 clamp(1rem, 4vw, 1.375rem)/1.18 var(--font-display);
   text-align: left;
   text-wrap: pretty;
   transition: background-color 170ms, border-color 170ms, transform 160ms var(--app-ease);
 }
-.landing-option-top { display: flex; align-items: center; justify-content: space-between; color: var(--app-ice); }
-.landing-option-state {
+.landing-option-icon {
   display: grid;
   place-items: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 1px solid currentColor;
-  border-radius: 50%;
+  width: 2.375rem;
+  aspect-ratio: 1;
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--app-ice) 14%, var(--app-ink));
+  color: var(--app-ice);
 }
+.landing-option-state { display: grid; place-items: center; color: var(--app-ice); }
 .landing-option[aria-pressed="true"] {
   border-color: var(--app-ice);
   background: color-mix(in srgb, var(--app-ice) 26%, var(--app-ink));
 }
+.landing-option[aria-pressed="true"] .landing-option-icon { background: var(--app-ice); color: var(--app-ink); }
 .landing-option:focus-visible, .landing-sign-in button:focus-visible { outline: 2px solid var(--app-ice); outline-offset: 3px; }
 .landing-result {
   margin-top: 1rem;
@@ -664,16 +667,69 @@ html.dark {
 @media (max-height: 640px) {
   .landing-hero { min-height: clamp(12rem, 40dvh, 16rem); gap: 1.25rem; }
   .landing-title { font-size: clamp(1.75rem, 6vw, 2.5rem); }
-  .landing-option { min-height: 5.25rem; }
   .landing-result { margin-top: 0.625rem; padding-top: 0.625rem; }
   .landing-sign-in { margin-top: 0.5rem; }
 }
 @media (max-height: 420px) {
   .landing-viewport { padding-top: 0.5rem; }
-  .landing-option { min-height: 4.75rem; font-size: 0.9375rem; }
-  .landing-option-top > svg { width: 1.25rem; height: 1.25rem; }
+  .landing-option { min-height: 3.25rem; font-size: 0.9375rem; }
+  .landing-option-icon { width: 2rem; }
   .landing-sign-in { margin-top: 0.5rem; }
 }
+
+.app-onboarding {
+  color-scheme: dark;
+  --background: var(--app-ink);
+  --foreground: var(--app-paper);
+  --card: color-mix(in srgb, var(--app-ink) 92%, var(--app-ice));
+  --card-foreground: var(--app-paper);
+  --muted-foreground: color-mix(in srgb, var(--app-ice) 86%, var(--app-ink));
+  --accent: var(--app-ice);
+  --accent-foreground: var(--app-ink);
+  --cerebral: var(--app-ice);
+  --border: color-mix(in srgb, var(--app-ice) 30%, var(--app-ink));
+  --ring: var(--app-ice);
+  --destructive: #ff9c9c;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.onboarding-viewport {
+  max-width: 34rem;
+  padding-block: max(1rem, env(safe-area-inset-top)) max(2rem, env(safe-area-inset-bottom));
+  padding-inline: max(1rem, env(safe-area-inset-left), env(safe-area-inset-right));
+}
+
+.onboarding-header { margin-bottom: clamp(1.25rem, 4dvh, 2rem); }
+.onboarding-header svg circle { fill: var(--app-ice); }
+.onboarding-progress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+.onboarding-progress li {
+  border-top: 2px solid color-mix(in srgb, var(--app-ice) 28%, var(--app-ink));
+  padding-top: 0.5rem;
+}
+.onboarding-progress li[data-reached="true"] { border-color: var(--app-ice); }
+.onboarding-progress li[aria-current="step"] { color: var(--app-paper); font-weight: 700; }
+
+.onboarding-panel {
+  padding: clamp(0.875rem, 4vw, 1.5rem);
+  border: 1px solid color-mix(in srgb, var(--app-ice) 25%, var(--app-ink));
+  border-radius: 1rem;
+  background: var(--card);
+}
+.app-onboarding .personal-title { overflow-wrap: anywhere; }
+.app-onboarding .personal-eyebrow { color: var(--muted-foreground); }
+.app-onboarding :is(input, .personal-action, .personal-segments, .personal-thumbnail, .personal-segment, .personal-icon-button, button[type="submit"], .onboarding-panel button) { border-radius: 0.625rem; }
+.app-onboarding .personal-icon-button { min-width: 3rem; min-height: 3rem; }
+.app-onboarding :is(button, input, select, summary):focus-visible { outline: 2px solid var(--app-ice); outline-offset: 2px; }
+.app-onboarding .onboarding-panel input { caret-color: var(--app-ice); }
+.app-onboarding .onboarding-panel input::placeholder { color: var(--muted-foreground); }
 
 .personal-screen {
   --personal-line: color-mix(in srgb, var(--foreground) 14%, transparent);
@@ -1194,11 +1250,8 @@ html.dark {
 }
 
 .editorial-kicker {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: 0.875rem;
+  font-weight: 650;
 }
 
 .editorial-dock {

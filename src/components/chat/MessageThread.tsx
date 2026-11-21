@@ -377,7 +377,7 @@ export function MessageThread({
                 )}
                 <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.text}</p>
                 <span
-                  className={`block mt-1.5 text-right font-mono text-xs ${mine ? "text-accent-foreground" : "text-muted-foreground"}`}
+                  className={`block mt-1.5 text-right text-xs tabular-nums ${mine ? "text-accent-foreground" : "text-muted-foreground"}`}
                 >
                   {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
@@ -387,7 +387,7 @@ export function MessageThread({
         })}
         {typing && (
           <div className="flex justify-start">
-            <div className="bg-card border border-foreground/10 px-4 py-3 text-foreground/50 text-xs font-mono animate-pulse">
+            <div className="bg-card border border-foreground/10 px-4 py-3 text-foreground/50 text-xs animate-pulse">
               Píše...
             </div>
           </div>
@@ -399,7 +399,7 @@ export function MessageThread({
         {showGifs && (
           <div className="border-t border-foreground/5 bg-background/40 p-3 animate-fade-up">
             <div className="flex justify-between items-center mb-2">
-              <span className="font-mono text-xs text-foreground/50">GIFy</span>
+              <span className="text-xs text-foreground/50">GIFy</span>
               <button
                 onClick={() => setShowGifs(false)}
                 className="text-xs tracking-widest text-foreground/40 hover:text-foreground"
@@ -468,14 +468,14 @@ export function MessageThread({
       {pressureActive && (
         <div className="fixed inset-0 bg-background/95 backdrop-blur-md z-[110] flex flex-col justify-center items-center p-4">
           <div className="w-full max-w-md border border-foreground/20 bg-card p-6 relative">
-            <div className="mb-4 flex items-center justify-between font-mono text-xs tracking-widest text-red-500 font-bold uppercase animate-pulse">
+            <div className="mb-4 flex items-center justify-between text-xs tracking-widest text-red-500 font-bold uppercase animate-pulse">
               <span>Ako zareaguješ?</span>
             </div>
 
             {waitingForPartner ? (
               <div className="text-center py-12 space-y-4">
                 <div className="size-8 mx-auto border-2 border-foreground border-t-transparent animate-spin" />
-                <p className="font-mono text-xs text-foreground/60 uppercase tracking-widest">
+                <p className="text-xs text-foreground/60 uppercase tracking-widest">
                   Čakáme na reakciu partnera...
                 </p>
               </div>
@@ -563,12 +563,12 @@ export function MessageThread({
       {reportOpen && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] grid place-items-center p-4">
           <div className="w-full max-w-sm border border-red-500/20 bg-card p-6 animate-fade-up">
-            <div className="flex items-center gap-2 text-red-500 font-mono font-bold text-xs tracking-widest uppercase mb-3">
+            <div className="flex items-center gap-2 text-red-500 font-bold text-xs tracking-widest uppercase mb-3">
               <AlertTriangle className="size-5" />
               <span>Nahlásiť a zablokovať</span>
             </div>
 
-            <div className="mb-5 border border-red-500/25 bg-red-500/5 p-4 text-xs text-red-400 leading-relaxed font-mono">
+            <div className="mb-5 border border-red-500/25 bg-red-500/5 p-4 text-xs text-red-400 leading-relaxed">
               ⚠️ Varovanie: Zneužitie tohto tlačidla na zrušenie matchu namiesto
               &ldquo;Ukončiť rozhovor&rdquo; vedie k trvalému zablokovaniu vášho účtu. Nahlásenia slúžia
               výhradne pre prípady spamu, zneužívania alebo obťažovania.
@@ -583,7 +583,7 @@ export function MessageThread({
                 <button
                   key={idx}
                   onClick={() => handleReport(reason)}
-                  className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-3 hover:bg-red-500/10 hover:border-red-500/20 text-xs font-mono text-foreground/80 transition-all active:scale-[0.99]"
+                  className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-3 hover:bg-red-500/10 hover:border-red-500/20 text-xs text-foreground/80 transition-all active:scale-[0.99]"
                 >
                   {reason}
                 </button>
@@ -591,7 +591,7 @@ export function MessageThread({
             </div>
             <button
               onClick={() => setReportOpen(false)}
-              className="w-full border border-foreground/20 py-3 text-xs tracking-widest text-foreground/60 hover:bg-foreground/5 font-mono font-bold uppercase transition-all"
+              className="w-full border border-foreground/20 py-3 text-xs tracking-widest text-foreground/60 hover:bg-foreground/5 font-bold uppercase transition-all"
             >
               SPÄŤ
             </button>

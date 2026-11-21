@@ -28,7 +28,7 @@ export function BlindVote({ onVote, matchName }: BlindVoteProps) {
 
         <div className="my-6 space-y-3 border-y border-foreground/20 py-5 text-sm">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-cerebral font-mono text-xs font-bold text-background">
+            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-cerebral text-xs font-bold text-background">
               1
             </span>
             <p className="leading-relaxed text-foreground/80">
@@ -36,7 +36,7 @@ export function BlindVote({ onVote, matchName }: BlindVoteProps) {
             </p>
           </div>
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-foreground/30 font-mono text-xs text-foreground/65">
+            <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-foreground/30 text-xs text-foreground/65">
               2
             </span>
             <p className="leading-relaxed text-foreground/65">

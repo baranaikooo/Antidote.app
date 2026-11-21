@@ -77,7 +77,7 @@ export function RecordButton({
           <div className="space-y-3 animate-fade-up">
             <div className="flex items-center justify-between text-xs text-foreground/60">
               <span>Skontroluj si odpoveď pred odoslaním</span>
-              <span className="font-mono">{formatClock(draft.duration)}</span>
+              <span className="tabular-nums">{formatClock(draft.duration)}</span>
             </div>
 
             <div className="flex items-center gap-3 border border-foreground/25 bg-card px-3.5 py-2.5">
@@ -178,7 +178,7 @@ export function RecordButton({
                 <span className="size-2 animate-pulse rounded-full bg-cerebral" />
                 Nahrávaš odpoveď
               </span>
-              <span className="font-mono text-foreground/75">
+              <span className="text-foreground/75">
                 {formatClock(recLen)} <span className="text-foreground/35">/ 1:00</span>
               </span>
             </div>

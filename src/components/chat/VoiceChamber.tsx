@@ -499,7 +499,7 @@ export function Chamber({
               } ${active ? "bg-foreground/[0.06]" : ""}`}
             >
               <span
-                className={`mx-auto mb-2 grid size-6 place-items-center rounded-full border font-mono text-xs ${
+                className={`mx-auto mb-2 grid size-6 place-items-center rounded-full border text-xs ${
                   complete
                     ? "border-cerebral bg-cerebral text-background"
                     : active
@@ -568,7 +568,7 @@ export function Chamber({
                 className="size-full object-contain bg-black"
                 style={{ transform: "scaleX(-1)", filter: `blur(${blurPx}px)` }}
               />
-              <span className="absolute bottom-0.5 right-0.5 bg-background/60 px-1 font-mono text-xs tracking-widest text-foreground/70 uppercase">
+              <span className="absolute bottom-0.5 right-0.5 bg-background/60 px-1 text-xs tracking-widest text-foreground/70 uppercase">
                 TY
               </span>
             </div>
@@ -633,7 +633,7 @@ export function Chamber({
         </div>
       ) : (
         <div className="mb-6 flex items-start gap-4 border border-foreground/20 bg-foreground/[0.04] p-5">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent font-mono text-sm font-bold text-accent-foreground">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-sm font-bold text-accent-foreground">
             {roundIndex + 1}
           </span>
           <div>
