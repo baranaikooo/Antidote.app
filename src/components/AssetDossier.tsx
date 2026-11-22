@@ -6,6 +6,8 @@ import { UserProfile } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
 import { openCamera, recordStreamForMs, stopStream, attachStreamToVideo } from "@/lib/media";
 import { supabase } from "@/lib/supabase";
+import { updateSharedReflection } from "@/lib/conversations";
+import { ReflectionEditor } from "./ReflectionEditor";
 
 interface AssetDossierProps {
   user: UserProfile;
@@ -520,6 +522,11 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
           <p className="personal-intro">{[user.age && `${user.age} rokov`, user.city].filter(Boolean).join(" · ")}</p>
         </header>
 
+        {user.id && <ReflectionEditor key={user.id} initialValue={user.sharedReflection} onSave={async value => {
+          await updateSharedReflection(user.id!, value);
+          onUpdateUser(previous => previous && previous.id === user.id ? { ...previous, sharedReflection: value } : previous);
+        }} />}
+
         <section className="personal-section profile-moments" aria-labelledby="moments-title">
           <div className="flex flex-wrap items-center justify-between gap-x-3">
             <h2 id="moments-title" className="personal-heading">Tvoje momenty</h2>
@@ -534,7 +541,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
               {isPreviewBlurred ? "Rozmazané" : "Odhalené"}
             </button>
           </div>
-          <p className="personal-status mb-3">Krátke videá bez zvuku</p>
+          <p className="personal-status mb-3">Vo vašom rozhovore sa videá sprístupnia až po súhlase vás oboch.</p>
           <div className="moment-progress" aria-label={`Pridané videá: ${snippets.filter(Boolean).length} zo 4`}>
             <span className="moment-progress-label">{snippets.filter(Boolean).length} / 4 videá</span>
             <span className="moment-progress-track" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <span key={index} data-filled={!!snippets[index]} />)}</span>
