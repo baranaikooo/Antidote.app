@@ -84,6 +84,17 @@ export const SCENARIOS = [
   },
 ];
 
+function pickScenario(excluded: string[], previousId?: string) {
+  const alternatives = SCENARIOS.filter((scenario) => scenario.id !== previousId);
+  const eligible = alternatives.filter((scenario) => !excluded.includes(scenario.id));
+  const pool = eligible.length ? eligible : alternatives;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function timeLimitFor(message: string, isOnboarding: boolean) {
+  return isOnboarding ? 14 : Math.max(message.split(/\s+/).length / (200 / 60) + 6, 9);
+}
+
 export function PressureChat({
   onDone,
   isOnboarding = false,
@@ -94,18 +105,8 @@ export function PressureChat({
   const gyroSamples = useRef<{ time: number; beta: number; gamma: number }[]>([]);
   const lastTickRef = useRef<number>(0);
 
-  const [scenario] = useState(() => {
-    const pool =
-      excludeScenarioIds && excludeScenarioIds.length > 0
-        ? SCENARIOS.filter((s) => !excludeScenarioIds.includes(s.id))
-        : SCENARIOS;
-    const finalPool = pool.length > 0 ? pool : SCENARIOS;
-    const idx = Math.floor(Math.random() * finalPool.length);
-    return finalPool[idx];
-  });
-
-  const wordCount = scenario.message.split(/\s+/).length;
-  const calculatedLimit = isOnboarding ? 14.0 : Math.max(wordCount / (200 / 60) + 6.0, 9.0);
+  const [scenario, setScenario] = useState(() => pickScenario(excludeScenarioIds));
+  const totalLimit = timeLimitFor(scenario.message, isOnboarding);
 
   const uiSpeed =
     typeof window !== "undefined"
@@ -113,10 +114,9 @@ export function PressureChat({
       : "TYPEWRITER_ANIMATED";
   const isInstant = uiSpeed === "INSTANT_RAW";
 
-  const [totalLimit] = useState(calculatedLimit);
-  const [timeLeft, setTimeLeft] = useState(calculatedLimit);
+  const [timeLeft, setTimeLeft] = useState(totalLimit);
   const [isTyping, setIsTyping] = useState(!isInstant);
-  const [clicked, setClicked] = useState(false);
+  const [outcome, setOutcome] = useState<"answered" | "expired" | null>(null);
   const [showIntro, setShowIntro] = useState(isOnboarding);
 
   useEffect(() => {
@@ -166,7 +166,7 @@ export function PressureChat({
     }, 1800);
 
     return () => clearTimeout(typingTimer);
-  }, [haptic, isInstant, showIntro]);
+  }, [haptic, isInstant, scenario.id, showIntro]);
 
   const checkGyroscopeVolatility = (): boolean => {
     try {
@@ -193,22 +193,17 @@ export function PressureChat({
   };
 
   useEffect(() => {
-    if (showIntro || isTyping || clicked) return;
-
-    const start = performance.now();
-    const initialLimit = timeLeft;
+    if (showIntro || isTyping || outcome) return;
 
     const interval = setInterval(() => {
       const now = performance.now();
-      const elapsed = (now - start) / 1000;
-      const newTime = initialLimit - elapsed;
+      const elapsed = (now - startTimeRef.current) / 1000;
+      const newTime = totalLimit - elapsed;
 
       if (newTime <= 0) {
         clearInterval(interval);
-        setClicked(true);
+        setOutcome("expired");
         haptic("warning");
-        const isHesitated = checkGyroscopeVolatility();
-        onDone("Avoidant", totalLimit, isHesitated, scenario.id);
         setTimeLeft(0);
       } else {
         setTimeLeft(newTime);
@@ -220,15 +215,27 @@ export function PressureChat({
     }, 60);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showIntro, isTyping, clicked]);
+  }, [haptic, isTyping, outcome, scenario.id, showIntro, totalLimit]);
+
+  const retry = () => {
+    const next = pickScenario(excludeScenarioIds, scenario.id);
+    setScenario(next);
+    setTimeLeft(timeLimitFor(next.message, isOnboarding));
+    setIsTyping(!isInstant);
+    setOutcome(null);
+  };
 
   const handleSelect = (style: string) => {
-    if (clicked || isTyping) return;
-    setClicked(true);
+    if (outcome || isTyping) return;
+    const rt = (performance.now() - startTimeRef.current) / 1000;
+    if (rt >= totalLimit) {
+      setOutcome("expired");
+      setTimeLeft(0);
+      haptic("warning");
+      return;
+    }
+    setOutcome("answered");
     haptic("medium");
-
-    const rt = (performance.now() - startTimeRef.current) / 1000.0;
     const isHesitated = checkGyroscopeVolatility();
     onDone(style, rt, isHesitated, scenario.id);
   };
@@ -248,7 +255,7 @@ export function PressureChat({
         </p>
 
         <div className="my-7 border-y border-foreground/25 py-4 text-xs text-muted-foreground">
-          Prvý dotyk odošle odpoveď. Na prečítanie a výber máš približne 14 sekúnd.
+          Od zobrazenia správy máš 14 sekúnd. Ak čas vyprší, dostaneš inú situáciu.
         </div>
 
         <button
@@ -261,6 +268,20 @@ export function PressureChat({
         >
           <span className="font-display text-base font-bold">Zobraziť správu</span>
           <ArrowRight className="size-5" />
+        </button>
+      </div>
+    );
+  }
+
+  if (outcome === "expired") {
+    return (
+      <div className="onboarding-panel mx-auto max-w-md">
+        <div role="status">
+          <h2 className="text-3xl font-bold">Čas vypršal</h2>
+          <p className="mt-2 text-muted-foreground">Odpoveď sa nezaznamenala. Skús inú situáciu.</p>
+        </div>
+        <button type="button" onClick={retry} className="tactile-button mt-5 min-h-12 w-full bg-accent px-4 font-semibold text-accent-foreground">
+          Zobraziť inú situáciu
         </button>
       </div>
     );
@@ -341,7 +362,7 @@ export function PressureChat({
           <button
             key={idx}
             type="button"
-            disabled={clicked || isTyping}
+            disabled={outcome === "answered" || isTyping}
             onClick={() => handleSelect(opt.style)}
             className="tactile-button w-full bg-card px-4 py-4 text-left text-sm font-medium leading-relaxed text-foreground transition-colors hover:bg-foreground hover:text-background disabled:pointer-events-none disabled:opacity-35 cursor-pointer"
           >

@@ -294,7 +294,7 @@ export function MessageThread({
                   {match.name}
                 </span>
                 <span className="conversation-privacy">
-                  Rozmazanie: {conversation.blurLevel} %
+                  {conversation.blurLevel > 0 ? "Profil sa postupne odhaľuje" : "Profil je odhalený"}
                 </span>
               </div>
             </div>
@@ -340,9 +340,12 @@ export function MessageThread({
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
-        <div className="mb-5 border-b border-foreground/15 pb-3 text-sm leading-relaxed text-muted-foreground">
-          Každá odoslaná správa zníži rozmazanie profilu o {THREAD_BLUR_STEP} percentuálnych bodov.
-        </div>
+        <details className="conversation-privacy-detail text-sm">
+          <summary>Ako sa odhaľuje profil?</summary>
+          <p className="pb-3 leading-relaxed">
+            Zostávajúce rozmazanie je {conversation.blurLevel} %. Každá odoslaná správa ho zníži o {THREAD_BLUR_STEP} percentuálnych bodov.
+          </p>
+        </details>
 
         {conversation.messages.map((m) => {
           const mine = m.from === "me";

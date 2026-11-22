@@ -8,7 +8,7 @@ interface ValueBankrollProps {
   onSliderChange?: (conscientiousness: number, extraversion: number) => void;
 }
 
-const CATEGORIES = [
+export const PRIORITY_CATEGORIES = [
   { id: "rodina", label: "Rodina", desc: "Blízkosť, zázemie a ľudia, na ktorých sa dá spoľahnúť." },
   { id: "kariera", label: "Kariéra", desc: "Rast, ambície a práca, ktorá má význam." },
   { id: "stabilita", label: "Stabilita", desc: "Istota, plán a pokoj v každodennom živote." },
@@ -58,12 +58,10 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
     if (delta === -1 && current === 0) return;
 
     haptic(delta === 1 ? "tap" : "warning");
-    setTokens((previous) => {
-      const next = { ...previous, [id]: previous[id] + delta };
-      const { c, e } = getDerivedMetrics(next);
-      onSliderChange?.(c, e);
-      return next;
-    });
+    const next = { ...tokens, [id]: current + delta };
+    setTokens(next);
+    const { c, e } = getDerivedMetrics(next);
+    onSliderChange?.(c, e);
   };
 
   const handleConfirm = () => {
@@ -85,123 +83,41 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
         </p>
       </header>
 
-      <section className="my-6 border-y border-foreground/25 py-5" aria-live="polite">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <p className="mt-1 font-display text-xl font-bold">
-              {remainingTokens === 0 ? "Všetky sú rozdelené" : `Zostáva ${remainingTokens} z 10`}
-            </p>
-          </div>
-          <span className="text-xs text-muted-foreground">1 žetón = 10 bodov</span>
-        </div>
-        <div className="grid grid-cols-10 gap-1.5" aria-hidden>
-          {Array.from({ length: TOTAL_TOKENS }).map((_, index) => (
-            <span
-              key={index}
-              className={`aspect-square rounded-full border-2 transition-all duration-200 ${
-                index < remainingTokens
-                  ? "border-foreground bg-cerebral"
-                  : "scale-75 border-foreground/15 bg-transparent"
-              }`}
-            />
-          ))}
-        </div>
-      </section>
+      <p className="priority-balance font-semibold tabular-nums" role="status">
+        {remainingTokens > 0 ? `Zostáva ${remainingTokens} z ${TOTAL_TOKENS}` : "Všetky žetóny sú rozdelené"}
+      </p>
 
-      <div className="space-y-3">
-        {CATEGORIES.map((category, categoryIndex) => {
-          const value = tokens[category.id] || 0;
-          const canAdd = remainingTokens > 0 && value < MAX_TOKENS_PER_CATEGORY;
-
+      <ul className="space-y-2">
+        {PRIORITY_CATEGORIES.map(({ id, label, desc }) => {
+          const value = tokens[id];
           return (
-            <section
-              key={category.id}
-              className={`overflow-hidden rounded-[0.875rem] border transition-colors ${
-                value > 0 ? "border-foreground bg-card" : "border-foreground/20 bg-transparent"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => updateCategory(category.id, 1)}
-                disabled={!canAdd}
-                className="flex w-full items-start gap-4 p-4 text-left disabled:cursor-default"
-                aria-label={`Pridať žetón: ${category.label}`}
-              >
-                <span className="text-xs text-muted-foreground">
-                  {String(categoryIndex + 1).padStart(2, "0")}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-display text-xl font-bold tracking-[-0.035em]">
-                    {category.label}
-                  </span>
-                  <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                    {category.desc}
-                  </span>
-                </span>
-                <span
-                  className={`grid size-9 shrink-0 place-items-center rounded-full border ${
-                    canAdd
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-foreground/15 text-foreground/20"
-                  }`}
-                >
-                  <Plus className="size-4" />
-                </span>
-              </button>
-
-              <div className="flex items-center gap-3 border-t border-foreground/15 px-4 py-3">
-                <div className="grid flex-1 grid-cols-5 gap-2">
-                  {Array.from({ length: MAX_TOKENS_PER_CATEGORY }).map((_, index) => {
-                    const allocated = index < value;
-                    return (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => allocated && updateCategory(category.id, -1)}
-                        disabled={!allocated}
-                        className={`aspect-square rounded-full border-2 transition-all ${
-                          allocated
-                            ? "border-foreground bg-cerebral active:scale-95"
-                            : "border-dashed border-foreground/15"
-                        }`}
-                        aria-label={
-                          allocated
-                            ? `Odobrať žetón z ${category.label}`
-                            : `Prázdne miesto v ${category.label}`
-                        }
-                      />
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => updateCategory(category.id, -1)}
-                  disabled={value === 0}
-                  className="grid size-9 shrink-0 place-items-center border border-foreground/20 text-muted-foreground disabled:opacity-20"
-                  aria-label={`Odobrať žetón: ${category.label}`}
-                >
-                  <Minus className="size-4" />
+            <li key={id} className="priority-row" data-allocated={value > 0}>
+              <div className="min-w-0">
+                <h3 className="font-bold">{label}</h3>
+                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{desc}</p>
+              </div>
+              <div className="priority-stepper" role="group" aria-label={label}>
+                <button type="button" onClick={() => updateCategory(id, -1)} disabled={value === 0} aria-label={`Odobrať žetón: ${label}`}>
+                  <Minus size={16} aria-hidden="true" />
+                </button>
+                <span className="tabular-nums">{value}<span className="sr-only"> pridelených žetónov</span></span>
+                <button type="button" onClick={() => updateCategory(id, 1)} disabled={remainingTokens === 0 || value >= MAX_TOKENS_PER_CATEGORY} aria-label={`Pridať žetón: ${label}`}>
+                  <Plus size={16} aria-hidden="true" />
                 </button>
               </div>
-            </section>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       <button
         type="button"
         disabled={remainingTokens !== 0}
         onClick={handleConfirm}
-        className="tactile-button mt-6 flex w-full items-center justify-between bg-foreground px-5 py-4 text-background disabled:pointer-events-none disabled:opacity-25"
+        className="tactile-button mt-5 flex min-h-12 w-full items-center justify-between bg-foreground px-4 py-3 font-semibold text-background disabled:opacity-40"
       >
-        <span className="font-display text-base font-bold">
-          {remainingTokens === 0 ? "Toto sú moje priority" : `Rozdeľ ešte ${remainingTokens}`}
-        </span>
-        {remainingTokens === 0 ? (
-          <Check className="size-5" />
-        ) : (
-          <span className="text-sm tabular-nums">{remainingTokens}/10</span>
-        )}
+        Toto sú moje priority
+        <Check size={20} aria-hidden="true" />
       </button>
     </div>
   );

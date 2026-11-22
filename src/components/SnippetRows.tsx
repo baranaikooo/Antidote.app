@@ -1,21 +1,25 @@
 import { Camera, Film, Upload, X } from "lucide-react";
 
+export const PROFILE_SLOTS = [0, 1, 2, 3];
+
 export function SnippetRows({
   snippets,
   onRecord,
   onUpload,
   onRemove,
   blurred = false,
+  slotIndices = PROFILE_SLOTS,
 }: {
   snippets: string[];
   onRecord: (index: number) => void;
   onUpload: (index: number) => void;
   onRemove: (index: number) => void;
   blurred?: boolean;
+  slotIndices?: readonly number[];
 }) {
   return (
-    <ul className="grid gap-x-5 sm:grid-cols-2">
-      {Array.from({ length: 4 }, (_, idx) => {
+    <ul className={slotIndices.length > 1 ? "grid gap-x-5 sm:grid-cols-2" : undefined}>
+      {slotIndices.map((idx) => {
         const url = snippets[idx];
         return (
           <li key={idx} className="personal-row py-2">
