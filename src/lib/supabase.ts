@@ -216,28 +216,6 @@ export async function getSignedMediaUrl(
   }
 }
 
-export async function loadBanditState() {
-  const { data, error } = await supabase.from("bandit_state").select("*").limit(1).single();
-
-  if (error) {
-    console.error("[Supabase] Failed to load bandit state:", error);
-    return null;
-  }
-  return data;
-}
-
-export async function saveBanditState(weights: any, arms: any, history: any[]) {
-  const { error } = await supabase.rpc("record_bandit_feedback", {
-    new_weights: weights,
-    new_arms: arms,
-    new_history: history,
-  });
-
-  if (error) {
-    console.error("[Supabase] Failed to save bandit state via RPC:", error);
-  }
-}
-
 export async function recordLivenessVerified(videoUrl?: string): Promise<{ success: boolean; error?: string }> {
   try {
     const { data: sessionData } = await supabase.auth.getSession();
