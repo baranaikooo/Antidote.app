@@ -88,7 +88,6 @@ import {
   fetchUserProfile,
   recordLivenessVerified,
 } from "@/lib/supabase";
-import { initializeBanditState } from "@/lib/resonance";
 import { SemanticMirror } from "@/components/SemanticMirror";
 import { PRIORITY_CATEGORIES, ValueBankroll } from "@/components/ValueBankroll";
 import { PressureChat, SCENARIOS } from "@/components/PressureChat";
@@ -170,14 +169,17 @@ function Shell({
   landing = false,
   main = false,
   thread = false,
-  onboardingStage = -1,
+  onboardingScreen,
+  resumedOnboarding = false,
 }: {
   children: React.ReactNode;
   landing?: boolean;
   main?: boolean;
   thread?: boolean;
-  onboardingStage?: number;
+  onboardingScreen?: Screen;
+  resumedOnboarding?: boolean;
 }) {
+  const onboardingStage = onboardingScreen ? getOnboardingStage(onboardingScreen) : -1;
   const onboarding = onboardingStage >= 0;
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}>
@@ -199,6 +201,10 @@ function Shell({
                 </li>
               ))}
             </ol>
+            <p className="onboarding-step" aria-live="polite">
+              {resumedOnboarding && <span>Pokračuješ tam, kde si skončil/a</span>}
+              {onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen]}
+            </p>
           </header>
         )}
         {children}
@@ -275,6 +281,17 @@ const ONBOARDING_STAGES: { label: string; screens: Screen[] }[] = [
   { label: "Dotazník", screens: ["briefing", "mirror", "bankroll", "pressure", "processing"] },
 ];
 
+const ONBOARDING_STEP_LABELS: Partial<Record<Screen, string>> = {
+  liveness: "Overenie kamerou",
+  profile: "Základné údaje",
+  "snippets-onboarding": "Krátke video do profilu",
+  briefing: "Úvod do dotazníka",
+  mirror: "Prvá otázka",
+  bankroll: "Čo je pre teba dôležité",
+  pressure: "Rozhodovanie v rozhovore",
+  processing: "Výsledok dotazníka",
+};
+
 function getOnboardingStage(screen: Screen) {
   return ONBOARDING_STAGES.findIndex(({ screens }) => screens.includes(screen));
 }
@@ -344,6 +361,7 @@ function clearOnboardingStorage(preserveActiveScreen = false) {
   localStorage.removeItem("reson:onboarding_previewE");
   localStorage.removeItem("reson:onboarding_hesitated");
   localStorage.removeItem("reson:onboarding_answers");
+  localStorage.removeItem("reson:onboarding_user_id");
   clearVideoBlobs().catch((err) =>
     console.error("Failed to clear video blobs from IndexedDB:", err),
   );
@@ -352,7 +370,8 @@ function clearOnboardingStorage(preserveActiveScreen = false) {
 function AntidoteApp() {
   const [screen, setScreen] = useState<Screen>("landing");
   const onboardingStage = getOnboardingStage(screen);
-  const [theme, setTheme] = useTheme(screen === "landing" || onboardingStage >= 0);
+  const [resumedOnboarding, setResumedOnboarding] = useState<Screen | null>(null);
+  const [theme, setTheme] = useTheme(screen === "landing");
   const themeLoadedRef = useRef(false);
   const themeRef = useRef(theme);
 
@@ -441,10 +460,10 @@ function AntidoteApp() {
 
   // Sync to localStorage
   useEffect(() => {
-    if (typeof window !== "undefined" && screen && screen !== "landing") {
-      localStorage.setItem("reson:active_screen", screen);
-    }
-  }, [screen]);
+    if (!authUserId || isAuthenticating || screen === "landing") return;
+    localStorage.setItem("reson:active_screen", screen);
+    if (onboardingStage >= 0) localStorage.setItem("reson:onboarding_user_id", authUserId);
+  }, [authUserId, isAuthenticating, onboardingStage, screen]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -552,11 +571,6 @@ function AntidoteApp() {
   const userAnswers = answers as FullAnswers;
   const haptic = useHaptic();
 
-  // Initialize ML Bandit
-  useEffect(() => {
-    initializeBanditState().catch((err) => console.error("Failed to init bandit state:", err));
-  }, []);
-
   // Handle Supabase auth state changes and initial session check
   useEffect(() => {
     let stopped = false;
@@ -594,9 +608,9 @@ function AntidoteApp() {
         setAuthUserId(user.id);
         const existingProfile = await fetchUserProfile(user.id);
         if (!isCurrent()) return;
-        if (existingProfile) {
+        const savedScreen = localStorage.getItem("reson:active_screen") as Screen;
+        if (existingProfile?.topPriority) {
           setProfile(existingProfile);
-          const savedScreen = localStorage.getItem("reson:active_screen") as Screen;
           const validMainScreens: Screen[] = ["noOne", "messages", "settings", "profile-dossier", "autoMatch"];
           if (savedScreen === "thread") {
             setScreen("messages");
@@ -607,9 +621,20 @@ function AntidoteApp() {
           }
           clearOnboardingStorage(true);
         } else {
-          const savedScreen = localStorage.getItem("reson:active_screen") as Screen;
-          if (savedScreen && getOnboardingStage(savedScreen) >= 0) {
+          const draftOwner = localStorage.getItem("reson:onboarding_user_id") ?? profile?.id;
+          const hasLocalProfile = draftOwner === user.id && profile?.id === user.id;
+          const draftStage = getOnboardingStage(savedScreen);
+          const canResume = draftOwner === user.id && draftStage >= 0 &&
+            (existingProfile || hasLocalProfile || savedScreen === "liveness" || savedScreen === "profile");
+
+          if (existingProfile) setProfile(existingProfile);
+          else if (!hasLocalProfile) setProfile(null);
+
+          if (canResume) {
+            setResumedOnboarding(savedScreen);
             setScreen(savedScreen);
+          } else if (existingProfile) {
+            setScreen(existingProfile.videoUrls?.some(Boolean) ? "briefing" : "snippets-onboarding");
           } else {
             setScreen("liveness");
           }
@@ -641,6 +666,7 @@ function AntidoteApp() {
           setGoogleProfile(null);
           setProfile(null);
           setAuthUserId(null);
+          setResumedOnboarding(null);
           setScreen("landing");
           setProfileLoadFailed(false);
           setIsAuthenticating(false);
@@ -1027,7 +1053,7 @@ function AntidoteApp() {
     ? (liveCandidates.find((m) => m.id === activeConversation.matchId) ?? null)
     : null;
 
-  const hasAnswers = profile?.cognitiveDepth !== undefined;
+  const hasAnswers = Boolean(profile?.topPriority);
   const focusScreens: Screen[] = ["test", "chamber", "thread"];
   const showNav =
     profile !== null && screen !== "landing" && onboardingStage < 0 && !focusScreens.includes(screen);
@@ -1090,10 +1116,16 @@ function AntidoteApp() {
     );
   }
 
-  const showUpdateNotice = showNav || (screen === "landing" && Capacitor.getPlatform() === "android");
+  const showUpdateNotice = showNav || Capacitor.getPlatform() === "android";
 
   return (
-    <Shell landing={screen === "landing"} main={showNav} thread={screen === "thread"} onboardingStage={onboardingStage}>
+    <Shell
+      landing={screen === "landing"}
+      main={showNav}
+      thread={screen === "thread"}
+      onboardingScreen={onboardingStage >= 0 ? screen : undefined}
+      resumedOnboarding={resumedOnboarding === screen}
+    >
       <AndroidUpdateProvider enabled={showUpdateNotice}>
       {showUpdateNotice && <UpdateNotice />}
       {screen === "landing" && (
@@ -1658,6 +1690,11 @@ function PrimaryButton({
 function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   const haptic = useHaptic();
   const [choice, setChoice] = useState<"travel" | "love" | null>(null);
+  const options = [
+    { value: "travel", label: "Možnosť cestovať", icon: Compass },
+    { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
+  ] as const;
+  const selected = options.find(({ value }) => value === choice);
 
   const choose = (nextChoice: "travel" | "love") => {
     haptic("medium");
@@ -1670,12 +1707,9 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
         <header className="landing-brand"><AntidoteLogo markClassName="h-8" /></header>
         <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
       </div>
-      <div className="landing-interaction">
+      <div className="landing-interaction" data-answered={Boolean(selected)}>
         <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
-          {([
-            { value: "travel", label: "Možnosť cestovať", icon: Compass },
-            { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
-          ] as const).map(({ value, label, icon: Icon }) => (
+          {options.map(({ value, label, icon: Icon }) => (
             <button key={value} type="button" onClick={() => choose(value)} aria-pressed={choice === value} className="landing-option">
               <span className="landing-option-icon" aria-hidden="true"><Icon size={21} /></span>
               <span>{label}</span>
@@ -1685,16 +1719,17 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
             </button>
           ))}
         </div>
-        {choice && (
+        {selected && (
           <div className="landing-result">
             <div role="status">
-              <p className="font-display text-xl font-bold leading-tight">Toto nebola náhodná otázka.</p>
+              <span className="sr-only">Tvoja odpoveď je {selected.label.toLowerCase()}.</span>
+              <h2 className="landing-result-title">Od odpovede k spojeniu</h2>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
               </p>
             </div>
             <p className="mt-3 text-sm leading-snug text-muted-foreground">
-              Pri prvom prihlásení overíš profil kamerou a pridáš krátke video.
+              Po prihlásení ťa čaká overenie kamerou, krátke video do profilu a dotazník.
             </p>
             <div className="landing-sign-in"><GoogleSignInButton onSuccess={onGoogle} /></div>
           </div>
@@ -1985,7 +2020,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
         Najprv krátke overenie
       </h2>
       <p className="text-sm text-foreground/75 leading-relaxed mb-4">
-        Krátkym videom overíme, že si skutočná osoba. Po spustení overenia povoľ prístup ku kamere.
+        Kameru použijeme na krátke overenie, že si skutočná osoba. Android alebo prehliadač si po spustení vyžiada prístup.
       </p>
 
       <div className="relative my-4 grid place-items-center">
@@ -2112,7 +2147,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
         {phase === "error" && "Overenie sa nepodarilo"}
       </p>
 
-      {phase === "error" && <p className="text-xs text-red-500 mb-4 leading-relaxed">{errMsg}</p>}
+      {phase === "error" && <p className="text-sm text-destructive mb-4 leading-relaxed">{errMsg}</p>}
 
       <div className="w-full space-y-2">
         {(phase === "idle" || phase === "error") && (
@@ -2120,12 +2155,12 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
             disabled={modelLoading}
             onClick={() => {
               if (phase === "error") retake();
-              else runScan();
+              void runScan();
             }}
             className="w-full bg-foreground text-background font-bold text-sm tracking-wide py-4 hover:bg-foreground/90 disabled:opacity-20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Camera className="size-4" />
-            {modelLoading ? "Pripravujem overenie…" : phase === "error" ? "Skúsiť znova" : "Spustiť overenie"}
+            {modelLoading ? "Pripravujem overenie…" : phase === "error" ? "Skúsiť znova" : "Otvoriť kameru"}
           </button>
         )}
         {phase === "ready" && (

@@ -1,8 +1,6 @@
 // All Antidote domain logic + content in one place.
 // Simple Slovak, no jargon.
 
-import { loadBanditState, saveBanditState } from "./supabase";
-
 export type Answer = "A" | "B";
 export type Answers = Partial<Record<`q${1 | 2 | 3 | 4 | 5 | 6}`, Answer>>;
 export type FullAnswers = Required<Answers>;
@@ -286,7 +284,7 @@ export type UserFeedback = {
   };
 };
 
-// Dynamic weight storage (in-memory, would be persisted to database in production)
+// Dynamic weights are held in memory.
 let dynamicWeights: DynamicWeights = { ...DEFAULT_WEIGHTS };
 let userFeedbackHistory: UserFeedback[] = [];
 
@@ -299,28 +297,6 @@ type BanditArm = {
   lastPull: number;
 };
 let banditArms: Map<string, BanditArm> = new Map();
-
-// Load bandit state from Supabase
-export async function initializeBanditState() {
-  const state = await loadBanditState();
-  if (state) {
-    if (state.dynamic_weights && Object.keys(state.dynamic_weights).length > 0) {
-      dynamicWeights = state.dynamic_weights;
-    }
-    if (state.user_feedback_history && Array.isArray(state.user_feedback_history)) {
-      userFeedbackHistory = state.user_feedback_history;
-    }
-    if (state.bandit_arms && typeof state.bandit_arms === "object") {
-      banditArms = new Map(Object.entries(state.bandit_arms)) as Map<string, BanditArm>;
-    }
-  }
-}
-
-// Save bandit state to Supabase
-async function persistBanditState() {
-  const armsObj = Object.fromEntries(banditArms);
-  await saveBanditState(dynamicWeights, armsObj, userFeedbackHistory);
-}
 
 // Calculate dynamic resonance with adaptive weights
 export function calcResonance(
@@ -393,7 +369,6 @@ export function updateWeightsFromFeedback(feedback: UserFeedback): void {
   });
 
   console.log("[algorithm] Weights updated:", dynamicWeights);
-  void persistBanditState();
 }
 
 // Calculate dimension-specific compatibility for feedback
@@ -455,7 +430,6 @@ export function updateBanditArm(pattern: MatchPattern, reward: number): void {
     arm.pulls++;
     arm.reward += reward;
     arm.lastPull = Date.now();
-    void persistBanditState();
   }
 }
 

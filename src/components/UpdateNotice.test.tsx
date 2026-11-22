@@ -57,7 +57,7 @@ describe("Android app updates", () => {
     vi.mocked(androidUpdatePlatform).mockReturnValue(null);
   });
 
-  it("offers a newer APK and explains the system permission step", async () => {
+  it("offers a newer APK and explains how to retry if permission was denied", async () => {
     const latest = { code: 5, name: "1.0.4" };
     vi.mocked(androidUpdatePlatform).mockReturnValue("native");
     vi.mocked(installedAndroidVersion).mockResolvedValue({ code: 4, name: "1.0.3" });
@@ -67,8 +67,8 @@ describe("Android app updates", () => {
     expect(await screen.findByText("Nainštalovaná verzia 1.0.3")).toBeInTheDocument();
     expect(await screen.findByText("Dostupná verzia 1.0.4")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Stiahnuť aktualizáciu" }));
-    expect(await screen.findByText(/Povoľ inštaláciu z Antidote/)).toBeInTheDocument();
-    expect(installAndroidUpdate).toHaveBeenCalledWith(latest, expect.any(Function));
+    expect(await screen.findByText(/Inštalácia z Antidote nie je povolená/)).toBeInTheDocument();
+    expect(installAndroidUpdate).toHaveBeenCalledExactlyOnceWith(latest, expect.any(Function));
   });
 
   it("downloads a native release directly from the notification", async () => {

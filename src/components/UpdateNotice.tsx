@@ -94,7 +94,7 @@ function useAndroidRelease(enabled: boolean) {
       } else if (available) {
         const { state } = await installAndroidUpdate(available, setProgress);
         setMessage(state === "permission"
-          ? "Povoľ inštaláciu z Antidote a po návrate spusti stiahnutie znova."
+          ? "Inštalácia z Antidote nie je povolená. Ťukni na Stiahnuť a povoľ ju v Androide."
           : "Potvrď aktualizáciu v okne Androidu.");
       }
     } catch {
@@ -121,7 +121,7 @@ function AndroidProgress({ progress }: { progress: UpdateProgress }) {
   const percentage = fraction === null ? undefined : Math.floor(fraction * 100);
   const label = {
     preparing: "Pripravujem aktualizáciu…",
-    permission: "Povoľ inštaláciu v Androide",
+    permission: "Po povolení v Androide sa sťahovanie spustí automaticky.",
     downloading: "Sťahujem APK…",
     verifying: "Overujem APK…",
   }[stage];
