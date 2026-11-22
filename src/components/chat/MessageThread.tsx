@@ -1,606 +1,476 @@
-import React, { useState, useRef, useEffect } from "react";
-import { UserProfile, RankedMatch, Conversation, ChatMessage } from "@/lib/resonance";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, Eye, Mic, Send, Sparkles } from "lucide-react";
+import type { ChatMessage, Conversation } from "@/lib/resonance";
+import {
+  fetchSharedProfileVideos,
+  readConversationStatus,
+  REPORT_REASONS,
+  setConversationChoice,
+  type ConversationChoice,
+  type ConversationPartner,
+  type ConversationStatus,
+} from "@/lib/conversations";
+import { fetchChatMessages, saveChatMessage, supabase } from "@/lib/supabase";
 import { useHaptic } from "@/hooks/use-haptics";
-import {
-  ChevronRight,
-  ArrowLeft,
-  MoreVertical,
-  X,
-  Sparkles,
-  Send,
-  AlertTriangle,
-  Shield,
-  Check,
-} from "lucide-react";
-import { makeMockToneWavUrl } from "@/lib/media";
-import {
-  supabase,
-  getOrCreateMatch,
-  saveChatMessage,
-  fetchChatMessages,
-  getSignedMediaUrl
-} from "@/lib/supabase";
 import { VoiceBubble } from "./VoiceBubble";
 
-const THREAD_BLUR_STEP = 8;
-const MOCK_GIFS: string[] = [
+const GIFS = [
   "https://media.tenor.com/x8v1oNUOmg4AAAAi/heart-love.gif",
   "https://media.tenor.com/Mxv-AaTHraEAAAAi/wave-hello.gif",
-  "https://media.tenor.com/I6kN-6X2HgAAAAAi/sparkle-stars.gif",
-  "https://media.tenor.com/CzZjqUyVx8gAAAAi/cat-laptop.gif",
-  "https://media.tenor.com/sj7y9LDsQ_kAAAAi/dance-party.gif",
-  "https://media.tenor.com/L4Yh1c6jw7AAAAAi/cool-sunglasses.gif",
+  "https://media.tenor.com/I6kN-6X2HgAAAAi/sparkle-stars.gif",
 ];
-const REPLY_TYPING_MS = 1400;
 
 export function MessageThread({
   conversation,
   match,
-  myVideoUrl,
-  user,
-  onUpdateUser,
+  userId,
+  prompt,
   onUpdate,
-  onEnd,
+  onClose,
   onBack,
+  onVoice,
 }: {
   conversation: Conversation;
-  match: RankedMatch;
-  myVideoUrl?: string;
-  user: UserProfile;
-  onUpdateUser: (update: Partial<UserProfile>) => void;
-  onUpdate: (c: (prev: Conversation) => Conversation) => void;
-  onEnd: () => void;
+  match: ConversationPartner;
+  userId: string;
+  prompt: string;
+  onUpdate: (patch: (previous: Conversation) => Conversation) => void;
+  onClose: () => void;
   onBack: () => void;
+  onVoice: () => void;
 }) {
   const haptic = useHaptic();
+  const [status, setStatus] = useState<ConversationStatus | null>(null);
   const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [closureOpen, setClosureOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [savingChoice, setSavingChoice] = useState(false);
+  const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [playing, setPlaying] = useState<string | null>(null);
   const [showGifs, setShowGifs] = useState(false);
-  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const [supabaseMatchId, setSupabaseMatchId] = useState<string | null>(null);
+  const [showVideos, setShowVideos] = useState(false);
+  const [videos, setVideos] = useState<string[] | null>(null);
+  const [videosFailed, setVideosFailed] = useState(false);
+  const listEnd = useRef<HTMLDivElement>(null);
+  const draft = useRef<{ key: string; id: string } | null>(null);
+  const sendLock = useRef(false);
+  const choiceLock = useRef(false);
+  const request = useRef(0);
+
+  // The lock only serializes saves. The server decides whether a conversation is open.
+  const refresh = useCallback(async () => {
+    const current = ++request.current;
+    try {
+      const [next, messages] = await Promise.all([
+        readConversationStatus(conversation.id, userId),
+        fetchChatMessages(conversation.id, userId),
+      ]);
+      if (current !== request.current) return;
+      setStatus(next);
+      setLoadFailed(false);
+      onUpdate((previous) => ({
+        ...previous,
+        status: next.status === "active" ? "active" : "closed",
+        messages: mergeMessages(previous.messages, messages),
+      }));
+    } catch {
+      if (current === request.current) setLoadFailed(true);
+    }
+  }, [conversation.id, userId, onUpdate]);
 
   useEffect(() => {
+    const filter = "match_id=eq." + conversation.id;
+    const channel = supabase
+      .channel("chat:" + conversation.id)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter },
+        () => void refresh(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "matches", filter: "id=eq." + conversation.id },
+        () => void refresh(),
+      )
+      .subscribe((state) => {
+        if (state === "SUBSCRIBED") void refresh();
+      });
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
+    void refresh();
+    return () => {
+      request.current += 1;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
+      void supabase.removeChannel(channel);
+    };
+  }, [conversation.id, refresh]);
+
+  useEffect(() => {
+    if (conversation.messages.length) listEnd.current?.scrollIntoView?.({ block: "end" });
+  }, [conversation.messages.length]);
+
+  useEffect(() => {
+    if (!showVideos || !status?.is_unlocked) return;
     let active = true;
-    let channel: any = null;
-
-    async function initChat() {
-      try {
-        const result = await getOrCreateMatch(user.id!, match.id, match.score);
-        if (!active) return;
-        setSupabaseMatchId(result.id);
-
-        const dbMsgs = await fetchChatMessages(result.id, user.id!);
-        if (active) {
-          onUpdate((c) => ({ ...c, messages: dbMsgs }));
-        }
-
-        channel = supabase
-          .channel(`chat:${result.id}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "messages",
-              filter: `match_id=eq.${result.id}`,
-            },
-            async (payload) => {
-              const newMsg = payload.new;
-              if (newMsg.sender_id !== user.id) {
-                let resolvedMediaUrl = newMsg.media_url;
-                if (resolvedMediaUrl && newMsg.duration) {
-                  resolvedMediaUrl = await getSignedMediaUrl("voice-messages", resolvedMediaUrl);
-                }
-                onUpdate((c) => {
-                  if (c.messages.some((m) => m.id === newMsg.id)) return c;
-                  return {
-                    ...c,
-                    messages: [
-                      ...c.messages,
-                      {
-                        id: newMsg.id,
-                        from: "them",
-                        text: newMsg.message_text || "",
-                        ts: new Date(newMsg.created_at).getTime(),
-                        media: resolvedMediaUrl
-                          ? { kind: (newMsg.duration ? "audio" : "gif") as "audio" | "gif", url: resolvedMediaUrl, duration: newMsg.duration }
-                          : undefined,
-                      },
-                    ],
-                    blurLevel: Math.max(0, c.blurLevel - THREAD_BLUR_STEP),
-                  };
-                });
-              }
-            }
-          )
-          .subscribe();
-      } catch (err) {
-        console.error("[MessageThread] Init chat failed:", err);
-      }
-    }
-
-    if (user.id && match.id && !user.id.startsWith("00000000")) {
-      initChat();
-    }
-
+    setVideos(null);
+    setVideosFailed(false);
+    void fetchSharedProfileVideos(match.id)
+      .then((result) => {
+        if (active) setVideos(result);
+      })
+      .catch(() => {
+        if (active) setVideosFailed(true);
+      });
     return () => {
       active = false;
-      if (channel) {
-        supabase.removeChannel(channel);
+    };
+  }, [showVideos, status?.is_unlocked, match.id]);
+
+  async function changeChoice(choice: ConversationChoice) {
+    if (choiceLock.current) return;
+    choiceLock.current = true;
+    setSavingChoice(true);
+    setError("");
+    try {
+      const next = await setConversationChoice(conversation.id, choice);
+      request.current += 1;
+      setStatus(next);
+      if (next.status === "deleted") {
+        onClose();
+      } else {
+        void refresh();
       }
-    };
-  }, [user.id, match.id]);
-
-  const [pressureActive, setPressureActive] = useState(false);
-  const [pressureCompleted, setPressureCompleted] = useState(false);
-  const [waitingForPartner, setWaitingForPartner] = useState(false);
-
-  // Trigger pressure test roughly midway to final blur (e.g. at 5 messages)
-  const pressureTriggerAt = 5;
-
-  function handleClosure(reason: string) {
-    haptic("success");
-    onUpdate((c) => ({ ...c, status: "closed", closureReason: reason }));
-    alert(`Konverzácia uzavretá. Dôvod: ${reason}`);
-    setClosureOpen(false);
-  }
-
-  function handleReport(reason: string) {
-    haptic("warning");
-    alert(`Spojenie zablokované a nahlásené pre: ${reason}.`);
-    onEnd(); // delete match permanently
-    setReportOpen(false);
-  }
-
-  useEffect(() => {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    bottomRef.current?.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth" });
-  }, [conversation.messages.length, typing]);
-
-  // Monitor message count for In-Chat Pressure triggers
-  useEffect(() => {
-    if (
-      !pressureCompleted &&
-      !pressureActive &&
-      conversation.messages.length >= pressureTriggerAt
-    ) {
-      haptic("warning");
-      setPressureActive(true);
-    }
-  }, [conversation.messages.length, pressureTriggerAt, pressureCompleted, pressureActive, haptic]);
-
-  function sendMedia(media: { kind: "image" | "gif"; url: string }) {
-    haptic("send");
-    const myMsg: ChatMessage = {
-      id: `mt-${Date.now()}`,
-      from: "me",
-      text: "",
-      ts: Date.now(),
-      media,
-    };
-    onUpdate((c) => ({
-      ...c,
-      messages: [...c.messages, myMsg],
-      blurLevel: Math.max(0, c.blurLevel - THREAD_BLUR_STEP),
-    }));
-    setShowGifs(false);
-    
-    if (supabaseMatchId) {
-      saveChatMessage(supabaseMatchId, user.id!, "", media)
-        .then((dbMsg) => {
-          onUpdate((c) => ({
-            ...c,
-            messages: c.messages.map((m) => m.id === myMsg.id ? { ...m, id: dbMsg.id } : m),
-          }));
-        })
-        .catch((err) => console.error("[MessageThread] Failed to save media message:", err));
-    } else {
-      triggerReply(myMsg);
+    } catch {
+      setError("Voľbu sa nepodarilo uložiť. Skús to znova.");
+    } finally {
+      choiceLock.current = false;
+      setSavingChoice(false);
     }
   }
 
-  function send() {
-    if (!input.trim() || pressureActive || conversation.status === "closed") return;
-    haptic("send");
-    const myMsg: ChatMessage = {
-      id: `mt-${Date.now()}`,
-      from: "me",
-      text: input.trim(),
-      ts: Date.now(),
-    };
-    setInput("");
-    setShowGifs(false);
-    onUpdate((c) => ({
-      ...c,
-      messages: [...c.messages, myMsg],
-      blurLevel: Math.max(0, c.blurLevel - THREAD_BLUR_STEP),
-    }));
-
-    if (supabaseMatchId) {
-      saveChatMessage(supabaseMatchId, user.id!, myMsg.text)
-        .then((dbMsg) => {
-          onUpdate((c) => ({
-            ...c,
-            messages: c.messages.map((m) => m.id === myMsg.id ? { ...m, id: dbMsg.id } : m),
-          }));
-        })
-        .catch((err) => console.error("[MessageThread] Failed to save chat message:", err));
-    } else {
-      triggerReply(myMsg);
-    }
-  }
-
-  function triggerReply(myMsg: ChatMessage) {
-    setTyping(true);
-    haptic("tap");
-    setTimeout(() => {
-      setTyping(false);
-      haptic("success");
-
-      // Simple mock reply based on text length for variety
-      const replies = [
-        "To je zaujímavé.",
-        "Súhlasím s tým.",
-        "Úplne chápem, ako to myslíš.",
-        "Povedz mi o tom viac.",
-        "Haha, presne!",
-        "Tiež to tak občas vnímam.",
-      ];
-      const textResponse = replies[myMsg.text.length % replies.length] || "To znie dobre.";
-
-      const themMsg: ChatMessage = {
-        id: `tt-${Date.now()}`,
-        from: "them",
-        text: textResponse,
-        ts: Date.now(),
-      };
-      onUpdate((c) => ({
-        ...c,
-        messages: [...c.messages, themMsg],
-        blurLevel: Math.max(0, c.blurLevel - THREAD_BLUR_STEP),
+  async function send(gif?: string) {
+    const text = gif ? "" : input.trim();
+    if ((!text && !gif) || sendLock.current || status?.status !== "active") return;
+    sendLock.current = true;
+    setSending(true);
+    setError("");
+    const key = gif ?? text;
+    if (draft.current?.key !== key) draft.current = { key, id: crypto.randomUUID() };
+    const media = gif ? { kind: "gif" as const, url: gif } : undefined;
+    try {
+      const replyContext =
+        !gif && !conversation.messages.length ? (match.shared_reflection ?? undefined) : undefined;
+      const saved = await saveChatMessage(
+        conversation.id,
+        userId,
+        text,
+        media,
+        draft.current.id,
+        replyContext,
+      );
+      onUpdate((previous) => ({
+        ...previous,
+        messages: mergeMessages(previous.messages, [
+          {
+            id: saved.id,
+            from: "me",
+            text,
+            replyContext: saved.reply_context ?? undefined,
+            ts: new Date(saved.created_at).getTime(),
+            media,
+          },
+        ]),
       }));
-    }, REPLY_TYPING_MS);
+      setInput((current) => (gif || current.trim() !== text ? current : ""));
+      setShowGifs(false);
+      draft.current = null;
+      haptic("send");
+    } catch {
+      setError("Správu sa nepodarilo odoslať. Skús to znova.");
+      void refresh();
+    } finally {
+      sendLock.current = false;
+      setSending(false);
+    }
   }
 
-  const blurPx = Math.round((conversation.blurLevel / 100) * 24);
-
+  const isOpen = status?.status === "active";
+  const hasMessages = conversation.messages.length > 0;
   return (
-    <div className="conversation-screen">
-      <div className="conversation-header z-10 shrink-0 px-3 py-3 sm:px-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <button
-              onClick={onBack}
-              aria-label="Späť na správy"
-              className="conversation-header-action shrink-0"
-            >
-              <ArrowLeft className="size-5" aria-hidden="true" />
-            </button>
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <div className="relative size-10 shrink-0 overflow-hidden rounded-full bg-muted">
-                <img
-                  src={match.img}
-                  alt=""
-                  className="size-full object-cover scale-110"
-                  style={{ filter: `blur(${blurPx}px)` }}
-                />
-              </div>
-              <div className="flex min-w-0 flex-col [overflow-wrap:anywhere]">
-                <span className="font-display text-lg font-bold tracking-tight">
-                  {match.name}
-                </span>
-                <span className="conversation-privacy">
-                  {conversation.blurLevel > 0 ? "Profil sa postupne odhaľuje" : "Profil je odhalený"}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Možnosti rozhovoru"
-              aria-expanded={menuOpen}
-              className="conversation-header-action"
-            >
-              <MoreVertical className="size-5" aria-hidden="true" />
-            </button>
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-12 z-50 w-52 max-w-[75vw] rounded-[0.75rem] border border-foreground/10 bg-card py-1 shadow-lg animate-kinetic-fade">
-                  {conversation.status !== "closed" && (
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setClosureOpen(true);
-                      }}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-foreground/80 hover:bg-foreground/5"
-                    >
-                      <Check className="size-4" /> Ukončiť rozhovor
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setReportOpen(true);
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-500 hover:bg-red-500/10"
-                  >
-                    <Shield className="size-4" /> Nahlásiť a zablokovať
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+    <section className="conversation-screen" aria-label="Rozhovor">
+      <header className="conversation-header flex shrink-0 items-center gap-3 px-3 py-3">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Späť na správy"
+          className="conversation-header-action shrink-0"
+        >
+          <ArrowLeft className="size-5" aria-hidden="true" />
+        </button>
+        <h1 className="min-w-0 break-words text-lg font-bold">{match.name}</h1>
+      </header>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
-        <details className="conversation-privacy-detail text-sm">
-          <summary>Ako sa odhaľuje profil?</summary>
-          <p className="pb-3 leading-relaxed">
-            Zostávajúce rozmazanie je {conversation.blurLevel} %. Každá odoslaná správa ho zníži o {THREAD_BLUR_STEP} percentuálnych bodov.
-          </p>
-        </details>
-
-        {conversation.messages.map((m) => {
-          const mine = m.from === "me";
-          if (m.media && m.media.kind === "audio") {
-            const voiceMsg = {
-              id: m.id,
-              from: m.from,
-              duration: m.media.duration || 0,
-              audioUrl: m.media.url,
-            };
-            return (
-              <VoiceBubble
-                key={m.id}
-                msg={voiceMsg}
-                playing={playingAudioId === m.id}
-                onToggle={() => setPlayingAudioId(playingAudioId === m.id ? null : m.id)}
-                onEnded={() => setPlayingAudioId(null)}
-              />
-            );
-          }
-          return (
-            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                  mine
-                    ? "rounded-br-[0.375rem] bg-accent text-accent-foreground"
-                    : "rounded-bl-[0.375rem] bg-card text-foreground"
-                }`}
-              >
-                {m.media && m.media.kind === "gif" && (
-                  <img src={m.media.url} alt="gif" className="mb-2 max-w-full rounded-sm" />
-                )}
-                <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.text}</p>
-                <span
-                  className={`block mt-1.5 text-right text-xs tabular-nums ${mine ? "text-accent-foreground" : "text-muted-foreground"}`}
-                >
-                  {new Date(m.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-        {typing && (
-          <div className="flex justify-start">
-            <div className="bg-card border border-foreground/10 px-4 py-3 text-foreground/50 text-xs animate-pulse">
-              Píše...
-            </div>
-          </div>
-        )}
-        <div ref={bottomRef} className="h-4" />
-      </div>
-
-      <div className="conversation-composer z-20 shrink-0">
-        {showGifs && (
-          <div className="border-t border-foreground/5 bg-background/40 p-3 animate-fade-up">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-foreground/50">GIFy</span>
-              <button
-                onClick={() => setShowGifs(false)}
-                className="text-xs tracking-widest text-foreground/40 hover:text-foreground"
-              >
-                ZAVRIEŤ
-              </button>
-            </div>
-            <div className="grid max-h-[28dvh] grid-cols-3 gap-2 overflow-y-auto">
-              {MOCK_GIFS.map((g) => (
-                <button
-                  key={g}
-                  onClick={() => sendMedia({ kind: "gif", url: g })}
-                  className="overflow-hidden rounded-[0.75rem] border border-foreground/10 transition-all hover:border-foreground/60 active:scale-95"
-                >
-                  <img src={g} alt="gif" className="aspect-square w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="relative flex items-end gap-2 border-t border-foreground/5 p-3">
-          <div className="relative">
-            <button
-              onClick={() => setShowGifs(!showGifs)}
-              aria-label="GIFy"
-              aria-expanded={showGifs}
-              className="conversation-gif-button"
-            >
-              <Sparkles className="size-5" aria-hidden="true" />
+        {loadFailed && (
+          <div role="alert" className="editorial-panel p-4">
+            Rozhovor sa nepodarilo načítať.{" "}
+            <button type="button" className="underline" onClick={() => void refresh()}>
+              Skúsiť znova
             </button>
           </div>
-          <textarea
-            aria-label="Správa"
-            value={input}
-            disabled={pressureActive || conversation.status === "closed"}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            rows={1}
-            placeholder={
-              pressureActive
-                ? "Tlakový test je aktívny..."
-                : conversation.status === "closed"
-                  ? "Táto konverzácia je uzavretá."
-                  : "Napíš správu…"
-            }
-            className="conversation-input"
-          />
-          <button
-            onClick={send}
-            disabled={pressureActive || !input.trim() || conversation.status === "closed"}
-            aria-label="Odoslať správu"
-            className="conversation-send"
-          >
-            <Send className="size-4" />
-          </button>
-        </div>
-      </div>
+        )}
+        {!status && !loadFailed && <p role="status">Načítavam rozhovor…</p>}
+        {status?.status === "deleted" && (
+          <p role="status" className="editorial-panel p-4">
+            Rozhovor je ukončený.
+          </p>
+        )}
 
-      {/* In-Chat Pressure Test Overlay */}
-      {pressureActive && (
-        <div className="fixed inset-0 bg-background/95 backdrop-blur-md z-[110] flex flex-col justify-center items-center p-4">
-          <div className="w-full max-w-md border border-foreground/20 bg-card p-6 relative">
-            <div className="mb-4 flex items-center justify-between text-xs tracking-widest text-red-500 font-bold uppercase animate-pulse">
-              <span>Ako zareaguješ?</span>
-            </div>
+        {isOpen && !hasMessages && (
+          <section className="editorial-panel p-4" aria-labelledby="conversation-intro">
+            <h2 id="conversation-intro" className="font-semibold">
+              {match.shared_reflection ? "Zdieľaná odpoveď" : "Otázka na úvod"}
+            </h2>
+            <p className="mt-2 whitespace-pre-wrap break-words text-lg leading-snug">{prompt}</p>
+          </section>
+        )}
 
-            {waitingForPartner ? (
-              <div className="text-center py-12 space-y-4">
-                <div className="size-8 mx-auto border-2 border-foreground border-t-transparent animate-spin" />
-                <p className="text-xs text-foreground/60 uppercase tracking-widest">
-                  Čakáme na reakciu partnera...
-                </p>
-              </div>
+        {isOpen && hasMessages && (
+          <details className="conversation-privacy-detail text-sm">
+            <summary>
+              <Eye className="mr-2 inline size-4" aria-hidden="true" />
+              Zdieľanie videí z profilu
+            </summary>
+            {status.is_unlocked ? (
+              <>
+                <p className="pb-2">Obaja ste súhlasili so zdieľaním profilových videí.</p>
+                <button
+                  type="button"
+                  className="personal-action"
+                  aria-expanded={showVideos}
+                  onClick={() => setShowVideos((value) => !value)}
+                >
+                  {showVideos ? "Skryť videá" : "Zobraziť videá"}
+                </button>
+                {showVideos &&
+                  (videosFailed ? (
+                    <p role="alert">Videá sa nepodarilo načítať. Skry ich a otvor znova.</p>
+                  ) : videos === null ? (
+                    <p role="status">Načítavam videá…</p>
+                  ) : videos.length === 0 ? (
+                    <p>Profil nemá dostupné videá.</p>
+                  ) : (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {videos.map((url, index) => (
+                        <video
+                          key={url}
+                          src={url}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          aria-label={"Profilové video " + (index + 1)}
+                          className="w-full rounded-lg bg-black"
+                        />
+                      ))}
+                    </div>
+                  ))}
+              </>
             ) : (
               <>
-                <p className="text-sm leading-relaxed text-foreground/80 mb-6 border-l-2 border-red-500 pl-4 py-1 font-medium">
-                  {match.name} sa dostal/a do úzadia. Z tvojho profilu vidí, že dbáš na{" "}
-                  {user.topPriority}. Ako zareaguješ, ak túto hodnotu spochybní?
-                </p>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => {
-                      haptic("success");
-                      setWaitingForPartner(true);
-                      setTimeout(() => {
-                        setPressureCompleted(true);
-                        setPressureActive(false);
-                        setWaitingForPartner(false);
-                        alert("Táto úloha je hotová. Môžeš pokračovať v rozhovore.");
-                      }, 2500);
-                    }}
-                    className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-4 text-xs hover:bg-foreground/5 transition-all"
-                  >
-                    Vysvetlím svoj postoj pokojne
-                  </button>
-                  <button
-                    onClick={() => {
-                      haptic("warning");
-                      setWaitingForPartner(true);
-                      setTimeout(() => {
-                        setPressureCompleted(true);
-                        setPressureActive(false);
-                        setWaitingForPartner(false);
-                        alert("Reakcia nebola ideálna.");
-                      }, 2500);
-                    }}
-                    className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-4 text-xs hover:bg-red-500/5 transition-all"
-                  >
-                    Stiahnem sa a neodpoviem priamo
-                  </button>
-                </div>
+                <p className="pb-2">Videá sa sprístupnia, keď s tým budete obaja súhlasiť.</p>
+                {status.consent_pending && (
+                  <p role="status" className="pb-2">
+                    Súhlas uložený. Čakáme na rozhodnutie druhej osoby.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="personal-action"
+                  disabled={savingChoice}
+                  onClick={() => void changeChoice(status.consent_pending ? "withdraw" : "share")}
+                >
+                  {status.consent_pending ? "Odvolať súhlas" : "Súhlasím so zdieľaním videí"}
+                </button>
               </>
             )}
-          </div>
-        </div>
-      )}
+          </details>
+        )}
 
-      {/* Closure Graceful UI */}
-      {closureOpen && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] grid place-items-center p-4">
-          <div className="editorial-dock w-full max-w-sm p-4">
-            <h3 className="personal-heading mb-2">
-              Ukončiť rozhovor
-            </h3>
-            <p className="mb-4 leading-relaxed text-muted-foreground">
-              Vyber dôvod ukončenia. Druhej osobe pošleme správu a čet uzavrieme. Tvoje skóre sa nezmení.
+        {conversation.messages.map((message) =>
+          message.media?.kind === "audio" ? (
+            <VoiceBubble
+              key={message.id}
+              msg={{
+                id: message.id,
+                from: message.from,
+                audioUrl: message.media.url,
+                duration: message.media.duration || 0,
+              }}
+              playing={playing === message.id}
+              onToggle={() => setPlaying((value) => (value === message.id ? null : message.id))}
+              onEnded={() => setPlaying(null)}
+            />
+          ) : (
+            <div
+              key={message.id}
+              className={"flex " + (message.from === "me" ? "justify-end" : "justify-start")}
+            >
+              <div
+                className={
+                  "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm " +
+                  (message.from === "me"
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-card text-foreground")
+                }
+              >
+                {message.media && (
+                  <img
+                    src={message.media.url}
+                    alt="Animovaný obrázok"
+                    className="mb-2 max-w-full rounded-md"
+                  />
+                )}
+                {message.replyContext && (
+                  <blockquote className="mb-2 border-s border-current/40 ps-2 text-sm [overflow-wrap:anywhere]">
+                    <span className="sr-only">Reakcia na zdieľanú odpoveď. </span>
+                    {message.replyContext}
+                  </blockquote>
+                )}
+                {message.text && (
+                  <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.text}</p>
+                )}
+              </div>
+            </div>
+          ),
+        )}
+        <div ref={listEnd} />
+      </div>
+
+      {isOpen && (
+        <div className="conversation-composer shrink-0">
+          {error && (
+            <p role="alert" className="px-3 pt-2 text-sm text-destructive">
+              {error}
             </p>
-            <div className="space-y-2 mb-6">
-              {[
-                "Necítim romantickú chémiu",
-                "Hľadám niečo iné",
-                "Nenašli sme spoločnú reč",
-                "Výrazný hodnotový nesúlad",
-              ].map((reason, idx) => (
+          )}
+          {showGifs && (
+            <div className="flex flex-wrap gap-2 px-3 pt-2">
+              {GIFS.map((url, index) => (
                 <button
-                  key={idx}
-                  onClick={() => handleClosure(reason)}
-                  className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-3 hover:bg-foreground/5 hover:border-foreground/30 text-base text-foreground/80 transition-colors"
+                  type="button"
+                  key={url}
+                  disabled={sending}
+                  className="min-h-12"
+                  onClick={() => void send(url)}
                 >
-                  {reason}
+                  <img
+                    src={url}
+                    alt={"Odoslať GIF " + (index + 1)}
+                    className="size-12 rounded-md object-cover"
+                  />
                 </button>
               ))}
             </div>
+          )}
+          <form
+            className="flex items-end gap-2 p-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void send();
+            }}
+          >
             <button
-              onClick={() => setClosureOpen(false)}
-              className="personal-action w-full"
+              type="button"
+              className="conversation-header-action"
+              aria-label="Nahrať hlasovú správu"
+              onClick={onVoice}
+              disabled={sending}
             >
-              Zrušiť
+              <Mic className="size-5" aria-hidden="true" />
             </button>
-          </div>
+            {hasMessages && (
+              <button
+                type="button"
+                className="conversation-header-action"
+                aria-label="GIFy"
+                aria-expanded={showGifs}
+                onClick={() => setShowGifs((open) => !open)}
+              >
+                <Sparkles className="size-5" aria-hidden="true" />
+              </button>
+            )}
+            <textarea
+              className="conversation-input"
+              aria-label="Správa"
+              rows={1}
+              maxLength={2000}
+              value={input}
+              placeholder={hasMessages ? "Napíš správu…" : "Napíš, čo ťa zaujalo…"}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  void send();
+                }
+              }}
+            />
+            <button
+              type="submit"
+              aria-label="Odoslať správu"
+              className="conversation-send"
+              disabled={sending || !input.trim()}
+            >
+              <Send className="size-4" aria-hidden="true" />
+            </button>
+          </form>
+          <details className="px-3 pb-2 text-sm">
+            <summary className="min-h-11 cursor-pointer pt-2.5 font-semibold">
+              Možnosti rozhovoru
+            </summary>
+            <p className="mb-2 text-muted-foreground">Rozhovor môžeš ukončiť kedykoľvek.</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={savingChoice}
+                className="personal-action"
+                onClick={() => void changeChoice("close")}
+              >
+                Ukončiť rozhovor
+              </button>
+            </div>
+            <details className="mt-2">
+              <summary className="min-h-11 cursor-pointer pt-2.5 text-destructive">
+                Nahlásiť a ukončiť
+              </summary>
+              <div className="flex flex-wrap gap-2">
+                {(Object.entries(REPORT_REASONS) as [keyof typeof REPORT_REASONS, string][]).map(
+                  ([reason, label]) => (
+                    <button
+                      type="button"
+                      key={reason}
+                      disabled={savingChoice}
+                      className="personal-action"
+                      onClick={() => void changeChoice(reason)}
+                    >
+                      {label}
+                    </button>
+                  ),
+                )}
+              </div>
+            </details>
+          </details>
         </div>
       )}
-
-      {/* Block & Report Compliance Modal overlay */}
-      {reportOpen && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] grid place-items-center p-4">
-          <div className="w-full max-w-sm border border-red-500/20 bg-card p-6 animate-fade-up">
-            <div className="flex items-center gap-2 text-red-500 font-bold text-xs tracking-widest uppercase mb-3">
-              <AlertTriangle className="size-5" />
-              <span>Nahlásiť a zablokovať</span>
-            </div>
-
-            <div className="mb-5 border border-red-500/25 bg-red-500/5 p-4 text-xs text-red-400 leading-relaxed">
-              ⚠️ Varovanie: Zneužitie tohto tlačidla na zrušenie matchu namiesto
-              &ldquo;Ukončiť rozhovor&rdquo; vedie k trvalému zablokovaniu vášho účtu. Nahlásenia slúžia
-              výhradne pre prípady spamu, zneužívania alebo obťažovania.
-            </div>
-
-            <div className="space-y-2 mb-6">
-              {[
-                "Obťažovanie / Nevhodné správanie",
-                "Spam / Falošný profil",
-                "Propagácia / Reklama",
-              ].map((reason, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleReport(reason)}
-                  className="w-full text-left border border-foreground/10 bg-foreground/[0.02] px-4 py-3 hover:bg-red-500/10 hover:border-red-500/20 text-xs text-foreground/80 transition-all active:scale-[0.99]"
-                >
-                  {reason}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setReportOpen(false)}
-              className="w-full border border-foreground/20 py-3 text-xs tracking-widest text-foreground/60 hover:bg-foreground/5 font-bold uppercase transition-all"
-            >
-              SPÄŤ
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    </section>
   );
+}
+
+function mergeMessages(previous: ChatMessage[], incoming: ChatMessage[]) {
+  const byId = new Map(previous.map((message) => [message.id, message]));
+  for (const message of incoming) byId.set(message.id, message);
+  return [...byId.values()].sort((a, b) => a.ts - b.ts);
 }

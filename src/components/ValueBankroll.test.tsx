@@ -23,7 +23,7 @@ describe("ValueBankroll", () => {
     const addFamily = screen.getByRole("button", { name: "Pridať žetón: Rodina" });
     const subtractFamily = screen.getByRole("button", { name: "Odobrať žetón: Rodina" });
     const addCareer = screen.getByRole("button", { name: "Pridať žetón: Kariéra" });
-    const review = screen.getByRole("button", { name: "Pokračovať", exact: true });
+    const review = screen.getByRole("button", { name: "Pokračovať" });
 
     expect(screen.getByRole("status")).toHaveTextContent("10 z 10");
     expect(review).toBeDisabled();
@@ -42,10 +42,10 @@ describe("ValueBankroll", () => {
     fireEvent.click(screen.getByRole("button", { name: "Upraviť rozdelenie" }));
     fireEvent.click(screen.getByRole("button", { name: "Odobrať žetón: Rodina" }));
     expect(screen.getByRole("status")).toHaveTextContent("1 z 10");
-    expect(screen.getByRole("button", { name: "Pokračovať", exact: true })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Pokračovať" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Pridať žetón: Stabilita" }));
-    fireEvent.click(screen.getByRole("button", { name: "Pokračovať", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Pokračovať" }));
     fireEvent.click(screen.getByRole("button", { name: "Pokračovať na ďalšiu otázku" }));
 
     expect(onDone).toHaveBeenCalledExactlyOnceWith(80 / 220, {

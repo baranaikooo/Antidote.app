@@ -302,6 +302,7 @@ export async function saveUserProfile(
     latitude: profileData.coords?.lat,
     longitude: profileData.coords?.lon,
     current_thesis: profileData.currentThesis || "",
+    shared_reflection: profileData.sharedReflection,
     similarity_vector: `[${profileData.cognitiveDepth || 0.5},${profileData.conscientiousness || 0.5}]`,
     cognitive_depth: profileData.cognitiveDepth,
     conscientiousness: profileData.conscientiousness,
@@ -426,6 +427,7 @@ export async function fetchUserProfile(userId: string): Promise<any | null> {
     radiusKm: data.radius_km || 200,
     nonNegotiable: data.non_negotiable || "",
     currentThesis: data.current_thesis || "",
+    sharedReflection: data.shared_reflection ?? null,
     cognitiveDepth: data.cognitive_depth,
     conscientiousness: data.conscientiousness,
     extraversion: data.extraversion,
@@ -452,14 +454,18 @@ export async function saveChatMessage(
   matchId: string,
   senderId: string,
   text: string,
-  media?: { kind: "image" | "gif"; url: string }
+  media?: { kind: "image" | "gif"; url: string },
+  messageId: string = crypto.randomUUID(),
+  replyContext?: string,
 ): Promise<any> {
   const { data, error } = await supabase
     .from("messages")
     .insert({
+      id: messageId,
       match_id: matchId,
       sender_id: senderId,
       message_text: text,
+      reply_context: replyContext,
       media_url: media?.url || null,
       duration: null,
     })
@@ -467,7 +473,9 @@ export async function saveChatMessage(
     .single();
 
   if (error) {
-    console.error("[saveChatMessage] Error saving chat message:", error);
+    const { data: saved } = await supabase.from("messages").select("*").eq("id", messageId)
+      .eq("match_id", matchId).eq("sender_id", senderId).maybeSingle();
+    if (saved) return saved;
     throw error;
   }
   return data;
@@ -484,8 +492,7 @@ export async function fetchChatMessages(
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("[fetchChatMessages] Error fetching messages:", error);
-    return [];
+    throw error;
   }
 
   const messagesWithSignedUrls = await Promise.all(
@@ -498,6 +505,7 @@ export async function fetchChatMessages(
         id: m.id,
         from: m.sender_id === myUserId ? "me" : "them",
         text: m.message_text || "",
+        replyContext: m.reply_context || undefined,
         ts: new Date(m.created_at).getTime(),
         media: resolvedMediaUrl
           ? { kind: m.duration ? "audio" : "gif", url: resolvedMediaUrl, duration: m.duration }
@@ -509,71 +517,21 @@ export async function fetchChatMessages(
   return messagesWithSignedUrls;
 }
 
-export async function getOrCreateMatch(
-  myUserId: string,
-  partnerUserId: string,
-  evScore: number
-): Promise<{ id: string; is_unlocked: boolean }> {
-  if (!myUserId || !partnerUserId) {
-    throw new Error("[getOrCreateMatch] Missing user IDs");
-  }
-
+export async function getOrCreateMatch(myUserId: string, partnerUserId: string, evScore: number) {
   const [user_p, user_q] = [myUserId, partnerUserId].sort();
+  const find = () => supabase.from("matches").select("id, status").eq("user_p", user_p).eq("user_q", user_q).maybeSingle();
+  const existing = await find();
+  if (existing.error) throw existing.error;
+  if (existing.data) return existing.data;
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("matches")
-    .select("id, is_unlocked")
-    .eq("user_p", user_p)
-    .eq("user_q", user_q)
-    .maybeSingle();
-
-  if (fetchError) {
-    console.error("[getOrCreateMatch] Error checking for match:", fetchError);
+  const result = await supabase.from("matches").insert({ user_p, user_q, ev_score: evScore })
+    .select("id, status").single();
+  if (result.error?.code === "23505") {
+    const concurrent = await find();
+    if (concurrent.data) return concurrent.data;
   }
-
-  if (existing) {
-    return { id: existing.id, is_unlocked: existing.is_unlocked };
-  }
-
-  const { data: created, error: createError } = await supabase
-    .from("matches")
-    .insert({
-      user_p,
-      user_q,
-      ev_score: evScore,
-      status: "active",
-    })
-    .select("id, is_unlocked")
-    .single();
-
-  if (createError) {
-    console.error("[getOrCreateMatch] Error creating match:", createError);
-    throw createError;
-  }
-
-  return { id: created.id, is_unlocked: created.is_unlocked };
-}
-
-export async function submitBlindVote(
-  matchId: string,
-  userId: string,
-  vote: "unlock" | "cancel"
-): Promise<void> {
-  const { error } = await supabase
-    .from("blind_votes")
-    .upsert(
-      {
-        match_id: matchId,
-        user_id: userId,
-        vote,
-      },
-      { onConflict: "match_id, user_id" }
-    );
-
-  if (error) {
-    console.error("[submitBlindVote] Error submitting blind vote:", error);
-    throw error;
-  }
+  if (result.error) throw result.error;
+  return result.data;
 }
 
 export async function uploadVoiceMessageBlob(

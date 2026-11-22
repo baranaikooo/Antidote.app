@@ -853,6 +853,7 @@ export type UserProfile = {
   videoUrls?: string[]; // live snippet video URLs
   nonNegotiable?: string; // user directive: non-negotiable
   currentThesis?: string; // user directive: current thesis
+  sharedReflection?: string | null;
   livenessVerified?: boolean; // Biometric verified tier
   verifiedAt?: string; // ISO timestamp of verification
   status?: "ACTIVE" | "FROZEN" | "BANNED";
@@ -930,6 +931,7 @@ export type MockMatch = {
   attachment_style: "Secure" | "Anxious" | "Avoidant" | "Fearful";
   avg_response_time: number;
   top_priority: string;
+  shared_reflection?: string | null;
   hesitated?: boolean;
   videoUrls?: string[];
 };
@@ -940,66 +942,12 @@ export type RankedMatch = MockMatch & { score: number; distanceKm?: number; isAu
 
 export const MAX_MATCH_PHOTOS = 6;
 
-export function calcEVScore(
-  depthP: number,
-  depthQ: number,
-  consP: number,
-  consQ: number,
-  extP: number,
-  extQ: number,
-  styleP: string,
-  styleQ: string,
-  rtP: number,
-  rtQ: number,
-  targetT: number = 1.0,
-  hesitatedP: boolean = false,
-  hesitatedQ: boolean = false,
-): number {
-  // 1. Similarity (Euclidean distance on Cognition & Conscientiousness)
-  const dist = Math.sqrt(Math.pow(depthP - depthQ, 2) + Math.pow(consP - consQ, 2));
-  const s_sim = 1.0 - dist / Math.sqrt(2.0);
-
-  // 2. Complementarity (with asymmetric introvert discount based on targetT)
-  const sum = extP + extQ;
-  const d_comp = sum < targetT ? 0.5 * (targetT - sum) : 1.0 * (sum - targetT);
-  const s_comp = 1.0 - Math.min(1.0, Math.max(0.0, d_comp));
-
-  // 3. Toxicity Matrix Multiplier
-  const getSinglePenalty = (sp: string, sq: string): number => {
-    const sp_norm = sp.trim().substring(0, 3).toLowerCase();
-    const sq_norm = sq.trim().substring(0, 3).toLowerCase();
-
-    const matrix: Record<string, Record<string, number>> = {
-      sec: { sec: 0.0, anx: -0.15, avo: -0.2, fea: -0.25 },
-      anx: { sec: -0.15, anx: -0.4, avo: -1.0, fea: -0.6 },
-      avo: { sec: -0.2, anx: -1.0, avo: -0.5, fea: -0.6 },
-      fea: { sec: -0.25, anx: -0.6, avo: -0.6, fea: -0.7 },
-    };
-
-    const pStyle = matrix[sp_norm] ? sp_norm : "sec";
-    const qStyle = matrix[sq_norm] ? sq_norm : "sec";
-    return matrix[pStyle][qStyle] ?? 0.0;
-  };
-
-  const m_tox = Math.max(0.0, Math.min(1.0, 1.0 + getSinglePenalty(styleP, styleQ)));
-
-  // 4. Anti-Cheat Response time calibration (Gyroscopic Hesitation discount)
-  const calculateDiscount = (rt: number, hesitated: boolean, t_min = 2.0): number => {
-    let discount = rt >= t_min ? 1.0 : rt / t_min;
-    if (hesitated) {
-      discount *= 0.7; // apply an extra 30% discount for gyroscopic instability
-    }
-    return Math.max(0.1, Math.min(1.0, discount));
-  };
-
-  const m_cheat = calculateDiscount(rtP, hesitatedP) * calculateDiscount(rtQ, hesitatedQ);
-
-  // 5. Combined Score
-  const w_sim = 0.6;
-  const w_comp = 0.4;
-  const base_score = w_sim * s_sim + w_comp * s_comp;
-
-  return base_score * m_tox * m_cheat;
+function scoreRecommendation(depthP: number, depthQ: number, priorityP: number, priorityQ: number,
+  extP: number, extQ: number, target: number) {
+  const similarity = 1 - Math.hypot(depthP - depthQ, priorityP - priorityQ) / Math.SQRT2;
+  const balance = extP + extQ - target;
+  const complementarity = 1 - Math.min(1, balance < 0 ? -balance * 0.5 : balance);
+  return 0.6 * similarity + 0.4 * complementarity;
 }
 
 export function rankMatches(me: UserProfile, list: MockMatch[]): RankedMatch[] {
@@ -1010,9 +958,6 @@ export function rankMatches(me: UserProfile, list: MockMatch[]): RankedMatch[] {
   const cDepthP = me.cognitiveDepth ?? 0.5;
   const consP = me.conscientiousness ?? 0.5;
   const extP = me.extraversion ?? 0.5;
-  const styleP = me.attachmentStyle ?? "Secure";
-  const rtP = me.avgResponseTime ?? 3.0;
-  const hesitatedP = me.hesitated ?? false;
 
   const compatibleCandidates = list.filter((m) => isCompatible(me, m));
 
@@ -1024,20 +969,14 @@ export function rankMatches(me: UserProfile, list: MockMatch[]): RankedMatch[] {
   const dynamicTargetT = Math.max(0.6, Math.min(1.4, avgCandidateE * 2.0));
 
   const allScored = compatibleCandidates.map((m) => {
-    const base = calcEVScore(
+    const base = scoreRecommendation(
       cDepthP,
       m.cognitive_depth,
       consP,
       m.conscientiousness,
       extP,
       m.extraversion,
-      styleP,
-      m.attachment_style,
-      rtP,
-      m.avg_response_time,
       dynamicTargetT,
-      hesitatedP,
-      m.hesitated ?? false,
     );
     const bonus = ageBonus(me.age, m.age) / 100.0;
     const distanceKm = me.coords && m.coords ? haversineKm(me.coords, m.coords) : undefined;
@@ -1085,6 +1024,7 @@ export type ChatMessage = {
   id: string;
   from: "me" | "them";
   text: string;
+  replyContext?: string;
   ts: number;
   media?: { kind: "image" | "gif" | "audio"; url: string; duration?: number };
 };
@@ -1092,7 +1032,6 @@ export type ChatMessage = {
 export type Conversation = {
   id: string;
   matchId: string;
-  blurLevel: number; // 0..100 (higher = more blurred)
   messages: ChatMessage[];
   unread: boolean;
   createdAt: number;
