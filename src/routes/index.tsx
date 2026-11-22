@@ -90,7 +90,7 @@ import {
 } from "@/lib/supabase";
 import { initializeBanditState } from "@/lib/resonance";
 import { SemanticMirror } from "@/components/SemanticMirror";
-import { ValueBankroll } from "@/components/ValueBankroll";
+import { PRIORITY_CATEGORIES, ValueBankroll } from "@/components/ValueBankroll";
 import { PressureChat, SCENARIOS } from "@/components/PressureChat";
 import { IcebreakerDilemma } from "@/components/IcebreakerDilemma";
 import { BlindVote } from "@/components/BlindVote";
@@ -1680,7 +1680,7 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
               <span className="landing-option-icon" aria-hidden="true"><Icon size={21} /></span>
               <span>{label}</span>
               <span className="landing-option-state" aria-hidden="true">
-                {choice === value ? <Check size={19} /> : <ChevronRight size={19} />}
+                {choice === value && <Check size={19} />}
               </span>
             </button>
           ))}
@@ -1693,6 +1693,9 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
                 Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
               </p>
             </div>
+            <p className="mt-3 text-sm leading-snug text-muted-foreground">
+              Pri prvom prihlásení overíš profil kamerou a pridáš krátke video.
+            </p>
             <div className="landing-sign-in"><GoogleSignInButton onSuccess={onGoogle} /></div>
           </div>
         )}
@@ -2206,8 +2209,10 @@ function MatchCard({
     profile.attachmentStyle === "Secure" && match.attachment_style === "Secure";
   const attachmentLabel = isSecureMatch ? "Bezpečný štýl väzby" : "Bežný štýl väzby";
   const videoUrl = match.videoUrls?.find(Boolean);
-  const sharedPriority =
-    profile.topPriority && match.top_priority && profile.topPriority === match.top_priority;
+  const sharedPriority = profile.topPriority === match.top_priority
+    ? PRIORITY_CATEGORIES.find(({ id }) => id === profile.topPriority)
+    : undefined;
+  const priorityLabel = sharedPriority?.label.toLocaleLowerCase("sk");
 
   return (
     <article className="match-card">
@@ -2229,20 +2234,28 @@ function MatchCard({
         </div>
       </header>
 
+      {sharedPriority && (
+        <div className="match-shared-priority">
+          <p className="font-semibold">Vaša spoločná priorita je <strong>{priorityLabel}</strong>.</p>
+          {!initiatedMatchIds?.has(match.id) && (
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+              <MessageCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span><span className="sr-only">Otázka na úvod. </span>Čo pre teba znamená {priorityLabel} vo vzťahu?</span>
+            </p>
+          )}
+        </div>
+      )}
+
       <details className="match-card-details">
         <summary onClick={() => haptic("tap")}>
           <span>Čo vás spája?</span>
           <ChevronDown className="size-5 shrink-0" aria-hidden="true" />
         </summary>
         <div className="match-card-facts">
-          {sharedPriority && <p>Obaja dávate na prvé miesto hodnotu <strong>„{profile.topPriority}“</strong>.</p>}
           <p className="match-score">
             <span>Podobnosť odpovedí</span>
             <strong>{similarityPct} %</strong>
           </p>
-          <div className="match-score-track" aria-hidden="true">
-            <span style={{ width: `${Math.max(0, Math.min(100, similarityPct))}%` }} />
-          </div>
           <p>{extLabel} · {attachmentLabel}</p>
         </div>
       </details>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { SnippetRows } from "@/components/SnippetRows";
+import { PROFILE_SLOTS, SnippetRows } from "@/components/SnippetRows";
 import { useHaptic } from "@/hooks/use-haptics";
 import { openCamera, recordStreamForMs, stopStream, attachStreamToVideo } from "@/lib/media";
 import { saveVideoBlob, getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
@@ -263,18 +263,38 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
     });
   }
 
+  const videoCount = snippets.filter(Boolean).length;
+  const firstSlot = Math.max(0, snippets.findIndex(Boolean));
+  const optionalSlots = PROFILE_SLOTS.filter((slot) => slot !== firstSlot);
+
   return (
     <div className="personal-screen">
       <header className="personal-header">
         <p className="personal-eyebrow">Tvoj profil</p>
         <h1 className="personal-title">Pridaj krátke video</h1>
         <p className="personal-intro">
-          Pridaj 1 až 4 trojsekundové videá. Vyber ich z galérie alebo ich nahraj kamerou. Pri nahrávaní ťa zariadenie požiada o prístup ku kamere.
+          Na profil potrebuješ jedno trojsekundové video. Ďalšie tri sú voliteľné.
         </p>
       </header>
-      <section className="onboarding-panel" aria-label="Videá profilu">
-        <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} />
+      <section className="onboarding-panel first-profile-video" aria-labelledby="first-profile-video">
+        <h2 id="first-profile-video" className="personal-heading">{videoCount ? "Prvé video" : "Pridaj prvé video"}</h2>
+        {videoCount ? (
+          <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} slotIndices={[firstSlot]} />
+        ) : (
+          <div className="mt-3 grid gap-2">
+            <button type="button" className="tactile-button min-h-12 bg-accent px-3 font-semibold text-accent-foreground" onClick={() => startRecording(0)}>
+              Nahrať kamerou
+            </button>
+            <button type="button" className="personal-action min-h-12 font-semibold" onClick={() => triggerFileUpload(0)}>
+              Vybrať z galérie
+            </button>
+          </div>
+        )}
       </section>
+      <details className="onboarding-panel optional-profile-videos">
+        <summary className="font-semibold">Ďalšie videá <span className="font-normal text-muted-foreground">· voliteľné</span></summary>
+        <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} slotIndices={optionalSlots} />
+      </details>
 
       <input
         type="file"
@@ -288,7 +308,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       <div className="mt-4 space-y-3">
         <button
           type="button"
-          disabled={snippets.filter(Boolean).length === 0 || isSubmitting}
+          disabled={videoCount === 0 || isSubmitting}
           onClick={async () => {
             const activeSnippets = snippets.filter(Boolean);
             if (activeSnippets.length === 0) {
@@ -307,16 +327,14 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
             }
           }}
           className={`w-full rounded-[0.625rem] border border-foreground py-3.5 text-base font-bold transition-colors ${
-            snippets.filter(Boolean).length === 0 || isSubmitting
+            videoCount === 0 || isSubmitting
               ? "opacity-40 cursor-not-allowed bg-foreground/20 text-muted-foreground border-foreground/20"
               : "text-background bg-foreground hover:bg-foreground/90 cursor-pointer"
           }`}
         >
           {isSubmitting
             ? "Ukladám video…"
-            : snippets.filter(Boolean).length === 0
-            ? "Pridaj aspoň jedno video"
-            : `Pokračovať (${snippets.filter(Boolean).length}/4)`}
+            : "Pokračovať"}
         </button>
         <p className="text-sm text-muted-foreground text-center">
           Videá sa prehrávajú bez zvuku.
