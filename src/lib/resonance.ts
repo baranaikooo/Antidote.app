@@ -1,6 +1,8 @@
 // All Antidote domain logic + content in one place.
 // Simple Slovak, no jargon.
 
+import type { PriorityDistribution } from "./priority-distribution";
+
 export type Answer = "A" | "B";
 export type Answers = Partial<Record<`q${1 | 2 | 3 | 4 | 5 | 6}`, Answer>>;
 export type FullAnswers = Required<Answers>;
@@ -846,6 +848,7 @@ export type UserProfile = {
   attachmentStyle?: string;
   avgResponseTime?: number;
   topPriority?: string;
+  priorityDistribution?: PriorityDistribution;
   hesitated?: boolean; // gyroscopic volatility flag
   redemptionQuota?: number; // drawdown redemption quota
   completedPressureScenarios?: string[]; // track completed pressure scenarios
