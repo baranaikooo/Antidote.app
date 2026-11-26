@@ -91,6 +91,9 @@ it("retries a first reply with the same id, preserving the draft and real reply 
   });
   render(<Thread />);
   const textbox = await screen.findByRole("textbox", { name: "Správa" });
+  fireEvent.click(screen.getByRole("button", { name: "Nadviazať" }));
+  expect(textbox).toHaveFocus();
+  expect(textbox).toHaveAccessibleDescription(/Reaguješ na zdieľanú odpoveď/);
   fireEvent.change(textbox, { target: { value: "Ako si na to prišla?" } });
   fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("nepodarilo odoslať");
@@ -102,6 +105,29 @@ it("retries a first reply with the same id, preserving the draft and real reply 
   expect(context).toBe(reply);
   expect(mocks.send.mock.calls[1][4]).toBe(firstId);
   expect(mocks.videos).not.toHaveBeenCalled();
+});
+
+it("can remove context from a failed opening while preserving the text and retry id", async () => {
+  mocks.send.mockRejectedValueOnce(new Error("Offline")).mockResolvedValue({
+    id: "saved",
+    created_at: "2026-11-01T10:00:00Z",
+  });
+  render(<Thread />);
+  const textbox = await screen.findByRole("textbox", { name: "Správa" });
+  fireEvent.click(screen.getByRole("button", { name: "Nadviazať" }));
+  fireEvent.change(textbox, { target: { value: "Ahoj" } });
+  fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("nepodarilo odoslať");
+  fireEvent.click(screen.getByRole("button", { name: "Odstrániť zdieľanú odpoveď zo správy" }));
+
+  expect(textbox).toHaveFocus();
+  expect(textbox).toHaveValue("Ahoj");
+  expect(textbox).not.toHaveAccessibleDescription();
+  fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+  await screen.findByText("Ahoj");
+  expect(mocks.send.mock.calls[0][5]).toBe(reply);
+  expect(mocks.send.mock.calls[1][4]).toBe(mocks.send.mock.calls[0][4]);
+  expect(mocks.send.mock.calls[1][5]).toBeUndefined();
 });
 
 it("waits for the server's mutual consent before requesting video and closes without sending a message", async () => {

@@ -2319,7 +2319,7 @@ function Briefing({ onBegin }: { onBegin: () => void }) {
       <p className="text-sm font-medium text-accent">Približne 2 minúty</p>
       <div className="mt-6 border-t border-foreground/20 pt-5 text-muted-foreground">
         <p className="max-w-sm text-base leading-relaxed">
-          Čakajú ťa otázky o vzťahoch, hodnotách a o tom, ako sa rozhoduješ. Môžeš si dať čas.
+          Prvé otázky sa týkajú toho, ako sa rozhoduješ vo vzťahoch.
         </p>
         <p className="mt-3 text-sm leading-relaxed">
           Odpovedaj tak, ako to cítiš. Neexistujú správne odpovede.
@@ -2356,11 +2356,14 @@ const PRIORITY_QUESTIONS: Record<string, string> = {
   sloboda: "Kedy si sa vo vzťahu cítil/a slobodne a zároveň blízko?",
 };
 
+function sharedPriority(myPriority: string | undefined, partnerPriority: string | null) {
+  return myPriority === partnerPriority
+    ? PRIORITY_CATEGORIES.find((category) => category.id === myPriority)
+    : undefined;
+}
+
 function introductionFor(myPriority: string | undefined, partner: ConversationPartner) {
-  const shared =
-    partner.top_priority && myPriority === partner.top_priority
-      ? PRIORITY_CATEGORIES.find((category) => category.id === myPriority)
-      : undefined;
+  const shared = sharedPriority(myPriority, partner.top_priority);
   const text =
     partner.shared_reflection?.trim() ||
     (shared
@@ -2371,13 +2374,16 @@ function introductionFor(myPriority: string | undefined, partner: ConversationPa
 
 function MatchCard({
   match,
+  myPriority,
   busy,
   onSelect,
 }: {
   match: RankedMatch;
+  myPriority?: string;
   busy: boolean;
   onSelect: () => void;
 }) {
+  const shared = sharedPriority(myPriority, match.top_priority);
   return (
     <article className="match-card">
       <MatchCardIdentity
@@ -2386,6 +2392,17 @@ function MatchCard({
         city={match.city}
         distanceKm={match.distanceKm}
       />
+      {shared && (
+        <details className="match-card-details">
+          <summary>
+            Prečo toto odporúčanie?
+            <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
+          </summary>
+          <p className="match-card-facts">
+            Spoločná priorita z dotazníka je {shared.label.toLocaleLowerCase("sk")}.
+          </p>
+        </details>
+      )}
       <button type="button" onClick={onSelect} disabled={busy} className="match-card-action">
         {busy ? "Otváram rozhovor…" : "Osloviť"}
         <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
@@ -2432,6 +2449,17 @@ function Dashboard({
   const [radiusFailed, setRadiusFailed] = useState(false);
   const nearby = profile.radiusKm !== undefined && profile.radiusKm < 500;
   const searchRange = nearby ? `Do ${profile.radiusKm} km` : "Celý svet";
+  const radiusButton = useRef<HTMLButtonElement>(null);
+  const radiusSelect = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    if (editingRadius) radiusSelect.current?.focus();
+  }, [editingRadius]);
+
+  function closeRadiusEditor() {
+    setEditingRadius(false);
+    requestAnimationFrame(() => radiusButton.current?.focus());
+  }
   const initial = Array.from(profile.name.trim())[0]?.toLocaleUpperCase("sk");
 
   async function saveSearchRadius() {
@@ -2441,7 +2469,7 @@ function Dashboard({
     try {
       await onChangeRadius(radiusChoice);
       setMatchIndex(0);
-      setEditingRadius(false);
+      closeRadiusEditor();
     } catch {
       setRadiusFailed(true);
     } finally {
@@ -2479,6 +2507,90 @@ function Dashboard({
         <h1 className="personal-title">Spojenia</h1>
       </header>
 
+      <section className="discover-radius" aria-label="Dosah odporúčaní">
+        <div className="discover-radius-summary">
+          <p className="discover-search-range">
+            <MapPin className="size-4 shrink-0" aria-hidden="true" />
+            <span>
+              <span className="sr-only">Aktuálny dosah odporúčaní je </span>
+              {searchRange}
+            </span>
+          </p>
+          <button
+            ref={radiusButton}
+            type="button"
+            className="personal-action"
+            aria-expanded={editingRadius}
+            aria-controls="discover-radius-editor"
+            disabled={savingRadius}
+            onClick={() => {
+              if (editingRadius) {
+                closeRadiusEditor();
+              } else {
+                setRadiusChoice(profile.radiusKm ?? 500);
+                setRadiusFailed(false);
+                setEditingRadius(true);
+              }
+            }}
+          >
+            Upraviť dosah
+          </button>
+        </div>
+        <div id="discover-radius-editor" hidden={!editingRadius}>
+          {editingRadius && (
+            <form
+              className="discover-radius-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveSearchRadius();
+              }}
+            >
+              <label className="font-semibold" htmlFor="discover-radius">
+                Nový dosah odporúčaní
+              </label>
+              <select
+                ref={radiusSelect}
+                id="discover-radius"
+                className="min-h-12 rounded-lg border border-foreground/35 bg-card px-3"
+                value={radiusChoice}
+                onChange={(event) => setRadiusChoice(Number(event.target.value))}
+                disabled={savingRadius}
+              >
+                {[...new Set([25, 50, 100, 200, profile.radiusKm ?? 500, 500])]
+                  .sort((a, b) => a - b)
+                  .map((radius) => (
+                    <option key={radius} value={radius}>
+                      {radius >= 500 ? "Celý svet" : "Do " + radius + " km"}
+                    </option>
+                  ))}
+              </select>
+              {radiusFailed && (
+                <p role="alert" className="text-destructive">
+                  Dosah sa nepodarilo uložiť. Skús to znova.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  className="personal-action"
+                  disabled={savingRadius || radiusChoice === (profile.radiusKm ?? 500)}
+                >
+                  {savingRadius ? "Ukladám…" : "Uložiť dosah"}
+                </button>
+                <button
+                  type="button"
+                  className="personal-action"
+                  disabled={savingRadius}
+                  onClick={closeRadiusEditor}
+                >
+                  Zrušiť
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </section>
+
       {recentReply && (
         <section className="discover-reply editorial-panel" aria-labelledby="discover-reply-title">
           <MessageCircle className="size-5 text-accent" aria-hidden="true" />
@@ -2501,6 +2613,7 @@ function Dashboard({
           <MatchCard
             key={activeMatch.id}
             match={activeMatch}
+            myPriority={profile.topPriority}
             busy={openingMatch}
             onSelect={() => onSelectMatch(activeMatch)}
           />
@@ -2555,9 +2668,6 @@ function Dashboard({
             <Radar className="size-6" aria-hidden="true" />
           </div>
           <div>
-            <p className="discover-search-range">
-              <MapPin className="size-4" aria-hidden="true" /> {searchRange}
-            </p>
             <h2 className="personal-heading">
               {loading
                 ? "Hľadám nové spojenia…"
@@ -2574,70 +2684,6 @@ function Dashboard({
             </p>
           </div>
 
-          {!failed &&
-            !loading &&
-            (editingRadius ? (
-              <form
-                className="discover-radius-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void saveSearchRadius();
-                }}
-              >
-                <label className="font-semibold" htmlFor="discover-radius">
-                  Dosah odporúčaní
-                </label>
-                <select
-                  id="discover-radius"
-                  className="min-h-12 rounded-lg border border-foreground/35 bg-card px-3"
-                  value={radiusChoice}
-                  onChange={(event) => setRadiusChoice(Number(event.target.value))}
-                  disabled={savingRadius}
-                >
-                  {[...new Set([25, 50, 100, 200, profile.radiusKm ?? 500, 500])]
-                    .sort((a, b) => a - b)
-                    .map((radius) => (
-                      <option key={radius} value={radius}>
-                        {radius >= 500 ? "Celý svet" : "Do " + radius + " km"}
-                      </option>
-                    ))}
-                </select>
-                {radiusFailed && (
-                  <p role="alert" className="text-destructive">
-                    Dosah sa nepodarilo uložiť. Skús to znova.
-                  </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="submit"
-                    className="personal-action"
-                    disabled={savingRadius || radiusChoice === (profile.radiusKm ?? 500)}
-                  >
-                    {savingRadius ? "Ukladám…" : "Uložiť dosah"}
-                  </button>
-                  <button
-                    type="button"
-                    className="personal-action"
-                    disabled={savingRadius}
-                    onClick={() => setEditingRadius(false)}
-                  >
-                    Zrušiť
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <button
-                type="button"
-                className="match-card-action"
-                onClick={() => {
-                  setRadiusChoice(profile.radiusKm ?? 500);
-                  setRadiusFailed(false);
-                  setEditingRadius(true);
-                }}
-              >
-                Zmeniť dosah <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
-              </button>
-            ))}
           <button
             type="button"
             className="discover-refresh"
