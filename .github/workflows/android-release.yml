@@ -1,0 +1,167 @@
+name: Publish Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: android-release
+    env:
+      RELEASE_TAG: v1.0.0-alpha
+      UPDATE_ORIGIN: https://antidotesk.vercel.app
+      SIGNER_SHA256: 7b3f663a8110e01bfa201891b393e33ae0f6eecb309502394bec15bf65df84e2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Plan the update
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" != "$GITHUB_SHA" ]]; then
+            echo "Already superseded by another change on main."
+            exit 0
+          fi
+
+          release=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")
+          pattern='^Antidote-(?<code>[1-9][0-9]{0,9})-(?<name>[0-9]+\.[0-9]+\.[0-9]+)\.apk$'
+          assets=$(jq --arg pattern "$pattern" '[
+            .assets[] | select(.state == "uploaded") |
+            . as $asset | .name | capture($pattern) |
+            {code: (.code | tonumber), name, asset: $asset.name, label: $asset.label}
+          ]' <<< "$release")
+          latest=$(jq '[.[].code] | max // 0' <<< "$assets")
+          current=$(jq -r --arg sha "$GITHUB_SHA" '.[] | select(.label == $sha) | .asset' <<< "$assets")
+          if [[ -n "$current" ]]; then
+            if jq -e --arg sha "$GITHUB_SHA" '.assets | any(.name == "Antidote-debug.apk" and .label == $sha and .state == "uploaded")' <<< "$release" > /dev/null; then
+              echo "This commit is already published."
+              exit 0
+            fi
+            echo "existing=$current" >> "$GITHUB_OUTPUT"
+            echo "asset=$current" >> "$GITHUB_OUTPUT"
+          else
+            code=$((latest + 1))
+            (( code > 0 && code <= 1000000000 ))
+            version="1.0.$((code - 1))"
+            {
+              echo "code=$code"
+              echo "name=$version"
+              echo "asset=Antidote-$code-$version.apk"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v6
+        if: steps.version.outputs.code != ''
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        if: steps.version.outputs.code != ''
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Test and build
+        if: steps.version.outputs.code != ''
+        shell: bash
+        run: |
+          npm ci
+          npm exec -- tsc --noEmit
+          npm test -- --run
+          npm run build
+          npm exec -- cap sync android
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+          bash android/gradlew -p android assembleDebug \
+            -PantidoteVersionCode="$VERSION_CODE" -PantidoteVersionName="$VERSION_NAME"
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+
+      - name: Wait for the matching Vercel deployment
+        id: deployment
+        if: steps.version.outputs.asset != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in {1..36}; do
+            main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+            if [[ "$main" != "$GITHUB_SHA" ]]; then
+              echo "A newer change on main will publish the update."
+              exit 0
+            fi
+            live=$(curl --fail --silent --max-time 10 "$UPDATE_ORIGIN/api/app-version" | jq -r '.version' || true)
+            if [[ "$live" == "$GITHUB_SHA" ]]; then
+              echo 'ready=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Vercel did not serve this commit before the release deadline."
+          exit 1
+
+      - name: Sign and verify the APK
+        if: steps.deployment.outputs.ready == 'true' && steps.version.outputs.code != ''
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.ANDROID_SIGNING_KEYSTORE }}
+          ASSET: ${{ steps.version.outputs.asset }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+        run: |
+          : "${SIGNING_KEYSTORE:?Android signing keystore is missing}"
+          keystore=$(mktemp "$RUNNER_TEMP/antidote-signing.XXXXXX")
+          trap 'rm -f "$keystore"' EXIT
+          chmod 600 "$keystore"
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > "$keystore"
+          unset SIGNING_KEYSTORE
+
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          apk="$RUNNER_TEMP/$ASSET"
+          "$tools/apksigner" sign --ks "$keystore" --ks-key-alias androiddebugkey \
+            --ks-pass pass:android --key-pass pass:android --v4-signing-enabled false \
+            --out "$apk" android/app/build/outputs/apk/debug/app-debug.apk
+
+          certificate=$("$tools/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #[0-9]\+ certificate SHA-256 digest: //p')
+          [[ "$certificate" == "$SIGNER_SHA256" ]]
+          package=$("$tools/aapt" dump badging "$apk" | sed -n '1p')
+          [[ "$package" == "package: name='com.antidote.app' versionCode='$VERSION_CODE' versionName='$VERSION_NAME' "* ]]
+
+      - name: Publish on the existing GitHub release
+        if: steps.deployment.outputs.ready == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASSET: ${{ steps.version.outputs.asset }}
+          EXISTING: ${{ steps.version.outputs.existing }}
+        run: |
+          if [[ "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)" != "$GITHUB_SHA" ]]; then
+            echo "A newer change on main will publish the update."
+            exit 0
+          fi
+
+          apk="$RUNNER_TEMP/$ASSET"
+          if [[ -n "$EXISTING" ]]; then
+            gh release download "$RELEASE_TAG" --pattern "$EXISTING" --dir "$RUNNER_TEMP"
+          else
+            gh release upload "$RELEASE_TAG" "$apk#$GITHUB_SHA"
+          fi
+          cp "$apk" "$RUNNER_TEMP/Antidote-debug.apk"
+          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/Antidote-debug.apk#$GITHUB_SHA" --clobber
