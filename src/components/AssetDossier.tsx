@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Eye, EyeOff, Loader2, ChevronDown } from "lucide-react";
+import { ArrowLeft, Loader2, ChevronDown } from "lucide-react";
 import { SnippetRows } from "@/components/SnippetRows";
 import { UserProfile } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
@@ -8,6 +8,7 @@ import { openCamera, recordStreamForMs, stopStream, attachStreamToVideo } from "
 import { supabase } from "@/lib/supabase";
 import { updateSharedReflection } from "@/lib/conversations";
 import { ReflectionEditor } from "./ReflectionEditor";
+import { ProfileVisibilityPreview } from "./ProfileVisibilityPreview";
 
 interface AssetDossierProps {
   user: UserProfile;
@@ -23,9 +24,6 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
     profileHeader.current?.closest(".app-main-viewport")?.scrollTo({ top: 0 });
     profileHeader.current?.querySelector("h1")?.focus({ preventScroll: true });
   }, []);
-
-  // Blur Toggle state: Pre-vote (blurred to 15px) vs Unlocked (sharp)
-  const [isPreviewBlurred, setIsPreviewBlurred] = useState(true);
 
   // Snippets local list — initialized from profile data
   const [snippets, setSnippets] = useState<string[]>(user.videoUrls ?? []);
@@ -77,7 +75,9 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
   }, [cameraStream]);
 
   // Local settings states
-  const [distance, setDistance] = useState(user.radiusKm || 200);
+  const [distance, setDistance] = useState(
+    user.radiusKm && user.radiusKm < 500 ? user.radiusKm : 200,
+  );
   const [isGlobalMode, setIsGlobalMode] = useState(
     user.radiusKm === undefined || user.radiusKm >= 500,
   );
@@ -527,26 +527,16 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
           onUpdateUser(previous => previous && previous.id === user.id ? { ...previous, sharedReflection: value } : previous);
         }} />}
 
+        <ProfileVisibilityPreview key={user.id} user={user} />
+
         <section className="personal-section profile-moments" aria-labelledby="moments-title">
-          <div className="flex flex-wrap items-center justify-between gap-x-3">
-            <h2 id="moments-title" className="personal-heading">Tvoje momenty</h2>
-            <button
-              type="button"
-              aria-label="Rozmazať náhľady"
-              aria-pressed={isPreviewBlurred}
-              onClick={() => { haptic("tap"); setIsPreviewBlurred(!isPreviewBlurred); }}
-              className="personal-link personal-preview-toggle"
-            >
-              {isPreviewBlurred ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              {isPreviewBlurred ? "Rozmazané" : "Odhalené"}
-            </button>
-          </div>
+          <h2 id="moments-title" className="personal-heading">Tvoje momenty</h2>
           <p className="personal-status mb-3">Vo vašom rozhovore sa videá sprístupnia až po súhlase vás oboch.</p>
           <div className="moment-progress" aria-label={`Pridané videá: ${snippets.filter(Boolean).length} zo 4`}>
             <span className="moment-progress-label">{snippets.filter(Boolean).length} / 4 videá</span>
             <span className="moment-progress-track" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <span key={index} data-filled={!!snippets[index]} />)}</span>
           </div>
-          <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} blurred={isPreviewBlurred} />
+          <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} />
           <input type="file" ref={fileInputRef} accept="video/*" className="hidden" onChange={handleFileChange} />
         </section>
 
@@ -609,8 +599,14 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                   saveFilterChange("radiusKm", val);
                 }}
                 aria-label="Maximálna vzdialenosť"
+                aria-describedby={isGlobalMode ? undefined : "nearby-radius-info"}
                 className="my-3 h-2 w-full cursor-pointer accent-cerebral"
               />
+              {!isGlobalMode && (
+                <p id="nearby-radius-info" className="personal-status">
+                  V Spojeniach uvidíš iba ľudí v nastavenej vzdialenosti.
+                </p>
+              )}
             </div>
 
             <fieldset>

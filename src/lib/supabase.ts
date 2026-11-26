@@ -439,7 +439,7 @@ export async function fetchUserProfile(userId: string): Promise<any | null> {
     completedPressureScenarios: data.completed_pressure_scenarios || [],
     videoUrls, // Attach fetched videos
     status: data.status, // Map status column (ACTIVE | FROZEN)
-    coords: data.latitude && data.longitude ? { lat: data.latitude, lon: data.longitude } : undefined,
+    coords: data.latitude != null && data.longitude != null ? { lat: data.latitude, lon: data.longitude } : undefined,
     haptic_profile: data.haptic_profile,
     geo_density: data.geo_density,
     ui_speed: data.ui_speed,
@@ -587,6 +587,3 @@ export async function uploadVoiceMessageBlob(
 
   return dbData;
 }
-
-
-

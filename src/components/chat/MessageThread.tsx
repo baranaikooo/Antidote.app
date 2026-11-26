@@ -13,6 +13,8 @@ import {
 import { fetchChatMessages, saveChatMessage, supabase } from "@/lib/supabase";
 import { useHaptic } from "@/hooks/use-haptics";
 import { VoiceBubble } from "./VoiceBubble";
+import { markConversationRead } from "@/lib/conversation-inbox";
+import { ConversationFeedback } from "./ConversationFeedback";
 
 const GIFS = [
   "https://media.tenor.com/x8v1oNUOmg4AAAAi/heart-love.gif",
@@ -45,6 +47,7 @@ export function MessageThread({
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
   const [error, setError] = useState("");
+  const [failedSend, setFailedSend] = useState<{ text: string; gif?: string } | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [playing, setPlaying] = useState<string | null>(null);
   const [showGifs, setShowGifs] = useState(false);
@@ -56,6 +59,12 @@ export function MessageThread({
   const sendLock = useRef(false);
   const choiceLock = useRef(false);
   const request = useRef(0);
+  const lastReadId = useRef<string | null>(null);
+  const latestIncoming = conversation.messages.reduce<ChatMessage | null>(
+    (previous, message) => (message.from === "them" ? message : previous),
+    null,
+  );
+  const seenMessageId = latestIncoming?.id;
 
   // The lock only serializes saves. The server decides whether a conversation is open.
   const refresh = useCallback(async () => {
@@ -114,6 +123,38 @@ export function MessageThread({
   }, [conversation.messages.length]);
 
   useEffect(() => {
+    if (!seenMessageId) return;
+    const messageId = seenMessageId;
+    let listening = true;
+    let marking = false;
+    async function markAsSeen() {
+      if (document.visibilityState !== "visible" || marking || lastReadId.current === messageId)
+        return;
+      marking = true;
+      try {
+        await markConversationRead(conversation.id, messageId);
+        if (listening) {
+          lastReadId.current = messageId;
+          onUpdate((previous) => (previous.unread ? { ...previous, unread: false } : previous));
+        }
+      } catch {
+        // Leave it unread until a visible or online retry succeeds.
+      } finally {
+        marking = false;
+      }
+    }
+    const mark = () => void markAsSeen();
+    document.addEventListener("visibilitychange", mark);
+    window.addEventListener("online", mark);
+    mark();
+    return () => {
+      listening = false;
+      document.removeEventListener("visibilitychange", mark);
+      window.removeEventListener("online", mark);
+    };
+  }, [conversation.id, seenMessageId, onUpdate]);
+
+  useEffect(() => {
     if (!showVideos || !status?.is_unlocked) return;
     let active = true;
     setVideos(null);
@@ -156,6 +197,7 @@ export function MessageThread({
     const text = gif ? "" : input.trim();
     if ((!text && !gif) || sendLock.current || status?.status !== "active") return;
     sendLock.current = true;
+    setFailedSend(null);
     setSending(true);
     setError("");
     const key = gif ?? text;
@@ -190,7 +232,8 @@ export function MessageThread({
       draft.current = null;
       haptic("send");
     } catch {
-      setError("Správu sa nepodarilo odoslať. Skús to znova.");
+      setFailedSend({ text, gif });
+      setError("Správu sa nepodarilo odoslať.");
       void refresh();
     } finally {
       sendLock.current = false;
@@ -200,6 +243,9 @@ export function MessageThread({
 
   const isOpen = status?.status === "active";
   const hasMessages = conversation.messages.length > 0;
+  const showPilotQuestion =
+    isOpen && latestIncoming && conversation.messages.some((message) => message.from === "me");
+  const canRetrySend = failedSend && (failedSend.gif || failedSend.text === input.trim());
   return (
     <section className="conversation-screen" aria-label="Rozhovor">
       <header className="conversation-header flex shrink-0 items-center gap-3 px-3 py-3">
@@ -347,15 +393,28 @@ export function MessageThread({
             </div>
           ),
         )}
+        {showPilotQuestion && <ConversationFeedback matchId={conversation.id} userId={userId} />}
         <div ref={listEnd} />
       </div>
 
       {isOpen && (
         <div className="conversation-composer shrink-0">
           {error && (
-            <p role="alert" className="px-3 pt-2 text-sm text-destructive">
-              {error}
-            </p>
+            <div className="flex flex-wrap items-center gap-2 px-3 pt-2">
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+              {canRetrySend && (
+                <button
+                  type="button"
+                  disabled={sending}
+                  onClick={() => void send(failedSend.gif)}
+                  className="personal-action"
+                >
+                  Skúsiť znova
+                </button>
+              )}
+            </div>
           )}
           {showGifs && (
             <div className="flex flex-wrap gap-2 px-3 pt-2">

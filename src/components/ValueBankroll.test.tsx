@@ -1,11 +1,20 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ValueBankroll } from "./ValueBankroll";
 
 const haptic = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/use-haptics", () => ({ useHaptic: () => haptic }));
+
+beforeEach(() => {
+  const values = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key),
+  });
+});
 
 afterEach(() => {
   cleanup();
@@ -73,5 +82,70 @@ describe("ValueBankroll", () => {
     } finally {
       Reflect.deleteProperty(HTMLElement.prototype, "animate");
     }
+  });
+
+  it("restores a partial allocation and its review for the same account", () => {
+    const onDone = vi.fn();
+    const props = { userId: "first-account", onDone };
+    const firstVisit = render(<ValueBankroll {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Pridať žetón: Rodina" }));
+    firstVisit.unmount();
+
+    const secondVisit = render(<ValueBankroll {...props} />);
+    expect(screen.getByRole("status")).toHaveTextContent("9 z 10");
+    for (let i = 0; i < 4; i++) {
+      fireEvent.click(screen.getByRole("button", { name: "Pridať žetón: Rodina" }));
+    }
+    for (let i = 0; i < 5; i++) {
+      fireEvent.click(screen.getByRole("button", { name: "Pridať žetón: Kariéra" }));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Pokračovať" }));
+    secondVisit.unmount();
+
+    const thirdVisit = render(<ValueBankroll {...props} />);
+    expect(screen.getByRole("heading", { name: "Tvoje priority" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Pokračovať na ďalšiu otázku" }));
+    expect(onDone).toHaveBeenCalledExactlyOnceWith(70 / 220, {
+      rodina: 50,
+      kariera: 50,
+      stabilita: 0,
+      kreativita: 0,
+      sloboda: 0,
+    });
+    thirdVisit.unmount();
+    render(<ValueBankroll {...props} />);
+    expect(screen.getByRole("status")).toHaveTextContent("10 z 10");
+  });
+
+  it("keeps account drafts isolated and resets a partial draft across visits", () => {
+    const onDone = vi.fn();
+    const firstVisit = render(<ValueBankroll userId="first-account" onDone={onDone} />);
+    fireEvent.click(screen.getByRole("button", { name: "Pridať žetón: Rodina" }));
+
+    firstVisit.rerender(<ValueBankroll userId="second-account" onDone={onDone} />);
+    expect(screen.getByRole("status")).toHaveTextContent("10 z 10");
+    firstVisit.rerender(<ValueBankroll userId={null} onDone={onDone} />);
+    expect(screen.getByRole("status")).toHaveTextContent("10 z 10");
+    firstVisit.rerender(<ValueBankroll userId="first-account" onDone={onDone} />);
+    expect(screen.getByRole("status")).toHaveTextContent("9 z 10");
+
+    fireEvent.click(screen.getByRole("button", { name: "Začať odznova" }));
+    expect(screen.getByRole("heading", { name: "Na čom ti záleží?" })).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("10 z 10");
+    firstVisit.unmount();
+    render(<ValueBankroll userId="first-account" onDone={onDone} />);
+    expect(screen.getByRole("status")).toHaveTextContent("10 z 10");
+  });
+
+  it("recovers from an invalid saved token total", () => {
+    localStorage.setItem(
+      "reson:priority-draft:first-account",
+      JSON.stringify({
+        reviewing: true,
+        tokens: { rodina: 5, kariera: 5, stabilita: 1, kreativita: 0, sloboda: 0 },
+      }),
+    );
+    render(<ValueBankroll userId="first-account" onDone={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent("10 z 10");
   });
 });

@@ -27,23 +27,9 @@ export type ConversationPartner = {
   shared_reflection: string | null;
 };
 
-export async function fetchConversationPartnerIds(userId: string) {
-  const { data, error } = await supabase
-    .from("matches")
-    .select("id, user_p, user_q, status, created_at, messages(id)")
-    .or("user_p.eq." + userId + ",user_q.eq." + userId)
-    .limit(1, { referencedTable: "messages" })
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return data ?? [];
-}
-
 export async function fetchConversationPartners(ids: string[]): Promise<ConversationPartner[]> {
   if (!ids.length) return [];
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, name, age, city, top_priority, shared_reflection")
-    .in("id", ids);
+  const { data, error } = await supabase.rpc("get_conversation_partners", { partner_ids: ids });
   if (error) throw error;
   return data ?? [];
 }
