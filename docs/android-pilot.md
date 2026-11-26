@@ -19,3 +19,17 @@ select * from public.conversation_pilot_metrics;
 ```
 
 Podiel obojstranných výmen počítaj zo všetkých začatých rozhovorov. Podiel odpovedí „áno“ uvádzaj spolu s počtom ľudí, ktorí sa rozhodli odpovedať. Údaje z testovacích účtov oddeľ od výsledkov pilotu.
+
+## Porovnanie odporúčaní
+
+Po súhlase pridaj účastníkov cez Supabase SQL Editor. Pri registrácii sa každému účtu náhodne pridelí existujúce poradie alebo jednoduché poradie podľa spoločnej najvyššej priority a vzdialenosti. Obe skupiny používajú rovnaké filtre vhodnosti. Porovnanie trvá 14 dní od zaradenia. Opakovaný zápis skupinu nezmení.
+
+```sql
+insert into profile_private.matching_pilot_assignments (user_id)
+values ('00000000-0000-0000-0000-000000000000'::uuid) -- Nahraď ID účastníka.
+on conflict (user_id) do nothing;
+
+select * from profile_private.matching_pilot_metrics order by variant;
+```
+
+Na odvolanie súhlasu odstráň zápis účastníka z `profile_private.matching_pilot_assignments`. Výsledky zahŕňajú iba dokončené 14-dňové obdobia a nové rozhovory priraďujú skupine odosielateľa prvej správy. Porovnaj počet obojstranných rozhovorov na účastníka, podiel obojstranných zo začatých rozhovorov a podiel odpovedí „áno“ z dobrovoľných odpovedí. Pri každom ukazovateli uveď menovateľ.
