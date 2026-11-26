@@ -20,15 +20,15 @@ export function EncryptedText({
   const [revealedLength, setRevealedLength] = useState(0);
   const [scrambledText, setScrambledText] = useState("");
 
-  const uiSpeed = typeof window !== "undefined" ? window.localStorage.getItem("reson_ui_speed") || "TYPEWRITER_ANIMATED" : "TYPEWRITER_ANIMATED";
+  const uiSpeed =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("reson_ui_speed") || "TYPEWRITER_ANIMATED"
+      : "TYPEWRITER_ANIMATED";
   const isInstant = uiSpeed === "INSTANT_RAW";
-
-  if (isInstant) {
-    return <span className={revealedClassName}>{text}</span>;
-  }
 
   // Reveal characters one-by-one
   useEffect(() => {
+    if (isInstant) return;
     setRevealedLength(0);
     const interval = setInterval(() => {
       setRevealedLength((prev) => {
@@ -41,10 +41,11 @@ export function EncryptedText({
     }, revealDelayMs);
 
     return () => clearInterval(interval);
-  }, [text, revealDelayMs]);
+  }, [isInstant, text, revealDelayMs]);
 
   // Scramble the unrevealed characters periodically
   useEffect(() => {
+    if (isInstant) return;
     if (revealedLength >= text.length) {
       setScrambledText(text);
       return;
@@ -66,16 +67,16 @@ export function EncryptedText({
     }, scrambleIntervalMs);
 
     return () => clearInterval(interval);
-  }, [text, revealedLength, scrambleIntervalMs]);
+  }, [isInstant, text, revealedLength, scrambleIntervalMs]);
+
+  if (isInstant) {
+    return <span className={revealedClassName}>{text}</span>;
+  }
 
   return (
     <span className="font-mono">
-      <span className={revealedClassName}>
-        {scrambledText.substring(0, revealedLength)}
-      </span>
-      <span className={encryptedClassName}>
-        {scrambledText.substring(revealedLength)}
-      </span>
+      <span className={revealedClassName}>{scrambledText.substring(0, revealedLength)}</span>
+      <span className={encryptedClassName}>{scrambledText.substring(revealedLength)}</span>
     </span>
   );
 }

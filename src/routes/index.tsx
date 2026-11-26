@@ -395,6 +395,17 @@ function clearOnboardingStorage(preserveActiveScreen = false) {
   );
 }
 
+function readOnboardingDraft<T extends object>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = localStorage.getItem(key);
+    const value = saved ? JSON.parse(saved) : null;
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 function AntidoteApp() {
   const [screen, setScreen] = useState<Screen>("landing");
   const onboardingStage = getOnboardingStage(screen);
@@ -409,22 +420,25 @@ function AntidoteApp() {
 
   const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
 
-  const [answers, setAnswers] = useState<Answers>(() => {
-    if (typeof window === "undefined") return {};
-    const saved = localStorage.getItem("reson:onboarding_answers");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [answers, setAnswers] = useState<Answers>(
+    () => readOnboardingDraft<Answers>("reson:onboarding_answers") ?? {},
+  );
 
   const [livenessVideoUrl, setLivenessVideoUrl] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("reson:onboarding_livenessVideoUrl");
   });
 
-  const [profile, setProfile] = useState<UserProfile | null>(() => {
-    if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("reson:onboarding_profile_draft");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [profile, setProfile] = useState<UserProfile | null>(() =>
+    readOnboardingDraft<UserProfile>("reson:onboarding_profile_draft"),
+  );
+  const profileRef = useRef(profile);
+  const profileId = profile?.id;
+  const geoDensity = profile?.geo_density;
+  const hasProfile = profile !== null;
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
@@ -594,8 +608,9 @@ function AntidoteApp() {
           }
           clearOnboardingStorage(true);
         } else {
-          const draftOwner = localStorage.getItem("reson:onboarding_user_id") ?? profile?.id;
-          const hasLocalProfile = draftOwner === user.id && profile?.id === user.id;
+          const localProfileId = profileRef.current?.id;
+          const draftOwner = localStorage.getItem("reson:onboarding_user_id") ?? localProfileId;
+          const hasLocalProfile = draftOwner === user.id && localProfileId === user.id;
           const draftStage = getOnboardingStage(savedScreen);
           const canResume =
             draftOwner === user.id &&
@@ -634,6 +649,7 @@ function AntidoteApp() {
 
       // Profile requests must run after Supabase releases its auth lock.
       window.setTimeout(() => {
+        if (stopped) return;
         const user = session?.user;
         const userId = user?.id ?? null;
         if (stopped || userId === activeUserId) return;
@@ -669,7 +685,7 @@ function AntidoteApp() {
       stopped = true;
       subscription.unsubscribe();
     };
-  }, [haptic, profileLoadAttempt]);
+  }, [haptic, profileLoadAttempt, setTheme]);
 
   // Synchronize theme changes to Supabase user metadata when selected by user
   useEffect(() => {
@@ -692,13 +708,15 @@ function AntidoteApp() {
 
   // Real-time Geolocation watchPosition Stream
   useEffect(() => {
-    if (!profile || !authUserId || authUserId === "00000000-0000-0000-0000-000000000001") return;
+    if (!hasProfile || !authUserId || authUserId === "00000000-0000-0000-0000-000000000001") return;
     if (typeof window === "undefined" || !("geolocation" in navigator)) return;
 
-    let lastSavedCoords: { lat: number; lon: number } | null = profile.coords ?? null;
+    let lastSavedCoords = profileRef.current?.coords ?? null;
+    let active = true;
 
     const watchId = navigator.geolocation.watchPosition(
       async (pos) => {
+        if (!active) return;
         const { latitude, longitude } = pos.coords;
         const currentCoords = { lat: latitude, lon: longitude };
 
@@ -708,7 +726,7 @@ function AntidoteApp() {
           shouldUpdate = true;
         } else {
           const distanceDiff = haversineKm(lastSavedCoords, currentCoords);
-          const density = profile.geo_density || "BALANCED_2KM";
+          const density = geoDensity || "BALANCED_2KM";
           let thresholdKm = 2.0; // default 2km
           if (density === "ECO_5KM") thresholdKm = 5.0;
           else if (density === "HIGH_FREQ_500M") thresholdKm = 0.5;
@@ -752,9 +770,10 @@ function AntidoteApp() {
     );
 
     return () => {
+      active = false;
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [authUserId, profile?.id, profile?.geo_density]);
+  }, [authUserId, geoDensity, hasProfile, profileId]);
 
   // Real-time Supabase Profile Channel Subscription
   useEffect(() => {
@@ -1417,7 +1436,7 @@ function AntidoteApp() {
                         }
                         const uploadRes = await uploadSnippetVideo(targetUserId, idx + 1, blob);
                         return { slot: idx + 1, url: uploadRes.url, error: uploadRes.error };
-                      } catch (fetchErr: any) {
+                      } catch (fetchErr) {
                         console.error(
                           `[Onboarding] Failed to upload snippet ${idx + 1}:`,
                           fetchErr,
@@ -1425,7 +1444,7 @@ function AntidoteApp() {
                         return {
                           slot: idx + 1,
                           url: null,
-                          error: fetchErr.message || String(fetchErr),
+                          error: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
                         };
                       }
                     });
@@ -1852,6 +1871,13 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
+type FaceModel = {
+  estimateFaces(
+    video: HTMLVideoElement,
+    returnTensors: false,
+  ): Promise<{ landmarks: [number, number][] }[]>;
+};
+
 function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
   const haptic = useHaptic();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1868,7 +1894,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
   const [countdown, setCountdown] = useState(3);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [errMsg, setErrMsg] = useState("");
-  const [faceModel, setFaceModel] = useState<any>(null);
+  const [faceModel, setFaceModel] = useState<FaceModel | null>(null);
   const [modelLoading, setModelLoading] = useState(true);
   const [challengeStep, setChallengeStep] = useState<
     "center" | "turn_right" | "turn_left" | "done" | "idle"
@@ -1889,8 +1915,10 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
           "https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js",
         );
 
-        // @ts-ignore
-        const model = await window.blazeface.load();
+        const blazeFace = (window as Window & { blazeface?: { load(): Promise<FaceModel> } })
+          .blazeface;
+        if (!blazeFace) throw new Error("BlazeFace SDK was not loaded.");
+        const model = await blazeFace.load();
         if (active) {
           setFaceModel(model);
           setModelLoading(false);
@@ -1975,6 +2003,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
           if (faceModel) {
             try {
               const predictions = await faceModel.estimateFaces(videoRef.current, false);
+              if (!scanning) return;
               if (predictions.length === 1) {
                 const landmarks = predictions[0].landmarks;
                 const rightEar = landmarks[4];
@@ -2826,7 +2855,15 @@ function ProfileForm({
     "SYSTEM_IDENTIFICATION" | "TEMPORAL_MATRIX" | "AGE_VERIFICATION" | "MARKET_ALIGNMENT"
   >(() => {
     if (typeof window === "undefined") return "SYSTEM_IDENTIFICATION";
-    return (localStorage.getItem("reson:profile_step") as any) || "SYSTEM_IDENTIFICATION";
+    const saved = localStorage.getItem("reson:profile_step");
+    if (
+      saved === "TEMPORAL_MATRIX" ||
+      saved === "AGE_VERIFICATION" ||
+      saved === "MARKET_ALIGNMENT"
+    ) {
+      return saved;
+    }
+    return "SYSTEM_IDENTIFICATION";
   });
 
   const [name, setName] = useState(() => {
@@ -2844,11 +2881,13 @@ function ProfileForm({
   });
   const [gender, setGender] = useState<Gender | "">(() => {
     if (typeof window === "undefined") return "";
-    return (localStorage.getItem("reson:profile_gender") as Gender) || "";
+    const saved = localStorage.getItem("reson:profile_gender");
+    return saved === "male" || saved === "female" || saved === "other" ? saved : "";
   });
   const [targetMarket, setTargetMarket] = useState<"male" | "female" | "all" | "">(() => {
     if (typeof window === "undefined") return "";
-    return (localStorage.getItem("reson:profile_targetMarket") as any) || "";
+    const saved = localStorage.getItem("reson:profile_targetMarket");
+    return saved === "male" || saved === "female" || saved === "all" ? saved : "";
   });
 
   // Sync to localStorage
