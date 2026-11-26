@@ -573,16 +573,16 @@ html.dark {
   padding-top: max(clamp(0.75rem, 3dvh, 2rem), env(safe-area-inset-top));
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
+.landing-intro { display: grid; gap: 0.625rem; }
+.landing-intro p { color: var(--app-ice); font-size: 0.9375rem; line-height: 1.4; }
 .landing-brand { display: flex; }
 .landing-brand svg circle { fill: var(--app-ice); }
 .discover-topline > div svg circle { fill: var(--accent); }
 .landing-main { display: grid; gap: 0.75rem; }
 .landing-hero {
   display: flex;
-  min-height: clamp(12rem, 33dvh, 19rem);
   flex-direction: column;
-  justify-content: space-between;
-  gap: 2rem;
+  gap: clamp(1.25rem, 4dvh, 2.5rem);
   padding: clamp(1rem, 5vw, 2rem);
 }
 .landing-art {
@@ -659,7 +659,7 @@ html.dark {
   padding-top: 0.875rem;
   border-top: 1px solid color-mix(in srgb, var(--app-ice) 36%, transparent);
 }
-.landing-result-title { font-size: 1.25rem; font-weight: 730; line-height: 1.2; }
+.landing-result > p { color: var(--app-ice); font-size: 0.9375rem; line-height: 1.4; }
 .landing-sign-in { margin-top: 0.75rem; }
 
 @media (hover: hover) and (pointer: fine) {
@@ -672,18 +672,13 @@ html.dark {
 }
 @media (min-width: 760px), (orientation: landscape) and (max-height: 500px) and (min-width: 560px) {
   .landing-main { grid-template-columns: 1.3fr 1fr; align-items: center; gap: clamp(0.875rem, 3vw, 2.75rem); }
-  .landing-hero { min-height: clamp(20rem, 65dvh, 37rem); }
   .landing-title { font-size: clamp(2rem, 5vw, 4.5rem); }
-}
-@media (min-width: 760px) and (min-height: 641px) {
-  .landing-hero { justify-content: flex-start; }
-  .landing-title { margin-block: auto; }
 }
 @media (max-width: 759px) {
   .landing-hero { padding-inline: 0; }
 }
 @media (max-height: 640px) {
-  .landing-hero { min-height: clamp(10.75rem, 34dvh, 14rem); gap: 1.25rem; }
+  .landing-hero { gap: 1.25rem; }
   .landing-title { font-size: clamp(1.75rem, 6vw, 2.5rem); }
   .landing-result { margin-top: 0.625rem; padding-top: 0.625rem; }
   .landing-sign-in { margin-top: 0.5rem; }
@@ -694,6 +689,21 @@ html.dark {
   .landing-option-icon { width: 2rem; }
   .landing-sign-in { margin-top: 0.5rem; }
 }
+
+.question-progress {
+  display: block;
+  width: 100%;
+  height: 0.25rem;
+  margin-top: 0.625rem;
+  appearance: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: 1rem;
+  background: var(--muted);
+}
+.question-progress::-webkit-progress-bar { background: var(--muted); }
+.question-progress::-webkit-progress-value { background: var(--accent); }
+.question-progress::-moz-progress-bar { background: var(--accent); }
 
 .app-onboarding {
   background: var(--background);
@@ -1070,32 +1080,24 @@ html.dark {
   background: var(--card);
 }
 .match-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 6.5rem;
+  display: grid;
+  align-content: end;
+  gap: 0.5rem;
+  min-height: 8rem;
   min-width: 0;
   padding: 1rem;
   border-radius: 0.75rem;
-  background: var(--app-tint);
+  background: linear-gradient(156deg, var(--app-tint) 62%, var(--card) 62%);
 }
-.match-card-header > div:first-child { min-width: 0; }
-.match-card-name { font-family: var(--font-display); font-size: clamp(2rem, 9vw, 3rem); font-weight: 750; line-height: 1; letter-spacing: -0.04em; overflow-wrap: anywhere; }
-.match-card-name span { margin-inline-start: 0.5rem; color: var(--muted-foreground); font-size: 1.125rem; letter-spacing: 0; }
-.match-card-location { margin-top: 0.45rem; color: var(--muted-foreground); overflow-wrap: anywhere; }
-.match-card-video {
-  display: grid;
-  width: 3.5rem;
-  height: 3.5rem;
-  flex: none;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 50%;
-  background: var(--app-tint);
-  color: var(--accent);
-  font: 650 1.5rem/1 var(--font-display);
+.match-card-name {
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 10vw, 3.5rem);
+  font-weight: 750;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
 }
+.match-card-location { color: var(--muted-foreground); overflow-wrap: anywhere; }
 .match-card-details { border-radius: 0.625rem; background: var(--app-tint); color: var(--foreground); }
 .match-card-details summary {
   display: flex;
@@ -1115,8 +1117,6 @@ html.dark {
 .match-card-facts { display: grid; gap: 0.55rem; padding: 0 0.75rem 0.75rem; font-size: 0.9375rem; overflow-wrap: anywhere; }
 .match-score { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.25rem 0.75rem; }
 .match-score strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
-.match-shared-priority { display: grid; gap: 0.25rem; padding: 0.25rem 0.125rem; }
-.match-shared-priority strong { color: var(--accent); }
 .match-card-bio { color: var(--muted-foreground); }
 .match-card-action {
   display: flex;

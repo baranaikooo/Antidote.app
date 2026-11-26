@@ -94,7 +94,11 @@ import { SemanticMirror } from "@/components/SemanticMirror";
 import { PRIORITY_CATEGORIES, ValueBankroll } from "@/components/ValueBankroll";
 import { ReflectionEditor } from "@/components/ReflectionEditor";
 import { fetchConversationPartners, type ConversationPartner } from "@/lib/conversations";
-import { fetchConversationInbox, inboxMessageLabel, type InboxConversation } from "@/lib/conversation-inbox";
+import {
+  fetchConversationInbox,
+  inboxMessageLabel,
+  type InboxConversation,
+} from "@/lib/conversation-inbox";
 import { IcebreakerDilemma } from "@/components/IcebreakerDilemma";
 import { BlindVote } from "@/components/BlindVote";
 import { VoiceBubble, VoiceMsg } from "@/components/chat/VoiceBubble";
@@ -111,6 +115,7 @@ import { AssetDossier } from "@/components/AssetDossier";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
+import { MatchCardIdentity } from "@/components/MatchCardIdentity";
 import { AndroidUpdateProvider, UpdateNotice } from "@/components/UpdateNotice";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -159,8 +164,7 @@ function Wave({ size = 280, intense = false }: { size?: number; intense?: boolea
         style={{
           width: size * 0.32,
           height: size * 0.32,
-          background:
-            "radial-gradient(circle, var(--cerebral-glow), transparent 70%)",
+          background: "radial-gradient(circle, var(--cerebral-glow), transparent 70%)",
         }}
       />
       <span
@@ -188,30 +192,48 @@ function Shell({
 }) {
   const onboardingStage = onboardingScreen ? getOnboardingStage(onboardingScreen) : -1;
   const onboarding = onboardingStage >= 0;
+  const onboardingStep = onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen];
   return (
-    <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}>
-      {landing && <img className="landing-art" src="/antidote-fold.jpg" alt="" width={1536} height={1024} fetchPriority="high" />}
+    <div
+      className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
+    >
+      {landing && (
+        <img
+          className="landing-art"
+          src="/antidote-fold.jpg"
+          alt=""
+          width={1536}
+          height={1024}
+          fetchPriority="high"
+        />
+      )}
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
-      <div className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}>
+      <div
+        className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}
+      >
         {onboarding && (
           <header className="onboarding-header">
             <AntidoteLogo markClassName="h-6" />
-            <ol className="onboarding-progress" aria-label="Postup registrácie">
-              {ONBOARDING_STAGES.map(({ label }, index) => (
-                <li
-                  key={label}
-                  aria-current={index === onboardingStage ? "step" : undefined}
-                  data-reached={index <= onboardingStage}
-                >
-                  {label}
-                </li>
-              ))}
-            </ol>
-            <p className="onboarding-step" aria-live="polite">
-              {resumedOnboarding && <span>Pokračuješ tam, kde si skončil/a</span>}
-              {onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen]}
-            </p>
+            {onboardingScreen !== "mirror" && (
+              <ol className="onboarding-progress" aria-label="Postup registrácie">
+                {ONBOARDING_STAGES.map(({ label }, index) => (
+                  <li
+                    key={label}
+                    aria-current={index === onboardingStage ? "step" : undefined}
+                    data-reached={index <= onboardingStage}
+                  >
+                    {label}
+                  </li>
+                ))}
+              </ol>
+            )}
+            {(resumedOnboarding || onboardingStep) && (
+              <p className="onboarding-step" aria-live="polite">
+                {resumedOnboarding && <span>Pokračuješ tam, kde si skončil/a</span>}
+                {onboardingStep}
+              </p>
+            )}
           </header>
         )}
         {children}
@@ -226,9 +248,7 @@ function AppSplash() {
       <div className="size-16 rounded-full border border-foreground/10 bg-foreground/[0.02] flex items-center justify-center animate-pulse">
         <span className="size-4 rounded-full bg-foreground/40 animate-ping" />
       </div>
-      <p className="mt-6 text-sm font-medium text-muted-foreground">
-        Načítavam Antidote…
-      </p>
+      <p className="mt-6 text-sm font-medium text-muted-foreground">Načítavam Antidote…</p>
     </div>
   );
 }
@@ -293,7 +313,6 @@ const ONBOARDING_STEP_LABELS: Partial<Record<Screen, string>> = {
   profile: "Základné údaje",
   "snippets-onboarding": "Krátke video do profilu",
   briefing: "Úvod do dotazníka",
-  mirror: "Prvá otázka",
   bankroll: "Čo je pre teba dôležité",
   pressure: "Vlastné hodnoty",
   processing: "Výsledok dotazníka",
@@ -304,7 +323,9 @@ function getOnboardingStage(screen: Screen) {
 }
 
 type ThemeMode = "system" | "dark" | "light";
-const AppChrome = registerPlugin<{ setTheme(options: { dark: boolean }): Promise<void> }>("AppChrome");
+const AppChrome = registerPlugin<{ setTheme(options: { dark: boolean }): Promise<void> }>(
+  "AppChrome",
+);
 
 function useTheme(darkChrome: boolean): [ThemeMode, (m: ThemeMode) => void] {
   const [mode, setMode] = useState<ThemeMode>(() => {
@@ -374,6 +395,17 @@ function clearOnboardingStorage(preserveActiveScreen = false) {
   );
 }
 
+function readOnboardingDraft<T extends object>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = localStorage.getItem(key);
+    const value = saved ? JSON.parse(saved) : null;
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 function AntidoteApp() {
   const [screen, setScreen] = useState<Screen>("landing");
   const onboardingStage = getOnboardingStage(screen);
@@ -388,22 +420,25 @@ function AntidoteApp() {
 
   const [googleProfile, setGoogleProfile] = useState<GoogleProfile | null>(null);
 
-  const [answers, setAnswers] = useState<Answers>(() => {
-    if (typeof window === "undefined") return {};
-    const saved = localStorage.getItem("reson:onboarding_answers");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [answers, setAnswers] = useState<Answers>(
+    () => readOnboardingDraft<Answers>("reson:onboarding_answers") ?? {},
+  );
 
   const [livenessVideoUrl, setLivenessVideoUrl] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("reson:onboarding_livenessVideoUrl");
   });
 
-  const [profile, setProfile] = useState<UserProfile | null>(() => {
-    if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("reson:onboarding_profile_draft");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [profile, setProfile] = useState<UserProfile | null>(() =>
+    readOnboardingDraft<UserProfile>("reson:onboarding_profile_draft"),
+  );
+  const profileRef = useRef(profile);
+  const profileId = profile?.id;
+  const geoDensity = profile?.geo_density;
+  const hasProfile = profile !== null;
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
@@ -573,11 +608,17 @@ function AntidoteApp() {
           }
           clearOnboardingStorage(true);
         } else {
-          const draftOwner = localStorage.getItem("reson:onboarding_user_id") ?? profile?.id;
-          const hasLocalProfile = draftOwner === user.id && profile?.id === user.id;
+          const localProfileId = profileRef.current?.id;
+          const draftOwner = localStorage.getItem("reson:onboarding_user_id") ?? localProfileId;
+          const hasLocalProfile = draftOwner === user.id && localProfileId === user.id;
           const draftStage = getOnboardingStage(savedScreen);
-          const canResume = draftOwner === user.id && draftStage >= 0 &&
-            (existingProfile || hasLocalProfile || savedScreen === "liveness" || savedScreen === "profile");
+          const canResume =
+            draftOwner === user.id &&
+            draftStage >= 0 &&
+            (existingProfile ||
+              hasLocalProfile ||
+              savedScreen === "liveness" ||
+              savedScreen === "profile");
 
           if (existingProfile) setProfile(existingProfile);
           else if (!hasLocalProfile) setProfile(null);
@@ -586,7 +627,9 @@ function AntidoteApp() {
             setResumedOnboarding(savedScreen);
             setScreen(savedScreen);
           } else if (existingProfile) {
-            setScreen(existingProfile.videoUrls?.some(Boolean) ? "briefing" : "snippets-onboarding");
+            setScreen(
+              existingProfile.videoUrls?.some(Boolean) ? "briefing" : "snippets-onboarding",
+            );
           } else {
             setScreen("liveness");
           }
@@ -606,6 +649,7 @@ function AntidoteApp() {
 
       // Profile requests must run after Supabase releases its auth lock.
       window.setTimeout(() => {
+        if (stopped) return;
         const user = session?.user;
         const userId = user?.id ?? null;
         if (stopped || userId === activeUserId) return;
@@ -641,7 +685,7 @@ function AntidoteApp() {
       stopped = true;
       subscription.unsubscribe();
     };
-  }, [haptic, profileLoadAttempt]);
+  }, [haptic, profileLoadAttempt, setTheme]);
 
   // Synchronize theme changes to Supabase user metadata when selected by user
   useEffect(() => {
@@ -664,13 +708,15 @@ function AntidoteApp() {
 
   // Real-time Geolocation watchPosition Stream
   useEffect(() => {
-    if (!profile || !authUserId || authUserId === "00000000-0000-0000-0000-000000000001") return;
+    if (!hasProfile || !authUserId || authUserId === "00000000-0000-0000-0000-000000000001") return;
     if (typeof window === "undefined" || !("geolocation" in navigator)) return;
 
-    let lastSavedCoords: { lat: number; lon: number } | null = profile.coords ?? null;
+    let lastSavedCoords = profileRef.current?.coords ?? null;
+    let active = true;
 
     const watchId = navigator.geolocation.watchPosition(
       async (pos) => {
+        if (!active) return;
         const { latitude, longitude } = pos.coords;
         const currentCoords = { lat: latitude, lon: longitude };
 
@@ -680,7 +726,7 @@ function AntidoteApp() {
           shouldUpdate = true;
         } else {
           const distanceDiff = haversineKm(lastSavedCoords, currentCoords);
-          const density = profile.geo_density || "BALANCED_2KM";
+          const density = geoDensity || "BALANCED_2KM";
           let thresholdKm = 2.0; // default 2km
           if (density === "ECO_5KM") thresholdKm = 5.0;
           else if (density === "HIGH_FREQ_500M") thresholdKm = 0.5;
@@ -724,9 +770,10 @@ function AntidoteApp() {
     );
 
     return () => {
+      active = false;
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [authUserId, profile?.id, profile?.geo_density]);
+  }, [authUserId, geoDensity, hasProfile, profileId]);
 
   // Real-time Supabase Profile Channel Subscription
   useEffect(() => {
@@ -863,7 +910,9 @@ function AntidoteApp() {
     }
 
     void fetchLiveMarket();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [profile, marketRevision]);
 
   async function updateSearchRadius(radius: number) {
@@ -874,12 +923,18 @@ function AntidoteApp() {
     }
     setIsLoadingMarket(true);
     setLiveCandidates([]);
-    setProfile(current => current && current.id === id ? { ...current, radiusKm: radius } : current);
-    setMarketRevision(revision => revision + 1);
+    setProfile((current) =>
+      current && current.id === id ? { ...current, radiusKm: radius } : current,
+    );
+    setMarketRevision((revision) => revision + 1);
   }
 
-  const isInboxActive = Boolean(profile?.topPriority) &&
-    (screen === "messages" || screen === "noOne" || screen === "settings" || screen === "profile-dossier");
+  const isInboxActive =
+    Boolean(profile?.topPriority) &&
+    (screen === "messages" ||
+      screen === "noOne" ||
+      screen === "settings" ||
+      screen === "profile-dossier");
 
   useEffect(() => {
     if (!authUserId || !isInboxActive) return;
@@ -892,14 +947,17 @@ function AntidoteApp() {
       const current = ++request;
       try {
         const inbox = await fetchConversationInbox(account);
-        const partners = await fetchConversationPartners(inbox.conversations.map(conversation => conversation.matchId));
+        const partners = await fetchConversationPartners(
+          inbox.conversations.map((conversation) => conversation.matchId),
+        );
         if (!active || current !== request || openingRef.current) return;
         setExcluded(inbox.excluded);
         setConversationPartners(partners);
-        setConversations(previous => {
-          const byId = new Map(previous.map(conversation => [conversation.id, conversation]));
-          return inbox.conversations.map(conversation => ({
-            ...conversation, messages: byId.get(conversation.id)?.messages ?? [],
+        setConversations((previous) => {
+          const byId = new Map(previous.map((conversation) => [conversation.id, conversation]));
+          return inbox.conversations.map((conversation) => ({
+            ...conversation,
+            messages: byId.get(conversation.id)?.messages ?? [],
           }));
         });
         setInboxFailed(false);
@@ -915,18 +973,52 @@ function AntidoteApp() {
       debounce = setTimeout(() => void loadInbox(), 100);
     }
 
-    const visible = () => { if (document.visibilityState === "visible") queueRefresh(); };
-    const channel = supabase.channel("inbox:" + account)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
-        queueRefresh();
-        if (payload.new.sender_id && payload.new.sender_id !== account && document.visibilityState === "visible" && shouldShowMessageAlert(account)) {
-          toast("Prišla nová správa", { id: "new-message", action: { label: "Správy", onClick: () => setScreen("messages") } });
-        }
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: "user_p=eq." + account }, queueRefresh)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: "user_q=eq." + account }, queueRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_reads", filter: "reader_id=eq." + account }, queueRefresh)
-      .subscribe(state => { if (state === "SUBSCRIBED") queueRefresh(); });
+    const visible = () => {
+      if (document.visibilityState === "visible") queueRefresh();
+    };
+    const channel = supabase
+      .channel("inbox:" + account)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          queueRefresh();
+          if (
+            payload.new.sender_id &&
+            payload.new.sender_id !== account &&
+            document.visibilityState === "visible" &&
+            shouldShowMessageAlert(account)
+          ) {
+            toast("Prišla nová správa", {
+              id: "new-message",
+              action: { label: "Správy", onClick: () => setScreen("messages") },
+            });
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "matches", filter: "user_p=eq." + account },
+        queueRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "matches", filter: "user_q=eq." + account },
+        queueRefresh,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversation_reads",
+          filter: "reader_id=eq." + account,
+        },
+        queueRefresh,
+      )
+      .subscribe((state) => {
+        if (state === "SUBSCRIBED") queueRefresh();
+      });
     document.addEventListener("visibilitychange", visible);
     window.addEventListener("online", visible);
     void loadInbox();
@@ -941,12 +1033,15 @@ function AntidoteApp() {
 
   const rankedMatches = useMemo(() => {
     if (!profile) return [];
-    const currentPartners = new Set(conversations.map(conversation => conversation.matchId));
-    return liveCandidates.slice(0, 3)
-      .filter(match => !excluded.has(match.id) && !currentPartners.has(match.id));
+    const currentPartners = new Set(conversations.map((conversation) => conversation.matchId));
+    return liveCandidates
+      .slice(0, 3)
+      .filter((match) => !excluded.has(match.id) && !currentPartners.has(match.id));
   }, [profile, liveCandidates, excluded, conversations]);
 
-  function goToNextMatch() { setScreen("noOne"); }
+  function goToNextMatch() {
+    setScreen("noOne");
+  }
 
   async function openIntroduction(match: RankedMatch) {
     if (!authUserId || openingRef.current) return;
@@ -959,17 +1054,26 @@ function AntidoteApp() {
       const row = await getOrCreateMatch(account, match.id, match.score);
       if (openingRef.current !== match.id) return;
       if (!row || row.status !== "active") {
-        setExcluded(previous => new Set(previous).add(match.id));
+        setExcluded((previous) => new Set(previous).add(match.id));
         return;
       }
       const [partner] = await fetchConversationPartners([match.id]);
       if (openingRef.current !== match.id) return;
-      setConversationPartners(previous => [...previous.filter(current => current.id !== match.id), partner ?? {
-        ...toConversationPartner(match), shared_reflection: null,
-      }]);
-      setConversations(previous => previous.some(conversation => conversation.id === row.id) ? previous : [
-        { id: row.id, matchId: match.id, messages: [], unread: false, createdAt: Date.now() }, ...previous,
+      setConversationPartners((previous) => [
+        ...previous.filter((current) => current.id !== match.id),
+        partner ?? {
+          ...toConversationPartner(match),
+          shared_reflection: null,
+        },
       ]);
+      setConversations((previous) =>
+        previous.some((conversation) => conversation.id === row.id)
+          ? previous
+          : [
+              { id: row.id, matchId: match.id, messages: [], unread: false, createdAt: Date.now() },
+              ...previous,
+            ],
+      );
       setActiveConversationId(row.id);
       setScreen("thread");
     } catch {
@@ -982,16 +1086,32 @@ function AntidoteApp() {
     }
   }
 
-  const updateActiveConversation = useCallback((patch: (conversation: Conversation) => Conversation) => {
-    setConversations(previous => previous.map(conversation => conversation.id === activeConversationId ? patch(conversation) : conversation));
-  }, [activeConversationId]);
+  const updateActiveConversation = useCallback(
+    (patch: (conversation: Conversation) => Conversation) => {
+      setConversations((previous) =>
+        previous.map((conversation) =>
+          conversation.id === activeConversationId ? patch(conversation) : conversation,
+        ),
+      );
+    },
+    [activeConversationId],
+  );
 
-  const activeConversation = conversations.find(conversation => conversation.id === activeConversationId);
-  const activeConversationMatch = conversationPartners.find(partner => partner.id === activeConversation?.matchId);
-  const activePrompt = activeConversationMatch && profile ? introductionFor(profile.topPriority, activeConversationMatch) : null;
+  const activeConversation = conversations.find(
+    (conversation) => conversation.id === activeConversationId,
+  );
+  const activeConversationMatch = conversationPartners.find(
+    (partner) => partner.id === activeConversation?.matchId,
+  );
+  const activePrompt =
+    activeConversationMatch && profile
+      ? introductionFor(profile.topPriority, activeConversationMatch)
+      : null;
 
-  const unreadConversation = conversations.find(conversation => conversation.unread);
-  const replyPartner = conversationPartners.find(partner => partner.id === unreadConversation?.matchId);
+  const unreadConversation = conversations.find((conversation) => conversation.unread);
+  const replyPartner = conversationPartners.find(
+    (partner) => partner.id === unreadConversation?.matchId,
+  );
 
   function openConversation(id: string) {
     haptic("tap");
@@ -1001,8 +1121,10 @@ function AntidoteApp() {
 
   function closeActiveConversation() {
     if (activeConversation) {
-      setExcluded(previous => new Set(previous).add(activeConversation.matchId));
-      setConversations(previous => previous.filter(conversation => conversation.id !== activeConversation.id));
+      setExcluded((previous) => new Set(previous).add(activeConversation.matchId));
+      setConversations((previous) =>
+        previous.filter((conversation) => conversation.id !== activeConversation.id),
+      );
     }
     setActiveConversationId(null);
     setScreen("messages");
@@ -1011,7 +1133,10 @@ function AntidoteApp() {
   const hasAnswers = Boolean(profile?.topPriority);
   const focusScreens: Screen[] = ["test", "chamber", "thread"];
   const showNav =
-    profile !== null && screen !== "landing" && onboardingStage < 0 && !focusScreens.includes(screen);
+    profile !== null &&
+    screen !== "landing" &&
+    onboardingStage < 0 &&
+    !focusScreens.includes(screen);
   const unreadCount = conversations.filter((c) => c.unread).length;
 
   // Removed proactive mic priming on startup to support Just-in-Time (JIT) permissions
@@ -1039,8 +1164,15 @@ function AntidoteApp() {
     setScreen("profile-dossier");
   }
 
-  const settingsScreens: Screen[] = ["settings", "legal-terms", "legal-privacy", "legal-cookies", "legal-contact"];
-  const navActive = screen === "messages" ? "messages" : settingsScreens.includes(screen) ? "settings" : "home";
+  const settingsScreens: Screen[] = [
+    "settings",
+    "legal-terms",
+    "legal-privacy",
+    "legal-cookies",
+    "legal-contact",
+  ];
+  const navActive =
+    screen === "messages" ? "messages" : settingsScreens.includes(screen) ? "settings" : "home";
 
   if (isAuthenticating) {
     return (
@@ -1055,7 +1187,9 @@ function AntidoteApp() {
       <Shell>
         <section className="personal-screen">
           <h1 className="personal-title">Profil sa nepodarilo načítať</h1>
-          <p className="personal-intro">Stále si prihlásený. Skontroluj pripojenie a skús to znova.</p>
+          <p className="personal-intro">
+            Stále si prihlásený. Skontroluj pripojenie a skús to znova.
+          </p>
           <button
             type="button"
             className="match-card-action mt-4"
@@ -1083,214 +1217,74 @@ function AntidoteApp() {
     >
       <Toaster theme={theme} position="top-center" />
       <AndroidUpdateProvider enabled={showUpdateNotice}>
-      {showUpdateNotice && <UpdateNotice />}
-      {screen === "landing" && (
-        <Landing
-          onGoogle={(profile) => {
-            haptic("success");
-            setGoogleProfile(profile);
-            setScreen("liveness");
-          }}
-        />
-      )}
-      {screen === "liveness" && (
-        <Liveness
-          onDone={async (url) => {
-            haptic("success");
-            setLivenessVideoUrl(url);
-            const targetId = authUserId || (await supabase.auth.getUser()).data.user?.id;
-            if (targetId && targetId !== "00000000-0000-0000-0000-000000000001") {
-              try {
-                await recordLivenessVerified(url || undefined);
-                console.info("[Onboarding] Liveness verified recorded in Supabase.");
-              } catch (err) {
-                console.warn("[Onboarding] recordLivenessVerified failed:", err);
-              }
-            }
-            setScreen("profile");
-          }}
-        />
-      )}
-      {screen === "profile" && (
-        <ProfileForm
-          initialName={googleProfile?.name.split(/\s+/)[0] ?? ""}
-          onSubmit={async (p) => {
-            haptic("success");
-            const targetId =
-              authUserId ||
-              (await supabase.auth.getUser()).data.user?.id ||
-              "00000000-0000-0000-0000-000000000001";
-            const newProfile: UserProfile = { ...p, id: targetId, livenessVerified: true };
-            setProfile(newProfile);
-
-            // Persist profile to Supabase immediately so account is never lost on refresh
-            if (targetId !== "00000000-0000-0000-0000-000000000001") {
-              try {
-                await saveUserProfile(targetId, newProfile, []);
-                console.info("[Onboarding] Profile successfully persisted to Supabase.");
-              } catch (err) {
-                console.error("[Onboarding] Failed to save profile to Supabase:", err);
-              }
-            }
-            setScreen("snippets-onboarding");
-          }}
-        />
-      )}
-      {screen === "snippets-onboarding" && (
-        <SnippetsOnboarding
-          initialSnippets={profile?.videoUrls}
-          onDone={async (urls) => {
-            setProfile((prev) => {
-              if (!prev) return null;
-              return { ...prev, videoUrls: urls };
-            });
-
-            // Immediately upload snippets to Supabase Storage and database
-            const targetUserId = authUserId || (await supabase.auth.getUser()).data.user?.id;
-            if (targetUserId && targetUserId !== "00000000-0000-0000-0000-000000000001") {
-              try {
-                const uploadPromises = urls.map(async (url, idx) => {
-                  if (!url || !url.startsWith("blob:")) return { slot: idx + 1, url };
-                  try {
-                    let blob = await getVideoBlob(`snippet_${idx + 1}`);
-                    if (!blob) {
-                      const res = await fetch(url);
-                      blob = await res.blob();
-                    }
-                    const uploadRes = await uploadSnippetVideo(targetUserId, idx + 1, blob);
-                    return { slot: idx + 1, url: uploadRes.url };
-                  } catch (err) {
-                    console.error(`[Onboarding] Snippet ${idx + 1} upload failed:`, err);
-                    return { slot: idx + 1, url: null };
-                  }
-                });
-
-                const results = await Promise.all(uploadPromises);
-                const publicUrls = results
-                  .filter((r) => r.url !== null)
-                  .map((r) => r.url as string);
-
-                if (publicUrls.length > 0) {
-                  setProfile((prev) => (prev ? { ...prev, videoUrls: publicUrls } : null));
-                  const currentProfile = profile || (await fetchUserProfile(targetUserId));
-                  if (currentProfile) {
-                    await saveUserProfile(
-                      targetUserId,
-                      { ...currentProfile, videoUrls: publicUrls },
-                      publicUrls,
-                    );
-                  }
-                  console.info("[Onboarding] Snippets successfully persisted to Supabase.");
-                }
-              } catch (err) {
-                console.warn("[Onboarding] Immediate snippet upload failed, will sync later:", err);
-              }
-            }
-
-            setScreen("briefing");
-          }}
-        />
-      )}
-      {screen === "briefing" && (
-        <Briefing
-          onBegin={() => {
-            haptic("tap");
-            setScreen("mirror");
-          }}
-        />
-      )}
-
-      {screen === "mirror" && (
-        <SemanticMirror
-          onDone={(depth) => {
-            setCognitiveDepth(depth);
-            setScreen("bankroll");
-          }}
-        />
-      )}
-
-      {screen === "bankroll" && (
-        <div>
-          <ValueBankroll
-            userId={authUserId}
-            onSliderChange={(c, e) => {
-              setPreviewC(c);
-              setPreviewE(e);
-            }}
-            onDone={(c, pList) => {
-              try {
-                setConscientiousness(c);
-
-                const sloboda = pList?.sloboda ?? 0;
-                const rodina = pList?.rodina ?? 0;
-                const kariera = pList?.kariera ?? 0;
-                const kreativita = pList?.kreativita ?? 0;
-                const stabilita = pList?.stabilita ?? 0;
-
-                const derivedExtraversion =
-                  (sloboda * 0.8 +
-                    rodina * 0.6 +
-                    kariera * 0.5 +
-                    kreativita * 0.4 +
-                    stabilita * 0.2) /
-                  100;
-                setExtraversion(Math.max(0.1, Math.min(0.9, derivedExtraversion || 0.5)));
-
-                let maxVal = -1;
-                let topKey = "rodina";
-                Object.entries(pList || {}).forEach(([k, v]) => {
-                  const val = Number(v) || 0;
-                  if (val > maxVal) {
-                    maxVal = val;
-                    topKey = k;
-                  }
-                });
-                setTopPriority(topKey);
-                setScreen("pressure");
-              } catch (err) {
-                console.error("[bankroll] onDone failed:", err);
-                setScreen("pressure");
-              }
+        {showUpdateNotice && <UpdateNotice />}
+        {screen === "landing" && (
+          <Landing
+            onGoogle={(profile) => {
+              haptic("success");
+              setGoogleProfile(profile);
+              setScreen("liveness");
             }}
           />
-        </div>
-      )}
-
-      {screen === "pressure" && (() => {
-        async function finishOnboarding(sharedReflection: string | null) {
-          try {
-
-              if (!profile) throw new Error("Profile not initialized");
-
-              // Retrieve the absolute source of truth for the logged-in user ID to prevent RLS mismatches
-              const {
-                data: { user: currentUser },
-              } = await supabase.auth.getUser();
-              const targetUserId = currentUser?.id || authUserId;
-
-              if (!targetUserId) {
-                throw new Error("Používateľská relácia sa nenašla. Prihláste sa znova.");
+        )}
+        {screen === "liveness" && (
+          <Liveness
+            onDone={async (url) => {
+              haptic("success");
+              setLivenessVideoUrl(url);
+              const targetId = authUserId || (await supabase.auth.getUser()).data.user?.id;
+              if (targetId && targetId !== "00000000-0000-0000-0000-000000000001") {
+                try {
+                  await recordLivenessVerified(url || undefined);
+                  console.info("[Onboarding] Liveness verified recorded in Supabase.");
+                } catch (err) {
+                  console.warn("[Onboarding] recordLivenessVerified failed:", err);
+                }
               }
+              setScreen("profile");
+            }}
+          />
+        )}
+        {screen === "profile" && (
+          <ProfileForm
+            initialName={googleProfile?.name.split(/\s+/)[0] ?? ""}
+            onSubmit={async (p) => {
+              haptic("success");
+              const targetId =
+                authUserId ||
+                (await supabase.auth.getUser()).data.user?.id ||
+                "00000000-0000-0000-0000-000000000001";
+              const newProfile: UserProfile = { ...p, id: targetId, livenessVerified: true };
+              setProfile(newProfile);
 
-              // Build the final UserProfile
-              const updated: UserProfile = {
-                ...profile,
-                id: targetUserId,
-                cognitiveDepth: cognitiveDepth || 0.5,
-                conscientiousness: conscientiousness || 0.5,
-                extraversion: extraversion || 0.5,
-                topPriority: topPriority || "rodina",
-                sharedReflection,
-              };
+              // Persist profile to Supabase immediately so account is never lost on refresh
+              if (targetId !== "00000000-0000-0000-0000-000000000001") {
+                try {
+                  await saveUserProfile(targetId, newProfile, []);
+                  console.info("[Onboarding] Profile successfully persisted to Supabase.");
+                } catch (err) {
+                  console.error("[Onboarding] Failed to save profile to Supabase:", err);
+                }
+              }
+              setScreen("snippets-onboarding");
+            }}
+          />
+        )}
+        {screen === "snippets-onboarding" && (
+          <SnippetsOnboarding
+            initialSnippets={profile?.videoUrls}
+            onDone={async (urls) => {
+              setProfile((prev) => {
+                if (!prev) return null;
+                return { ...prev, videoUrls: urls };
+              });
 
-              // Backend Sync: Batch Upload Videos
-              let publicVideoUrls: string[] = [];
-
-              if (targetUserId !== "00000000-0000-0000-0000-000000000001") {
-                if (updated.videoUrls && updated.videoUrls.length > 0) {
-                  const uploadPromises = updated.videoUrls.map(async (url, idx) => {
-                    if (!url || !url.startsWith("blob:"))
-                      return { slot: idx + 1, url, error: null };
+              // Immediately upload snippets to Supabase Storage and database
+              const targetUserId = authUserId || (await supabase.auth.getUser()).data.user?.id;
+              if (targetUserId && targetUserId !== "00000000-0000-0000-0000-000000000001") {
+                try {
+                  const uploadPromises = urls.map(async (url, idx) => {
+                    if (!url || !url.startsWith("blob:")) return { slot: idx + 1, url };
                     try {
                       let blob = await getVideoBlob(`snippet_${idx + 1}`);
                       if (!blob) {
@@ -1298,188 +1292,364 @@ function AntidoteApp() {
                         blob = await res.blob();
                       }
                       const uploadRes = await uploadSnippetVideo(targetUserId, idx + 1, blob);
-                      return { slot: idx + 1, url: uploadRes.url, error: uploadRes.error };
-                    } catch (fetchErr: any) {
-                      console.error(`[Onboarding] Failed to upload snippet ${idx + 1}:`, fetchErr);
-                      return {
-                        slot: idx + 1,
-                        url: null,
-                        error: fetchErr.message || String(fetchErr),
-                      };
+                      return { slot: idx + 1, url: uploadRes.url };
+                    } catch (err) {
+                      console.error(`[Onboarding] Snippet ${idx + 1} upload failed:`, err);
+                      return { slot: idx + 1, url: null };
                     }
                   });
+
                   const results = await Promise.all(uploadPromises);
-
-                  const failedUploads = results.filter((r) => r.url === null);
-                  if (failedUploads.length > 0) {
-                    console.warn(
-                      `[Onboarding] ${failedUploads.length} video snippet uploads failed.`,
-                    );
-                    const firstErr = failedUploads[0].error || "Neznáma chyba";
-                    alert(
-                      `Niektoré videá sa nepodarilo nahrať. Budete ich môcť pridať neskôr vo vašom profile. Detail chyby: ${firstErr}`,
-                    );
-                  }
-
-                  // Collect only the successful URLs
-                  publicVideoUrls = results
+                  const publicUrls = results
                     .filter((r) => r.url !== null)
                     .map((r) => r.url as string);
 
-                  // Update local profile with public URLs so they don't break on reload
-                  updated.videoUrls = publicVideoUrls;
+                  if (publicUrls.length > 0) {
+                    setProfile((prev) => (prev ? { ...prev, videoUrls: publicUrls } : null));
+                    const currentProfile = profile || (await fetchUserProfile(targetUserId));
+                    if (currentProfile) {
+                      await saveUserProfile(
+                        targetUserId,
+                        { ...currentProfile, videoUrls: publicUrls },
+                        publicUrls,
+                      );
+                    }
+                    console.info("[Onboarding] Snippets successfully persisted to Supabase.");
+                  }
+                } catch (err) {
+                  console.warn(
+                    "[Onboarding] Immediate snippet upload failed, will sync later:",
+                    err,
+                  );
                 }
-
-                // Backend Sync: Save Profile
-                await saveUserProfile(targetUserId, updated, publicVideoUrls);
-              } else {
-                console.warn("[Demo Mode] Skipping backend upload because user is not signed in.");
               }
 
-              setProfile(updated);
-              // Generate legacy answers for the orb seed from the chosen priorities.
-              const derivedAnswers: FullAnswers = {
-                q1: topPriority === "sloboda" ? "A" : "B",
-                q2: (cognitiveDepth || 0.5) > 0.6 ? "A" : "B",
-                q3: topPriority === "stabilita" ? "A" : "B",
-                q4: topPriority === "rodina" ? "A" : "B",
-                q5: (cognitiveDepth || 0.5) > 0.8 ? "A" : "B",
-                q6: (conscientiousness || 0.5) > 0.6 ? "A" : "B",
-              };
-              setAnswers(derivedAnswers);
-              setScreen("processing");
-          } catch (error) {
-            console.error("[Onboarding] Could not save profile", error);
-            throw error;
-          }
-        }
-        return <ReflectionEditor initialValue={profile?.sharedReflection} onSave={finishOnboarding} onSkip={() => finishOnboarding(null)} />;
-      })()}
-
-      {screen === "processing" && (
-        <Processing
-          seed={orbSeedFor(userAnswers)}
-          archetype={archetypeOf(userAnswers)}
-          onDone={() => {
-            setScreen("noOne");
-          }}
-        />
-      )}
-      {screen === "chamber" && activeConversation && activeConversationMatch && authUserId && activePrompt && (
-        <Chamber userId={authUserId} matchId={activeConversation.id} name={activeConversationMatch.name}
-          prompt={activePrompt.text} onBack={() => setScreen("thread")} />
-      )}
-      {screen === "noOne" && profile && (
-        <div className="animate-kinetic-fade">
-          <Dashboard
-            profile={profile}
-            matches={rankedMatches}
-            loading={isLoadingMarket}
-            failed={marketFailed}
-            onRefresh={() => {
-              setIsLoadingMarket(true);
-              setMarketRevision((revision) => revision + 1);
+              setScreen("briefing");
             }}
-            onChangeRadius={updateSearchRadius}
-            onProfile={goProfile}
-            onSelectMatch={openIntroduction}
-            openingMatch={openingMatch}
-            openError={openError}
-            onMessages={() => setScreen("messages")}
-            hasMessages={conversations.length > 0}
-            recentReply={unreadConversation && replyPartner ? { name: replyPartner.name,
-              preview: unreadConversation.preview?.from === "them" ? inboxMessageLabel(unreadConversation.preview) : undefined,
-              onOpen: () => openConversation(unreadConversation.id) } : undefined}
           />
-        </div>
-      )}
-      {screen === "messages" && (
-        <div className="animate-kinetic-fade">
-          <MessagesList
-            conversations={conversations}
-            matches={conversationPartners}
-            failed={inboxFailed}
-            loading={inboxLoading}
-            onRetry={() => setInboxRevision(previous => previous + 1)}
-            onOpen={openConversation}
-            onFindNew={() => {
+        )}
+        {screen === "briefing" && (
+          <Briefing
+            onBegin={() => {
               haptic("tap");
-              goToNextMatch();
+              setScreen("mirror");
             }}
           />
-        </div>
-      )}
-      {screen === "thread" && activeConversation && activeConversationMatch && authUserId && activePrompt && (
-        <MessageThread
-          key={activeConversation.id}
-          conversation={activeConversation}
-          match={activeConversationMatch}
-          userId={authUserId}
-          prompt={activePrompt.text}
-          onBack={() => setScreen("messages")}
-          onVoice={() => setScreen("chamber")}
-          onClose={closeActiveConversation}
-          onUpdate={updateActiveConversation}
-        />
-      )}
+        )}
 
-      {screen === "settings" && profile && (
-        <div className="animate-kinetic-fade">
-          <SystemConfig
-            user={profile!}
-            onUpdateUser={setProfile as React.Dispatch<React.SetStateAction<UserProfile | null>>}
-            theme={theme}
-            onTheme={(m) => {
-              haptic("tap");
-              setTheme(m);
+        {screen === "mirror" && (
+          <SemanticMirror
+            onDone={(depth) => {
+              setCognitiveDepth(depth);
+              setScreen("bankroll");
             }}
-            onOpenTerms={() => setScreen("legal-terms")}
-            onOpenPrivacy={() => setScreen("legal-privacy")}
-            onOpenCookies={() => setScreen("legal-cookies")}
-            onOpenContact={() => setScreen("legal-contact")}
           />
-        </div>
-      )}
-      {screen === "legal-terms" && (
-        <LegalPage
-          title="Podmienky používania"
-          onBack={() => setScreen("settings")}
-          body={TERMS_BODY}
-        />
-      )}
-      {screen === "legal-privacy" && (
-        <LegalPage
-          title="Ochrana súkromia (GDPR)"
-          onBack={() => setScreen("settings")}
-          body={PRIVACY_BODY}
-        />
-      )}
-      {screen === "legal-cookies" && (
-        <LegalPage title="Cookies" onBack={() => setScreen("settings")} body={COOKIES_BODY} />
-      )}
-      {screen === "legal-contact" && (
-        <LegalPage title="Kontakt" onBack={() => setScreen("settings")} body={CONTACT_BODY} />
-      )}
-      {screen === "profile-dossier" && profile && (
-        <div className="animate-kinetic-fade">
-          <AssetDossier
-            user={profile}
-            onBack={() => setScreen("noOne")}
-            onUpdateUser={setProfile}
-          />
-        </div>
-      )}
+        )}
 
-      {showNav && (
-        <BottomNav
-          active={navActive}
-          unread={unreadCount}
-          testDone={hasAnswers}
-          onHome={goHome}
-          onMessages={goMessages}
-          onSettings={goSettings}
-        />
-      )}
+        {screen === "bankroll" && (
+          <div>
+            <ValueBankroll
+              userId={authUserId}
+              onSliderChange={(c, e) => {
+                setPreviewC(c);
+                setPreviewE(e);
+              }}
+              onDone={(c, pList) => {
+                try {
+                  setConscientiousness(c);
+
+                  const sloboda = pList?.sloboda ?? 0;
+                  const rodina = pList?.rodina ?? 0;
+                  const kariera = pList?.kariera ?? 0;
+                  const kreativita = pList?.kreativita ?? 0;
+                  const stabilita = pList?.stabilita ?? 0;
+
+                  const derivedExtraversion =
+                    (sloboda * 0.8 +
+                      rodina * 0.6 +
+                      kariera * 0.5 +
+                      kreativita * 0.4 +
+                      stabilita * 0.2) /
+                    100;
+                  setExtraversion(Math.max(0.1, Math.min(0.9, derivedExtraversion || 0.5)));
+
+                  let maxVal = -1;
+                  let topKey = "rodina";
+                  Object.entries(pList || {}).forEach(([k, v]) => {
+                    const val = Number(v) || 0;
+                    if (val > maxVal) {
+                      maxVal = val;
+                      topKey = k;
+                    }
+                  });
+                  setTopPriority(topKey);
+                  setScreen("pressure");
+                } catch (err) {
+                  console.error("[bankroll] onDone failed:", err);
+                  setScreen("pressure");
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {screen === "pressure" &&
+          (() => {
+            async function finishOnboarding(sharedReflection: string | null) {
+              try {
+                if (!profile) throw new Error("Profile not initialized");
+
+                // Retrieve the absolute source of truth for the logged-in user ID to prevent RLS mismatches
+                const {
+                  data: { user: currentUser },
+                } = await supabase.auth.getUser();
+                const targetUserId = currentUser?.id || authUserId;
+
+                if (!targetUserId) {
+                  throw new Error("Používateľská relácia sa nenašla. Prihláste sa znova.");
+                }
+
+                // Build the final UserProfile
+                const updated: UserProfile = {
+                  ...profile,
+                  id: targetUserId,
+                  cognitiveDepth: cognitiveDepth || 0.5,
+                  conscientiousness: conscientiousness || 0.5,
+                  extraversion: extraversion || 0.5,
+                  topPriority: topPriority || "rodina",
+                  sharedReflection,
+                };
+
+                // Backend Sync: Batch Upload Videos
+                let publicVideoUrls: string[] = [];
+
+                if (targetUserId !== "00000000-0000-0000-0000-000000000001") {
+                  if (updated.videoUrls && updated.videoUrls.length > 0) {
+                    const uploadPromises = updated.videoUrls.map(async (url, idx) => {
+                      if (!url || !url.startsWith("blob:"))
+                        return { slot: idx + 1, url, error: null };
+                      try {
+                        let blob = await getVideoBlob(`snippet_${idx + 1}`);
+                        if (!blob) {
+                          const res = await fetch(url);
+                          blob = await res.blob();
+                        }
+                        const uploadRes = await uploadSnippetVideo(targetUserId, idx + 1, blob);
+                        return { slot: idx + 1, url: uploadRes.url, error: uploadRes.error };
+                      } catch (fetchErr) {
+                        console.error(
+                          `[Onboarding] Failed to upload snippet ${idx + 1}:`,
+                          fetchErr,
+                        );
+                        return {
+                          slot: idx + 1,
+                          url: null,
+                          error: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+                        };
+                      }
+                    });
+                    const results = await Promise.all(uploadPromises);
+
+                    const failedUploads = results.filter((r) => r.url === null);
+                    if (failedUploads.length > 0) {
+                      console.warn(
+                        `[Onboarding] ${failedUploads.length} video snippet uploads failed.`,
+                      );
+                      const firstErr = failedUploads[0].error || "Neznáma chyba";
+                      alert(
+                        `Niektoré videá sa nepodarilo nahrať. Budete ich môcť pridať neskôr vo vašom profile. Detail chyby: ${firstErr}`,
+                      );
+                    }
+
+                    // Collect only the successful URLs
+                    publicVideoUrls = results
+                      .filter((r) => r.url !== null)
+                      .map((r) => r.url as string);
+
+                    // Update local profile with public URLs so they don't break on reload
+                    updated.videoUrls = publicVideoUrls;
+                  }
+
+                  // Backend Sync: Save Profile
+                  await saveUserProfile(targetUserId, updated, publicVideoUrls);
+                } else {
+                  console.warn(
+                    "[Demo Mode] Skipping backend upload because user is not signed in.",
+                  );
+                }
+
+                setProfile(updated);
+                // Generate legacy answers for the orb seed from the chosen priorities.
+                const derivedAnswers: FullAnswers = {
+                  q1: topPriority === "sloboda" ? "A" : "B",
+                  q2: (cognitiveDepth || 0.5) > 0.6 ? "A" : "B",
+                  q3: topPriority === "stabilita" ? "A" : "B",
+                  q4: topPriority === "rodina" ? "A" : "B",
+                  q5: (cognitiveDepth || 0.5) > 0.8 ? "A" : "B",
+                  q6: (conscientiousness || 0.5) > 0.6 ? "A" : "B",
+                };
+                setAnswers(derivedAnswers);
+                setScreen("processing");
+              } catch (error) {
+                console.error("[Onboarding] Could not save profile", error);
+                throw error;
+              }
+            }
+            return (
+              <ReflectionEditor
+                initialValue={profile?.sharedReflection}
+                onSave={finishOnboarding}
+                onSkip={() => finishOnboarding(null)}
+              />
+            );
+          })()}
+
+        {screen === "processing" && (
+          <Processing
+            seed={orbSeedFor(userAnswers)}
+            archetype={archetypeOf(userAnswers)}
+            onDone={() => {
+              setScreen("noOne");
+            }}
+          />
+        )}
+        {screen === "chamber" &&
+          activeConversation &&
+          activeConversationMatch &&
+          authUserId &&
+          activePrompt && (
+            <Chamber
+              userId={authUserId}
+              matchId={activeConversation.id}
+              name={activeConversationMatch.name}
+              prompt={activePrompt.text}
+              onBack={() => setScreen("thread")}
+            />
+          )}
+        {screen === "noOne" && profile && (
+          <div className="animate-kinetic-fade">
+            <Dashboard
+              profile={profile}
+              matches={rankedMatches}
+              loading={isLoadingMarket}
+              failed={marketFailed}
+              onRefresh={() => {
+                setIsLoadingMarket(true);
+                setMarketRevision((revision) => revision + 1);
+              }}
+              onChangeRadius={updateSearchRadius}
+              onProfile={goProfile}
+              onSelectMatch={openIntroduction}
+              openingMatch={openingMatch}
+              openError={openError}
+              onMessages={() => setScreen("messages")}
+              hasMessages={conversations.length > 0}
+              recentReply={
+                unreadConversation && replyPartner
+                  ? {
+                      name: replyPartner.name,
+                      preview:
+                        unreadConversation.preview?.from === "them"
+                          ? inboxMessageLabel(unreadConversation.preview)
+                          : undefined,
+                      onOpen: () => openConversation(unreadConversation.id),
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        )}
+        {screen === "messages" && (
+          <div className="animate-kinetic-fade">
+            <MessagesList
+              conversations={conversations}
+              matches={conversationPartners}
+              failed={inboxFailed}
+              loading={inboxLoading}
+              onRetry={() => setInboxRevision((previous) => previous + 1)}
+              onOpen={openConversation}
+              onFindNew={() => {
+                haptic("tap");
+                goToNextMatch();
+              }}
+            />
+          </div>
+        )}
+        {screen === "thread" &&
+          activeConversation &&
+          activeConversationMatch &&
+          authUserId &&
+          activePrompt && (
+            <MessageThread
+              key={activeConversation.id}
+              conversation={activeConversation}
+              match={activeConversationMatch}
+              userId={authUserId}
+              prompt={activePrompt.text}
+              onBack={() => setScreen("messages")}
+              onVoice={() => setScreen("chamber")}
+              onClose={closeActiveConversation}
+              onUpdate={updateActiveConversation}
+            />
+          )}
+
+        {screen === "settings" && profile && (
+          <div className="animate-kinetic-fade">
+            <SystemConfig
+              user={profile!}
+              onUpdateUser={setProfile as React.Dispatch<React.SetStateAction<UserProfile | null>>}
+              theme={theme}
+              onTheme={(m) => {
+                haptic("tap");
+                setTheme(m);
+              }}
+              onOpenTerms={() => setScreen("legal-terms")}
+              onOpenPrivacy={() => setScreen("legal-privacy")}
+              onOpenCookies={() => setScreen("legal-cookies")}
+              onOpenContact={() => setScreen("legal-contact")}
+            />
+          </div>
+        )}
+        {screen === "legal-terms" && (
+          <LegalPage
+            title="Podmienky používania"
+            onBack={() => setScreen("settings")}
+            body={TERMS_BODY}
+          />
+        )}
+        {screen === "legal-privacy" && (
+          <LegalPage
+            title="Ochrana súkromia (GDPR)"
+            onBack={() => setScreen("settings")}
+            body={PRIVACY_BODY}
+          />
+        )}
+        {screen === "legal-cookies" && (
+          <LegalPage title="Cookies" onBack={() => setScreen("settings")} body={COOKIES_BODY} />
+        )}
+        {screen === "legal-contact" && (
+          <LegalPage title="Kontakt" onBack={() => setScreen("settings")} body={CONTACT_BODY} />
+        )}
+        {screen === "profile-dossier" && profile && (
+          <div className="animate-kinetic-fade">
+            <AssetDossier
+              user={profile}
+              onBack={() => setScreen("noOne")}
+              onUpdateUser={setProfile}
+            />
+          </div>
+        )}
+
+        {showNav && (
+          <BottomNav
+            active={navActive}
+            unread={unreadCount}
+            testDone={hasAnswers}
+            onHome={goHome}
+            onMessages={goMessages}
+            onSettings={goSettings}
+          />
+        )}
       </AndroidUpdateProvider>
     </Shell>
   );
@@ -1571,10 +1741,21 @@ function BottomNav({
   ];
 
   return (
-    <nav aria-label="Hlavná navigácia" className="app-nav-dock" data-hidden={isInputActive} inert={isInputActive}>
+    <nav
+      aria-label="Hlavná navigácia"
+      className="app-nav-dock"
+      data-hidden={isInputActive}
+      inert={isInputActive}
+    >
       <div className="app-nav" data-active={active}>
         {items.map(({ id, icon: Icon, label, onClick, badge }) => (
-          <button key={id} type="button" onClick={onClick} aria-current={id === active ? "page" : undefined} className="app-nav-item">
+          <button
+            key={id}
+            type="button"
+            onClick={onClick}
+            aria-current={id === active ? "page" : undefined}
+            className="app-nav-item"
+          >
             <span className="app-nav-icon">
               <Icon className="size-5" aria-hidden="true" />
               {!!badge && <span className="app-nav-badge">{badge}</span>}
@@ -1622,7 +1803,6 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
     { value: "travel", label: "Možnosť cestovať", icon: Compass },
     { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
   ] as const;
-  const selected = options.find(({ value }) => value === choice);
 
   const choose = (nextChoice: "travel" | "love") => {
     haptic("medium");
@@ -1632,14 +1812,27 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   return (
     <main className="landing-main">
       <div className="landing-hero">
-        <header className="landing-brand"><AntidoteLogo markClassName="h-8" /></header>
+        <header className="landing-intro">
+          <div className="landing-brand">
+            <AntidoteLogo markClassName="h-8" />
+          </div>
+          <p>Zoznamka, ktorá začína otázkou.</p>
+        </header>
         <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
       </div>
-      <div className="landing-interaction" data-answered={Boolean(selected)}>
+      <div className="landing-interaction" data-answered={choice !== null}>
         <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
           {options.map(({ value, label, icon: Icon }) => (
-            <button key={value} type="button" onClick={() => choose(value)} aria-pressed={choice === value} className="landing-option">
-              <span className="landing-option-icon" aria-hidden="true"><Icon size={21} /></span>
+            <button
+              key={value}
+              type="button"
+              onClick={() => choose(value)}
+              aria-pressed={choice === value}
+              className="landing-option"
+            >
+              <span className="landing-option-icon" aria-hidden="true">
+                <Icon size={21} />
+              </span>
               <span>{label}</span>
               <span className="landing-option-state" aria-hidden="true">
                 {choice === value && <Check size={19} />}
@@ -1647,19 +1840,15 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
             </button>
           ))}
         </div>
-        {selected && (
+        <div role="status" className="sr-only">
+          {choice && "Odpoveď vybraná. Môžeš pokračovať cez Google."}
+        </div>
+        {choice && (
           <div className="landing-result">
-            <div role="status">
-              <span className="sr-only">Tvoja odpoveď je {selected.label.toLowerCase()}.</span>
-              <h2 className="landing-result-title">Od odpovede k spojeniu</h2>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
-              </p>
+            <p>Podľa odpovedí v dotazníku ti odporučíme ľudí.</p>
+            <div className="landing-sign-in">
+              <GoogleSignInButton onSuccess={onGoogle} />
             </div>
-            <p className="mt-3 text-sm leading-snug text-muted-foreground">
-              Po prihlásení ťa čaká overenie kamerou, krátke video do profilu a dotazník.
-            </p>
-            <div className="landing-sign-in"><GoogleSignInButton onSuccess={onGoogle} /></div>
           </div>
         )}
       </div>
@@ -1682,6 +1871,13 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
+type FaceModel = {
+  estimateFaces(
+    video: HTMLVideoElement,
+    returnTensors: false,
+  ): Promise<{ landmarks: [number, number][] }[]>;
+};
+
 function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
   const haptic = useHaptic();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1698,7 +1894,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
   const [countdown, setCountdown] = useState(3);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [errMsg, setErrMsg] = useState("");
-  const [faceModel, setFaceModel] = useState<any>(null);
+  const [faceModel, setFaceModel] = useState<FaceModel | null>(null);
   const [modelLoading, setModelLoading] = useState(true);
   const [challengeStep, setChallengeStep] = useState<
     "center" | "turn_right" | "turn_left" | "done" | "idle"
@@ -1719,8 +1915,10 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
           "https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js",
         );
 
-        // @ts-ignore
-        const model = await window.blazeface.load();
+        const blazeFace = (window as Window & { blazeface?: { load(): Promise<FaceModel> } })
+          .blazeface;
+        if (!blazeFace) throw new Error("BlazeFace SDK was not loaded.");
+        const model = await blazeFace.load();
         if (active) {
           setFaceModel(model);
           setModelLoading(false);
@@ -1805,6 +2003,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
           if (faceModel) {
             try {
               const predictions = await faceModel.estimateFaces(videoRef.current, false);
+              if (!scanning) return;
               if (predictions.length === 1) {
                 const landmarks = predictions[0].landmarks;
                 const rightEar = landmarks[4];
@@ -1948,7 +2147,8 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
         Najprv krátke overenie
       </h2>
       <p className="text-sm text-foreground/75 leading-relaxed mb-4">
-        Kameru použijeme na krátke overenie, že si skutočná osoba. Android alebo prehliadač si po spustení vyžiada prístup.
+        Kameru použijeme na krátke overenie, že si skutočná osoba. Android alebo prehliadač si po
+        spustení vyžiada prístup.
       </p>
 
       <div className="relative my-4 grid place-items-center">
@@ -1985,33 +2185,25 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
 
               {/* Active Step Indicator Overlay */}
               <div className="absolute inset-x-1 bottom-1.5 bg-black/85 border border-foreground/15 px-1.5 py-1 text-center text-xs leading-tight">
-                <div className="mb-0.5 font-semibold text-white">
-                  Pohyb hlavy
-                </div>
+                <div className="mb-0.5 font-semibold text-white">Pohyb hlavy</div>
                 <div className="flex flex-col gap-0.5 text-left text-white">
                   <div
                     className={
-                      challengeStep === "center"
-                        ? "text-green-400 font-bold"
-                        : "text-white/75"
+                      challengeStep === "center" ? "text-green-400 font-bold" : "text-white/75"
                     }
                   >
                     {challengeStep === "center" ? "● " : "○ "}1. Pozri do kamery
                   </div>
                   <div
                     className={
-                      challengeStep === "turn_right"
-                        ? "text-green-400 font-bold"
-                        : "text-white/75"
+                      challengeStep === "turn_right" ? "text-green-400 font-bold" : "text-white/75"
                     }
                   >
                     {challengeStep === "turn_right" ? "● " : "○ "}2. Otoč hlavu doprava
                   </div>
                   <div
                     className={
-                      challengeStep === "turn_left"
-                        ? "text-green-400 font-bold"
-                        : "text-white/75"
+                      challengeStep === "turn_left" ? "text-green-400 font-bold" : "text-white/75"
                     }
                   >
                     {challengeStep === "turn_left" ? "● " : "○ "}3. Otoč hlavu doľava
@@ -2075,7 +2267,9 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
         {phase === "error" && "Overenie sa nepodarilo"}
       </p>
 
-      {phase === "error" && <p className="text-sm text-destructive mb-4 leading-relaxed">{errMsg}</p>}
+      {phase === "error" && (
+        <p className="text-sm text-destructive mb-4 leading-relaxed">{errMsg}</p>
+      )}
 
       <div className="w-full space-y-2">
         {(phase === "idle" || phase === "error") && (
@@ -2088,7 +2282,11 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
             className="w-full bg-foreground text-background font-bold text-sm tracking-wide py-4 hover:bg-foreground/90 disabled:opacity-20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Camera className="size-4" />
-            {modelLoading ? "Pripravujem overenie…" : phase === "error" ? "Skúsiť znova" : "Otvoriť kameru"}
+            {modelLoading
+              ? "Pripravujem overenie…"
+              : phase === "error"
+                ? "Skúsiť znova"
+                : "Otvoriť kameru"}
           </button>
         )}
         {phase === "ready" && (
@@ -2140,8 +2338,14 @@ function Briefing({ onBegin }: { onBegin: () => void }) {
 }
 
 function toConversationPartner(match: RankedMatch): ConversationPartner {
-  return { id: match.id, name: match.name, age: match.age, city: match.city,
-    top_priority: match.top_priority, shared_reflection: match.shared_reflection ?? null };
+  return {
+    id: match.id,
+    name: match.name,
+    age: match.age,
+    city: match.city,
+    top_priority: match.top_priority,
+    shared_reflection: match.shared_reflection ?? null,
+  };
 }
 
 const PRIORITY_QUESTIONS: Record<string, string> = {
@@ -2153,42 +2357,37 @@ const PRIORITY_QUESTIONS: Record<string, string> = {
 };
 
 function introductionFor(myPriority: string | undefined, partner: ConversationPartner) {
-  const shared = partner.top_priority && myPriority === partner.top_priority
-    ? PRIORITY_CATEGORIES.find(category => category.id === myPriority) : undefined;
-  const text = partner.shared_reflection?.trim() ||
-    (shared ? PRIORITY_QUESTIONS[shared.id] : "Ktorú vec o sebe človek pochopí až po dobrom rozhovore s tebou?");
+  const shared =
+    partner.top_priority && myPriority === partner.top_priority
+      ? PRIORITY_CATEGORIES.find((category) => category.id === myPriority)
+      : undefined;
+  const text =
+    partner.shared_reflection?.trim() ||
+    (shared
+      ? PRIORITY_QUESTIONS[shared.id]
+      : "Ktorú vec o sebe človek pochopí až po dobrom rozhovore s tebou?");
   return { shared, text };
 }
 
-function MatchCard({ match, profile, busy, onSelect }: {
+function MatchCard({
+  match,
+  busy,
+  onSelect,
+}: {
   match: RankedMatch;
-  profile: UserProfile;
   busy: boolean;
   onSelect: () => void;
 }) {
-  const { shared, text } = introductionFor(profile.topPriority, toConversationPartner(match));
   return (
     <article className="match-card">
-      <header className="match-card-header">
-        <div className="min-w-0">
-          <h2 className="match-card-name">{match.name}<span>{match.age}</span></h2>
-          {(match.city || match.distanceKm !== undefined) && (
-            <p className="match-card-location">
-              {[match.city, match.distanceKm !== undefined && Math.round(match.distanceKm) + " km"].filter(Boolean).join(" · ")}
-            </p>
-          )}
-        </div>
-        <div className="match-card-video" aria-hidden="true">{Array.from(match.name)[0]?.toLocaleUpperCase("sk")}</div>
-      </header>
-      <div className="match-shared-priority">
-        {shared && <p className="font-semibold">Vaša spoločná priorita je {shared.label.toLocaleLowerCase("sk")}.</p>}
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{match.shared_reflection ? "Zdieľaná odpoveď" : "Otázka na úvod"}</p>
-          <blockquote className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-lg font-semibold leading-snug">{text}</blockquote>
-        </div>
-      </div>
+      <MatchCardIdentity
+        name={match.name}
+        age={match.age}
+        city={match.city}
+        distanceKm={match.distanceKm}
+      />
       <button type="button" onClick={onSelect} disabled={busy} className="match-card-action">
-        {busy ? "Otváram rozhovor…" : match.shared_reflection ? "Odpovedať na myšlienku" : "Začať otázkou"}
+        {busy ? "Otváram rozhovor…" : "Osloviť"}
         <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
       </button>
     </article>
@@ -2264,8 +2463,15 @@ function Dashboard({
       <header className="discover-header">
         <div className="discover-topline">
           <AntidoteLogo markClassName="h-6" />
-          <button type="button" className="discover-profile" aria-label={`Otvoriť môj profil, ${profile.name}`} onClick={onProfile}>
-            <span className="discover-avatar" aria-hidden="true">{initial || <User className="size-4" />}</span>
+          <button
+            type="button"
+            className="discover-profile"
+            aria-label={`Otvoriť môj profil, ${profile.name}`}
+            onClick={onProfile}
+          >
+            <span className="discover-avatar" aria-hidden="true">
+              {initial || <User className="size-4" />}
+            </span>
             <span>{profile.name}</span>
             <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
           </button>
@@ -2277,21 +2483,40 @@ function Dashboard({
         <section className="discover-reply editorial-panel" aria-labelledby="discover-reply-title">
           <MessageCircle className="size-5 text-accent" aria-hidden="true" />
           <div className="min-w-0">
-            <h2 id="discover-reply-title" className="font-bold text-foreground">Nová správa od {recentReply.name}</h2>
-            {recentReply.preview && <p className="mt-1 truncate text-sm text-muted-foreground">{recentReply.preview}</p>}
-            <button type="button" className="personal-action mt-3" onClick={recentReply.onOpen}>Pokračovať v rozhovore</button>
+            <h2 id="discover-reply-title" className="font-bold text-foreground">
+              Nová správa od {recentReply.name}
+            </h2>
+            {recentReply.preview && (
+              <p className="mt-1 truncate text-sm text-muted-foreground">{recentReply.preview}</p>
+            )}
+            <button type="button" className="personal-action mt-3" onClick={recentReply.onOpen}>
+              Pokračovať v rozhovore
+            </button>
           </div>
         </section>
       )}
 
       {activeMatch ? (
         <section className="match-deck" aria-label="Dnešné odporúčania">
-          <MatchCard key={activeMatch.id} match={activeMatch} profile={profile} busy={openingMatch}
-            onSelect={() => onSelectMatch(activeMatch)} />
-          {openError && <p role="alert" className="text-destructive">Rozhovor sa nepodarilo otvoriť. Skús to znova.</p>}
+          <MatchCard
+            key={activeMatch.id}
+            match={activeMatch}
+            busy={openingMatch}
+            onSelect={() => onSelectMatch(activeMatch)}
+          />
+          {openError && (
+            <p role="alert" className="text-destructive">
+              Rozhovor sa nepodarilo otvoriť. Skús to znova.
+            </p>
+          )}
           {availableMatches.length > 1 && (
             <div className="match-deck-nav" role="group" aria-label="Výber profilu">
-              <button type="button" aria-label="Predchádzajúci profil" disabled={activeIndex === 0} onClick={() => selectProfile(activeIndex - 1)}>
+              <button
+                type="button"
+                aria-label="Predchádzajúci profil"
+                disabled={activeIndex === 0}
+                onClick={() => selectProfile(activeIndex - 1)}
+              >
                 <ChevronLeft aria-hidden="true" className="size-5" />
               </button>
               <div className="match-deck-steps">
@@ -2307,13 +2532,22 @@ function Dashboard({
                   </button>
                 ))}
               </div>
-              <button type="button" aria-label="Ďalší profil" disabled={activeIndex === availableMatches.length - 1} onClick={() => selectProfile(activeIndex + 1)}>
+              <button
+                type="button"
+                aria-label="Ďalší profil"
+                disabled={activeIndex === availableMatches.length - 1}
+                onClick={() => selectProfile(activeIndex + 1)}
+              >
                 <ChevronRight aria-hidden="true" className="size-5" />
               </button>
             </div>
           )}
-          <p className="sr-only" role="status">Profil {activeIndex + 1} z {availableMatches.length}, {activeMatch.name}</p>
-          {activeIndex === availableMatches.length - 1 && <p className="mt-3 text-sm text-muted-foreground">Tu sa táto sada odporúčaní končí.</p>}
+          <p className="sr-only" role="status">
+            Profil {activeIndex + 1} z {availableMatches.length}, {activeMatch.name}
+          </p>
+          {activeIndex === availableMatches.length - 1 && (
+            <p className="mt-3 text-sm text-muted-foreground">Tu sa táto sada odporúčaní končí.</p>
+          )}
         </section>
       ) : (
         <section className="discover-search" aria-busy={loading || savingRadius}>
@@ -2321,47 +2555,97 @@ function Dashboard({
             <Radar className="size-6" aria-hidden="true" />
           </div>
           <div>
-            <p className="discover-search-range"><MapPin className="size-4" aria-hidden="true" /> {searchRange}</p>
+            <p className="discover-search-range">
+              <MapPin className="size-4" aria-hidden="true" /> {searchRange}
+            </p>
             <h2 className="personal-heading">
-              {loading ? "Hľadám nové spojenia…" : failed ? "Spojenia sa nepodarilo načítať" : "Zatiaľ žiadne nové spojenia"}
+              {loading
+                ? "Hľadám nové spojenia…"
+                : failed
+                  ? "Spojenia sa nepodarilo načítať"
+                  : "Zatiaľ žiadne nové spojenia"}
             </h2>
             <p className="discover-search-copy">
-              {failed ? "Skontroluj pripojenie a skús hľadať znova." :
-                nearby ? "V tomto okruhu momentálne nemáš žiadne odporúčania." :
-                "Odporúčania sa tu objavia, keď budú dostupné."}
+              {failed
+                ? "Skontroluj pripojenie a skús hľadať znova."
+                : nearby
+                  ? "V tomto okruhu momentálne nemáš žiadne odporúčania."
+                  : "Odporúčania sa tu objavia, keď budú dostupné."}
             </p>
           </div>
 
-          {!failed && !loading && (editingRadius ? (
-            <form className="discover-radius-form" onSubmit={event => { event.preventDefault(); void saveSearchRadius(); }}>
-              <label className="font-semibold" htmlFor="discover-radius">Dosah odporúčaní</label>
-              <select id="discover-radius" className="min-h-12 rounded-lg border border-foreground/35 bg-card px-3" value={radiusChoice}
-                onChange={event => setRadiusChoice(Number(event.target.value))} disabled={savingRadius}>
-                {[...new Set([25, 50, 100, 200, profile.radiusKm ?? 500, 500])].sort((a, b) => a - b)
-                  .map(radius => <option key={radius} value={radius}>{radius >= 500 ? "Celý svet" : "Do " + radius + " km"}</option>)}
-              </select>
-              {radiusFailed && <p role="alert" className="text-destructive">Dosah sa nepodarilo uložiť. Skús to znova.</p>}
-              <div className="flex flex-wrap gap-2">
-                <button type="submit" className="personal-action" disabled={savingRadius || radiusChoice === (profile.radiusKm ?? 500)}>
-                  {savingRadius ? "Ukladám…" : "Uložiť dosah"}
-                </button>
-                <button type="button" className="personal-action" disabled={savingRadius} onClick={() => setEditingRadius(false)}>Zrušiť</button>
-              </div>
-            </form>
-          ) : (
-            <button type="button" className="match-card-action" onClick={() => {
-              setRadiusChoice(profile.radiusKm ?? 500);
-              setRadiusFailed(false);
-              setEditingRadius(true);
-            }}>
-              Zmeniť dosah <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
-            </button>
-          ))}
+          {!failed &&
+            !loading &&
+            (editingRadius ? (
+              <form
+                className="discover-radius-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void saveSearchRadius();
+                }}
+              >
+                <label className="font-semibold" htmlFor="discover-radius">
+                  Dosah odporúčaní
+                </label>
+                <select
+                  id="discover-radius"
+                  className="min-h-12 rounded-lg border border-foreground/35 bg-card px-3"
+                  value={radiusChoice}
+                  onChange={(event) => setRadiusChoice(Number(event.target.value))}
+                  disabled={savingRadius}
+                >
+                  {[...new Set([25, 50, 100, 200, profile.radiusKm ?? 500, 500])]
+                    .sort((a, b) => a - b)
+                    .map((radius) => (
+                      <option key={radius} value={radius}>
+                        {radius >= 500 ? "Celý svet" : "Do " + radius + " km"}
+                      </option>
+                    ))}
+                </select>
+                {radiusFailed && (
+                  <p role="alert" className="text-destructive">
+                    Dosah sa nepodarilo uložiť. Skús to znova.
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="submit"
+                    className="personal-action"
+                    disabled={savingRadius || radiusChoice === (profile.radiusKm ?? 500)}
+                  >
+                    {savingRadius ? "Ukladám…" : "Uložiť dosah"}
+                  </button>
+                  <button
+                    type="button"
+                    className="personal-action"
+                    disabled={savingRadius}
+                    onClick={() => setEditingRadius(false)}
+                  >
+                    Zrušiť
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                type="button"
+                className="match-card-action"
+                onClick={() => {
+                  setRadiusChoice(profile.radiusKm ?? 500);
+                  setRadiusFailed(false);
+                  setEditingRadius(true);
+                }}
+              >
+                Zmeniť dosah <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
+              </button>
+            ))}
           <button
             type="button"
             className="discover-refresh"
             disabled={loading || savingRadius}
-            onClick={() => { haptic("tap"); onRefresh(); }}
+            onClick={() => {
+              haptic("tap");
+              onRefresh();
+            }}
           >
             <RefreshCw className="size-4 shrink-0" aria-hidden="true" />
             Hľadať znova
@@ -2553,9 +2837,7 @@ function Processing({
           />
         ))}
       </div>
-      <p className="mt-4 text-sm text-foreground/50">
-        Hľadáme spojenia podľa tvojich odpovedí.
-      </p>
+      <p className="mt-4 text-sm text-foreground/50">Hľadáme spojenia podľa tvojich odpovedí.</p>
     </div>
   );
 }
@@ -2573,7 +2855,15 @@ function ProfileForm({
     "SYSTEM_IDENTIFICATION" | "TEMPORAL_MATRIX" | "AGE_VERIFICATION" | "MARKET_ALIGNMENT"
   >(() => {
     if (typeof window === "undefined") return "SYSTEM_IDENTIFICATION";
-    return (localStorage.getItem("reson:profile_step") as any) || "SYSTEM_IDENTIFICATION";
+    const saved = localStorage.getItem("reson:profile_step");
+    if (
+      saved === "TEMPORAL_MATRIX" ||
+      saved === "AGE_VERIFICATION" ||
+      saved === "MARKET_ALIGNMENT"
+    ) {
+      return saved;
+    }
+    return "SYSTEM_IDENTIFICATION";
   });
 
   const [name, setName] = useState(() => {
@@ -2591,11 +2881,13 @@ function ProfileForm({
   });
   const [gender, setGender] = useState<Gender | "">(() => {
     if (typeof window === "undefined") return "";
-    return (localStorage.getItem("reson:profile_gender") as Gender) || "";
+    const saved = localStorage.getItem("reson:profile_gender");
+    return saved === "male" || saved === "female" || saved === "other" ? saved : "";
   });
   const [targetMarket, setTargetMarket] = useState<"male" | "female" | "all" | "">(() => {
     if (typeof window === "undefined") return "";
-    return (localStorage.getItem("reson:profile_targetMarket") as any) || "";
+    const saved = localStorage.getItem("reson:profile_targetMarket");
+    return saved === "male" || saved === "female" || saved === "all" ? saved : "";
   });
 
   // Sync to localStorage
@@ -2670,7 +2962,12 @@ function ProfileForm({
   const isAgeValid = age !== null && age >= 18 && age <= 99;
   const isAlignmentValid = !!gender && !!targetMarket;
 
-  const stepNumber = { SYSTEM_IDENTIFICATION: 1, TEMPORAL_MATRIX: 2, AGE_VERIFICATION: 3, MARKET_ALIGNMENT: 4 }[step];
+  const stepNumber = {
+    SYSTEM_IDENTIFICATION: 1,
+    TEMPORAL_MATRIX: 2,
+    AGE_VERIFICATION: 3,
+    MARKET_ALIGNMENT: 4,
+  }[step];
 
   return (
     <div
@@ -2678,7 +2975,9 @@ function ProfileForm({
         errorFlash ? "bg-red-500/5" : ""
       }`}
     >
-      <p className="personal-eyebrow mb-3" role="status">Krok {stepNumber} zo 4</p>
+      <p className="personal-eyebrow mb-3" role="status">
+        Krok {stepNumber} zo 4
+      </p>
 
       {step === "SYSTEM_IDENTIFICATION" && (
         <form
@@ -2718,7 +3017,10 @@ function ProfileForm({
           </div>
 
           {errorMessage && (
-            <div role="alert" className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive">
+            <div
+              role="alert"
+              className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive"
+            >
               {errorMessage}
             </div>
           )}
@@ -2767,7 +3069,10 @@ function ProfileForm({
           </div>
 
           {errorMessage && (
-            <div role="alert" className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive">
+            <div
+              role="alert"
+              className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive"
+            >
               {errorMessage}
             </div>
           )}
@@ -2821,7 +3126,10 @@ function ProfileForm({
           </div>
 
           {errorMessage && (
-            <div role="alert" className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive">
+            <div
+              role="alert"
+              className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive"
+            >
               {errorMessage}
             </div>
           )}
@@ -2944,7 +3252,10 @@ function ProfileForm({
           </div>
 
           {errorMessage && (
-            <div role="alert" className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive">
+            <div
+              role="alert"
+              className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive"
+            >
               {errorMessage}
             </div>
           )}
@@ -2978,17 +3289,19 @@ function ProfileForm({
 function NoOne({ onMessages }: { onMessages: (() => void) | null }) {
   return (
     <div className="flex min-h-[80vh] flex-col px-1 py-3 animate-fade-up">
-      <header><Logo /></header>
+      <header>
+        <Logo />
+      </header>
       <main className="my-auto py-10">
         <p className="editorial-kicker text-foreground/50">Tvoje spojenia</p>
         <h1 className="mt-5 max-w-sm font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.04em]">
           Žiadne nové spojenia
         </h1>
         <div className="mt-8 border-t border-foreground/30 pt-6">
-        <p className="max-w-sm text-sm leading-relaxed text-foreground/60">
-          Momentálne sme nenašli ďalšie vhodné spojenie. Skús sa vrátiť neskôr.
-        </p>
-        {onMessages && (
+          <p className="max-w-sm text-sm leading-relaxed text-foreground/60">
+            Momentálne sme nenašli ďalšie vhodné spojenie. Skús sa vrátiť neskôr.
+          </p>
+          {onMessages && (
             <button
               type="button"
               onClick={onMessages}
@@ -2997,7 +3310,7 @@ function NoOne({ onMessages }: { onMessages: (() => void) | null }) {
               <span className="font-display text-xl font-bold">Otvoriť správy</span>
               <ChevronRight className="size-5" aria-hidden="true" />
             </button>
-        )}
+          )}
         </div>
       </main>
     </div>
@@ -3034,14 +3347,21 @@ function MessagesList({
         <h1 className="personal-title mt-3">Správy</h1>
       </header>
 
-      {failed && <p role="alert" className="mb-3">Rozhovory sa nepodarilo načítať. <button type="button" className="underline" onClick={onRetry}>Skúsiť znova</button></p>}
-      {loading && conversations.length === 0 ? <p role="status">Načítavam rozhovory…</p> : conversations.length === 0 && !failed ? (
+      {failed && (
+        <p role="alert" className="mb-3">
+          Rozhovory sa nepodarilo načítať.{" "}
+          <button type="button" className="underline" onClick={onRetry}>
+            Skúsiť znova
+          </button>
+        </p>
+      )}
+      {loading && conversations.length === 0 ? (
+        <p role="status">Načítavam rozhovory…</p>
+      ) : conversations.length === 0 && !failed ? (
         <div className="app-empty">
           <MessageCircle className="size-6" aria-hidden="true" />
           <h2 className="personal-heading mt-2">Zatiaľ žiadne správy</h2>
-          <p className="personal-intro">
-            Tu nájdeš rozhovor, keď jeden z vás odošle prvú správu.
-          </p>
+          <p className="personal-intro">Tu nájdeš rozhovor, keď jeden z vás odošle prvú správu.</p>
         </div>
       ) : (
         <div className="message-list">
@@ -3056,27 +3376,33 @@ function MessagesList({
                 className="message-list-row group"
                 data-unread={!!c.unread}
               >
-                <span className="grid size-12 shrink-0 place-items-center rounded-full bg-muted font-bold" aria-hidden="true">
+                <span
+                  className="grid size-12 shrink-0 place-items-center rounded-full bg-muted font-bold"
+                  aria-hidden="true"
+                >
                   {Array.from(m.name)[0]?.toLocaleUpperCase("sk")}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h3
-                      className={`truncate text-base ${c.unread ? "font-bold" : "font-medium"}`}
-                    >
+                    <h3 className={`truncate text-base ${c.unread ? "font-bold" : "font-medium"}`}>
                       {m.name}
                     </h3>
                     <span className="shrink-0 text-sm text-muted-foreground">{m.age}</span>
                     <span className="truncate text-sm text-muted-foreground">· {m.city}</span>
                     {c.unread && (
                       <>
-                        <span className="size-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+                        <span
+                          className="size-2 shrink-0 rounded-full bg-accent"
+                          aria-hidden="true"
+                        />
                         <span className="sr-only">Neprečítané</span>
                       </>
                     )}
                   </div>
                   <p className="mt-1 flex items-center gap-2 text-sm text-foreground/70">
-                    <span className="truncate">{last ? inboxMessageLabel(last) : "Otvoriť rozhovor"}</span>
+                    <span className="truncate">
+                      {last ? inboxMessageLabel(last) : "Otvoriť rozhovor"}
+                    </span>
                   </p>
                 </div>
                 <ChevronRight className="size-5 shrink-0 text-foreground/30 group-hover:text-foreground" />
@@ -3086,16 +3412,12 @@ function MessagesList({
         </div>
       )}
 
-      <button
-        onClick={onFindNew}
-        className="personal-action mt-4 w-full"
-      >
+      <button onClick={onFindNew} className="personal-action mt-4 w-full">
         Nájsť spojenie
       </button>
     </div>
   );
 }
-
 
 // Mock GIF search results — small, loopable preview GIFs hosted on a CDN.
 const MOCK_GIFS: string[] = [

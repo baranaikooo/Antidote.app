@@ -9,20 +9,18 @@ afterEach(() => fetchSharedProfileVideos.mockReset());
 
 const user = { id: "account", name: "Zora", age: 29, city: "Žilina" };
 
-it("shows only the discovery card and skips a missing shared reflection", () => {
-  const { container, rerender } = render(
-    <ProfileVisibilityPreview user={{ ...user, sharedReflection: " " }} />,
-  );
+it("previews discovery without revealing a saved reflection or video", () => {
+  const fullProfile = { ...user, sharedReflection: "Moja odpoveď.", videoUrls: ["blob:draft"] };
+  const { container } = render(<ProfileVisibilityPreview user={fullProfile} />);
   fireEvent.click(screen.getByText("Takto ťa uvidia ostatní"));
   const card = screen.getByRole("article", { name: "Náhľad karty v Spojeniach" });
-  expect(within(card).getByRole("heading", { name: "Zora 29" })).toBeInTheDocument();
-  expect(within(card).getByText("Žilina")).toBeInTheDocument();
+  expect(within(card).getByRole("heading", { name: "Zora" })).toBeInTheDocument();
+  expect(within(card).getByText("29 rokov · Žilina")).toBeInTheDocument();
   expect(within(card).queryByText("Zdieľaná odpoveď")).not.toBeInTheDocument();
   expect(container.querySelector("video")).toBeNull();
   expect(fetchSharedProfileVideos).not.toHaveBeenCalled();
 
-  rerender(<ProfileVisibilityPreview user={{ ...user, sharedReflection: "Moja odpoveď." }} />);
-  expect(within(card).getByText("Moja odpoveď.")).toBeInTheDocument();
+  expect(within(card).queryByText("Moja odpoveď.")).not.toBeInTheDocument();
 });
 
 it("uses the shared profile video list and omits any unpublished local video", async () => {
