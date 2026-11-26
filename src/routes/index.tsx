@@ -1035,8 +1035,8 @@ function AntidoteApp() {
     if (!profile) return [];
     const currentPartners = new Set(conversations.map((conversation) => conversation.matchId));
     return liveCandidates
-      .slice(0, 3)
-      .filter((match) => !excluded.has(match.id) && !currentPartners.has(match.id));
+      .filter((match) => !excluded.has(match.id) && !currentPartners.has(match.id))
+      .slice(0, 3);
   }, [profile, liveCandidates, excluded, conversations]);
 
   function goToNextMatch() {
