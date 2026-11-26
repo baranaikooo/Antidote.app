@@ -78,6 +78,11 @@ jobs:
           java-version: 21
           cache: gradle
 
+      - uses: android-actions/setup-android@v3
+        if: steps.version.outputs.code != ''
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+
       - name: Test and build
         if: steps.version.outputs.code != ''
         shell: bash
@@ -87,7 +92,6 @@ jobs:
           npm test -- --run
           npm run build
           npm exec -- cap sync android
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
           bash android/gradlew -p android assembleDebug \
             -PantidoteVersionCode="$VERSION_CODE" -PantidoteVersionName="$VERSION_NAME"
         env:
