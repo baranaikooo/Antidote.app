@@ -1,6 +1,10 @@
 import { Capacitor, registerPlugin, SystemBars, SystemBarType } from "@capacitor/core";
 import { createFileRoute } from "@tanstack/react-router";
 import type { User as AuthUser } from "@supabase/supabase-js";
+import {
+  priorityDistributionFromPercentages,
+  readPriorityDistribution,
+} from "@/lib/priority-distribution";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Mic,
@@ -512,7 +516,10 @@ function AntidoteApp() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       if (profile) {
-        localStorage.setItem("reson:onboarding_profile_draft", JSON.stringify(profile));
+        const draft = profile.topPriority
+          ? { ...profile, priorityDistribution: undefined }
+          : profile;
+        localStorage.setItem("reson:onboarding_profile_draft", JSON.stringify(draft));
       } else {
         localStorage.removeItem("reson:onboarding_profile_draft");
       }
@@ -608,7 +615,8 @@ function AntidoteApp() {
           }
           clearOnboardingStorage(true);
         } else {
-          const localProfileId = profileRef.current?.id;
+          const localProfile = profileRef.current;
+          const localProfileId = localProfile?.id;
           const draftOwner = localStorage.getItem("reson:onboarding_user_id") ?? localProfileId;
           const hasLocalProfile = draftOwner === user.id && localProfileId === user.id;
           const draftStage = getOnboardingStage(savedScreen);
@@ -620,8 +628,17 @@ function AntidoteApp() {
               savedScreen === "liveness" ||
               savedScreen === "profile");
 
-          if (existingProfile) setProfile(existingProfile);
-          else if (!hasLocalProfile) setProfile(null);
+          if (existingProfile) {
+            const pendingDistribution =
+              canResume && hasLocalProfile
+                ? readPriorityDistribution(localProfile?.priorityDistribution)
+                : undefined;
+            setProfile(
+              pendingDistribution
+                ? { ...existingProfile, priorityDistribution: pendingDistribution }
+                : existingProfile,
+            );
+          } else if (!hasLocalProfile) setProfile(null);
 
           if (canResume) {
             setResumedOnboarding(savedScreen);
@@ -790,7 +807,6 @@ function AntidoteApp() {
           filter: `id=eq.${authUserId}`,
         },
         (payload) => {
-          console.log("[Supabase Realtime] User profile updated dynamically:", payload.new);
           const p = payload.new;
           setProfile((prev) => {
             if (!prev) return null;
@@ -1383,6 +1399,10 @@ function AntidoteApp() {
                     }
                   });
                   setTopPriority(topKey);
+                  const priorityDistribution = priorityDistributionFromPercentages(pList);
+                  setProfile((previous) =>
+                    previous ? { ...previous, priorityDistribution } : previous,
+                  );
                   setScreen("pressure");
                 } catch (err) {
                   console.error("[bankroll] onDone failed:", err);
