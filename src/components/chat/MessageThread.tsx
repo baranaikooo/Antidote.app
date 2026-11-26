@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Eye, Mic, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Eye, Mic, Reply, Send, Sparkles, X } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/lib/resonance";
 import {
   fetchSharedProfileVideos,
@@ -44,6 +44,7 @@ export function MessageThread({
   const haptic = useHaptic();
   const [status, setStatus] = useState<ConversationStatus | null>(null);
   const [input, setInput] = useState("");
+  const [selectedReply, setSelectedReply] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
   const [error, setError] = useState("");
@@ -55,6 +56,7 @@ export function MessageThread({
   const [videos, setVideos] = useState<string[] | null>(null);
   const [videosFailed, setVideosFailed] = useState(false);
   const listEnd = useRef<HTMLDivElement>(null);
+  const composerInput = useRef<HTMLTextAreaElement>(null);
   const draft = useRef<{ key: string; id: string } | null>(null);
   const sendLock = useRef(false);
   const choiceLock = useRef(false);
@@ -193,6 +195,20 @@ export function MessageThread({
     }
   }
 
+  const hasMessages = conversation.messages.length > 0;
+  const reflection = match.shared_reflection?.trim() ? match.shared_reflection : null;
+  const replyContext = !hasMessages && selectedReply === reflection ? selectedReply : null;
+
+  function selectReply(value: string | null) {
+    if (sendLock.current) return;
+    if (selectedReply !== value) {
+      setSelectedReply(value);
+      setFailedSend(null);
+      setError("");
+    }
+    composerInput.current?.focus();
+  }
+
   async function send(gif?: string) {
     const text = gif ? "" : input.trim();
     if ((!text && !gif) || sendLock.current || status?.status !== "active") return;
@@ -204,15 +220,13 @@ export function MessageThread({
     if (draft.current?.key !== key) draft.current = { key, id: crypto.randomUUID() };
     const media = gif ? { kind: "gif" as const, url: gif } : undefined;
     try {
-      const replyContext =
-        !gif && !conversation.messages.length ? (match.shared_reflection ?? undefined) : undefined;
       const saved = await saveChatMessage(
         conversation.id,
         userId,
         text,
         media,
         draft.current.id,
-        replyContext,
+        gif ? undefined : (replyContext ?? undefined),
       );
       onUpdate((previous) => ({
         ...previous,
@@ -229,6 +243,7 @@ export function MessageThread({
       }));
       setInput((current) => (gif || current.trim() !== text ? current : ""));
       setShowGifs(false);
+      setSelectedReply(null);
       draft.current = null;
       haptic("send");
     } catch {
@@ -242,7 +257,6 @@ export function MessageThread({
   }
 
   const isOpen = status?.status === "active";
-  const hasMessages = conversation.messages.length > 0;
   const showPilotQuestion =
     isOpen && latestIncoming && conversation.messages.some((message) => message.from === "me");
   const canRetrySend = failedSend && (failedSend.gif || failedSend.text === input.trim());
@@ -277,11 +291,25 @@ export function MessageThread({
         )}
 
         {isOpen && !hasMessages && (
-          <section className="editorial-panel p-4" aria-labelledby="conversation-intro">
+          <section className="conversation-intro" aria-labelledby="conversation-intro">
             <h2 id="conversation-intro" className="font-semibold">
-              {match.shared_reflection ? "Zdieľaná odpoveď" : "Otázka na úvod"}
+              {reflection ? "Zdieľaná odpoveď" : "Otázka na úvod"}
             </h2>
-            <p className="mt-2 whitespace-pre-wrap break-words text-lg leading-snug">{prompt}</p>
+            <p className="mt-2 whitespace-pre-wrap break-words text-base leading-relaxed">
+              {prompt}
+            </p>
+            {reflection && (
+              <button
+                type="button"
+                className="personal-action conversation-follow-up"
+                aria-pressed={replyContext !== null}
+                disabled={sending}
+                onClick={() => selectReply(reflection)}
+              >
+                <Reply className="size-4" aria-hidden="true" />
+                Nadviazať
+              </button>
+            )}
           </section>
         )}
 
@@ -399,6 +427,23 @@ export function MessageThread({
 
       {isOpen && (
         <div className="conversation-composer shrink-0">
+          {replyContext && (
+            <div className="conversation-reply-draft">
+              <div id="conversation-reply-context" className="min-w-0">
+                <p className="text-sm font-semibold">Reaguješ na zdieľanú odpoveď</p>
+                <p className="truncate text-sm text-muted-foreground">{replyContext}</p>
+              </div>
+              <button
+                type="button"
+                className="conversation-header-action shrink-0"
+                aria-label="Odstrániť zdieľanú odpoveď zo správy"
+                disabled={sending}
+                onClick={() => selectReply(null)}
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
+            </div>
+          )}
           {error && (
             <div className="flex flex-wrap items-center gap-2 px-3 pt-2">
               <p role="alert" className="text-sm text-destructive">
@@ -463,12 +508,14 @@ export function MessageThread({
               </button>
             )}
             <textarea
+              ref={composerInput}
               className="conversation-input"
               aria-label="Správa"
+              aria-describedby={replyContext ? "conversation-reply-context" : undefined}
               rows={1}
               maxLength={2000}
               value={input}
-              placeholder={hasMessages ? "Napíš správu…" : "Napíš, čo ťa zaujalo…"}
+              placeholder={replyContext ? "Napíš, čo ťa zaujalo…" : "Napíš správu…"}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {

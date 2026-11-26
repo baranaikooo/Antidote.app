@@ -198,8 +198,8 @@ function PriorityAllocation({
           Na čom ti záleží?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          Rozdeľ desať žetónov podľa toho, čo je pre teba dôležité. Jednej hodnote môžeš dať najviac
-          päť.
+          Podľa tvojich priorít hľadáme spoločné hodnoty. Rozdeľ 10 žetónov, najviac 5 na jednu
+          hodnotu.
         </p>
       </header>
 
@@ -213,7 +213,7 @@ function PriorityAllocation({
                 aria-atomic="true"
               >
                 Žetóny na rozdelenie
-                <strong ref={reserve} className="text-lg tabular-nums text-accent">
+                <strong ref={reserve} className="priority-remaining tabular-nums text-accent">
                   {remainingTokens} z {TOTAL_TOKENS}
                 </strong>
               </p>
