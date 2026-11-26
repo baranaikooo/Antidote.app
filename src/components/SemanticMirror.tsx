@@ -122,26 +122,16 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
 
   return (
     <div className="mx-auto w-full max-w-md px-1 pb-6 animate-fade-up">
-      <header className="mb-6 flex items-end justify-between border-b border-foreground/25 pb-4">
-        <div>
-          <p className="editorial-kicker text-cerebral">Spôsob uvažovania · 01</p>
-          <p className="mt-1 font-display text-2xl font-bold tracking-[-0.04em]">
-            {String(step + 1).padStart(2, "0")}{" "}
-            <span className="text-foreground/30">/ {String(prompts.length).padStart(2, "0")}</span>
-          </p>
-        </div>
-        <span className="text-xs text-muted-foreground">Vyber, čo ti je najbližšie</span>
-      </header>
-
-      <div className="mb-8 flex gap-1.5" aria-hidden>
-        {prompts.map((_, idx) => (
-          <span
-            key={idx}
-            className={`h-2 flex-1 transition-colors ${
-              idx <= step ? "bg-cerebral" : "bg-foreground/10"
-            }`}
-          />
-        ))}
+      <div className="mb-5">
+        <p className="text-sm text-muted-foreground" role="status">
+          Otázka {step + 1} z {prompts.length}
+        </p>
+        <progress
+          className="question-progress"
+          aria-label="Postup v dotazníku"
+          value={step + 1}
+          max={prompts.length}
+        />
       </div>
 
       <div className="onboarding-panel mb-5">

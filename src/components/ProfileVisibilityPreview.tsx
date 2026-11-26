@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { MatchCardIdentity } from "./MatchCardIdentity";
 import { fetchSharedProfileVideos } from "@/lib/conversations";
 import type { UserProfile } from "@/lib/resonance";
 
 export function ProfileVisibilityPreview({
   user,
 }: {
-  user: Pick<UserProfile, "id" | "name" | "age" | "city" | "sharedReflection" | "videoUrls">;
+  user: Pick<UserProfile, "id" | "name" | "age" | "city" | "videoUrls">;
 }) {
   const [showConsented, setShowConsented] = useState(false);
-  const reflection = user.sharedReflection?.trim();
 
   return (
     <details className="personal-section settings-disclosure group">
@@ -50,25 +50,7 @@ export function ProfileVisibilityPreview({
           </section>
         ) : (
           <article className="match-card" aria-label="Náhľad karty v Spojeniach">
-            <header className="match-card-header">
-              <div className="min-w-0">
-                <h3 className="match-card-name">
-                  {user.name} {user.age > 0 && <span>{user.age}</span>}
-                </h3>
-                {user.city && <p className="match-card-location">{user.city}</p>}
-              </div>
-              <div className="match-card-video" aria-hidden="true">
-                {Array.from(user.name)[0]?.toLocaleUpperCase("sk")}
-              </div>
-            </header>
-            {reflection && (
-              <div className="match-shared-priority">
-                <p className="text-sm font-medium text-muted-foreground">Zdieľaná odpoveď</p>
-                <blockquote className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-lg font-semibold leading-snug">
-                  {reflection}
-                </blockquote>
-              </div>
-            )}
+            <MatchCardIdentity name={user.name} age={user.age} city={user.city} heading="h3" />
           </article>
         )}
       </div>

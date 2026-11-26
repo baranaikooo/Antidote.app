@@ -111,6 +111,7 @@ import { AssetDossier } from "@/components/AssetDossier";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
+import { MatchCardIdentity } from "@/components/MatchCardIdentity";
 import { AndroidUpdateProvider, UpdateNotice } from "@/components/UpdateNotice";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -188,6 +189,7 @@ function Shell({
 }) {
   const onboardingStage = onboardingScreen ? getOnboardingStage(onboardingScreen) : -1;
   const onboarding = onboardingStage >= 0;
+  const onboardingStep = onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen];
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}>
       {landing && <img className="landing-art" src="/antidote-fold.jpg" alt="" width={1536} height={1024} fetchPriority="high" />}
@@ -197,21 +199,25 @@ function Shell({
         {onboarding && (
           <header className="onboarding-header">
             <AntidoteLogo markClassName="h-6" />
-            <ol className="onboarding-progress" aria-label="Postup registrácie">
-              {ONBOARDING_STAGES.map(({ label }, index) => (
-                <li
-                  key={label}
-                  aria-current={index === onboardingStage ? "step" : undefined}
-                  data-reached={index <= onboardingStage}
-                >
-                  {label}
-                </li>
-              ))}
-            </ol>
-            <p className="onboarding-step" aria-live="polite">
-              {resumedOnboarding && <span>Pokračuješ tam, kde si skončil/a</span>}
-              {onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen]}
-            </p>
+            {onboardingScreen !== "mirror" && (
+              <ol className="onboarding-progress" aria-label="Postup registrácie">
+                {ONBOARDING_STAGES.map(({ label }, index) => (
+                  <li
+                    key={label}
+                    aria-current={index === onboardingStage ? "step" : undefined}
+                    data-reached={index <= onboardingStage}
+                  >
+                    {label}
+                  </li>
+                ))}
+              </ol>
+            )}
+            {(resumedOnboarding || onboardingStep) && (
+              <p className="onboarding-step" aria-live="polite">
+                {resumedOnboarding && <span>Pokračuješ tam, kde si skončil/a</span>}
+                {onboardingStep}
+              </p>
+            )}
           </header>
         )}
         {children}
@@ -293,7 +299,6 @@ const ONBOARDING_STEP_LABELS: Partial<Record<Screen, string>> = {
   profile: "Základné údaje",
   "snippets-onboarding": "Krátke video do profilu",
   briefing: "Úvod do dotazníka",
-  mirror: "Prvá otázka",
   bankroll: "Čo je pre teba dôležité",
   pressure: "Vlastné hodnoty",
   processing: "Výsledok dotazníka",
@@ -1622,7 +1627,6 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
     { value: "travel", label: "Možnosť cestovať", icon: Compass },
     { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
   ] as const;
-  const selected = options.find(({ value }) => value === choice);
 
   const choose = (nextChoice: "travel" | "love") => {
     haptic("medium");
@@ -1632,10 +1636,13 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   return (
     <main className="landing-main">
       <div className="landing-hero">
-        <header className="landing-brand"><AntidoteLogo markClassName="h-8" /></header>
+        <header className="landing-intro">
+          <div className="landing-brand"><AntidoteLogo markClassName="h-8" /></div>
+          <p>Zoznamka, ktorá začína otázkou.</p>
+        </header>
         <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
       </div>
-      <div className="landing-interaction" data-answered={Boolean(selected)}>
+      <div className="landing-interaction" data-answered={choice !== null}>
         <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
           {options.map(({ value, label, icon: Icon }) => (
             <button key={value} type="button" onClick={() => choose(value)} aria-pressed={choice === value} className="landing-option">
@@ -1647,18 +1654,12 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
             </button>
           ))}
         </div>
-        {selected && (
+        <div role="status" className="sr-only">
+          {choice && "Odpoveď vybraná. Môžeš pokračovať cez Google."}
+        </div>
+        {choice && (
           <div className="landing-result">
-            <div role="status">
-              <span className="sr-only">Tvoja odpoveď je {selected.label.toLowerCase()}.</span>
-              <h2 className="landing-result-title">Od odpovede k spojeniu</h2>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Antidote spája ľudí podľa spôsobu rozhodovania, nie podľa prvého dojmu.
-              </p>
-            </div>
-            <p className="mt-3 text-sm leading-snug text-muted-foreground">
-              Po prihlásení ťa čaká overenie kamerou, krátke video do profilu a dotazník.
-            </p>
+            <p>Podľa odpovedí v dotazníku ti odporučíme ľudí.</p>
             <div className="landing-sign-in"><GoogleSignInButton onSuccess={onGoogle} /></div>
           </div>
         )}
@@ -2160,35 +2161,21 @@ function introductionFor(myPriority: string | undefined, partner: ConversationPa
   return { shared, text };
 }
 
-function MatchCard({ match, profile, busy, onSelect }: {
+function MatchCard({ match, busy, onSelect }: {
   match: RankedMatch;
-  profile: UserProfile;
   busy: boolean;
   onSelect: () => void;
 }) {
-  const { shared, text } = introductionFor(profile.topPriority, toConversationPartner(match));
   return (
     <article className="match-card">
-      <header className="match-card-header">
-        <div className="min-w-0">
-          <h2 className="match-card-name">{match.name}<span>{match.age}</span></h2>
-          {(match.city || match.distanceKm !== undefined) && (
-            <p className="match-card-location">
-              {[match.city, match.distanceKm !== undefined && Math.round(match.distanceKm) + " km"].filter(Boolean).join(" · ")}
-            </p>
-          )}
-        </div>
-        <div className="match-card-video" aria-hidden="true">{Array.from(match.name)[0]?.toLocaleUpperCase("sk")}</div>
-      </header>
-      <div className="match-shared-priority">
-        {shared && <p className="font-semibold">Vaša spoločná priorita je {shared.label.toLocaleLowerCase("sk")}.</p>}
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{match.shared_reflection ? "Zdieľaná odpoveď" : "Otázka na úvod"}</p>
-          <blockquote className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-lg font-semibold leading-snug">{text}</blockquote>
-        </div>
-      </div>
+      <MatchCardIdentity
+        name={match.name}
+        age={match.age}
+        city={match.city}
+        distanceKm={match.distanceKm}
+      />
       <button type="button" onClick={onSelect} disabled={busy} className="match-card-action">
-        {busy ? "Otváram rozhovor…" : match.shared_reflection ? "Odpovedať na myšlienku" : "Začať otázkou"}
+        {busy ? "Otváram rozhovor…" : "Osloviť"}
         <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
       </button>
     </article>
@@ -2286,7 +2273,7 @@ function Dashboard({
 
       {activeMatch ? (
         <section className="match-deck" aria-label="Dnešné odporúčania">
-          <MatchCard key={activeMatch.id} match={activeMatch} profile={profile} busy={openingMatch}
+          <MatchCard key={activeMatch.id} match={activeMatch} busy={openingMatch}
             onSelect={() => onSelectMatch(activeMatch)} />
           {openError && <p role="alert" className="text-destructive">Rozhovor sa nepodarilo otvoriť. Skús to znova.</p>}
           {availableMatches.length > 1 && (
