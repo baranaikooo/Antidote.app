@@ -4,6 +4,7 @@ import { Check, Minus, Plus } from "lucide-react";
 import { useHaptic } from "@/hooks/use-haptics";
 
 interface ValueBankrollProps {
+  userId?: string | null;
   onDone: (conscientiousness: number, priorities: Record<string, number>) => void;
   onSliderChange?: (conscientiousness: number, extraversion: number) => void;
 }
@@ -26,6 +27,45 @@ const EMPTY_ALLOCATION = {
   kreativita: 0,
   sloboda: 0,
 };
+
+type PriorityDraft = { tokens: Record<string, number>; reviewing: boolean };
+const EMPTY_DRAFT: PriorityDraft = { tokens: EMPTY_ALLOCATION, reviewing: false };
+
+function readDraft(storageKey: string | undefined): PriorityDraft {
+  if (!storageKey || typeof window === "undefined") return EMPTY_DRAFT;
+
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return EMPTY_DRAFT;
+
+    const saved = JSON.parse(raw);
+    const tokens = { ...EMPTY_ALLOCATION };
+    let total = 0;
+    for (const { id } of PRIORITY_CATEGORIES) {
+      const value = saved?.tokens?.[id];
+      if (!Number.isInteger(value) || value < 0 || value > MAX_TOKENS_PER_CATEGORY) {
+        return EMPTY_DRAFT;
+      }
+      tokens[id] = value;
+      total += value;
+    }
+    if (total > TOTAL_TOKENS) return EMPTY_DRAFT;
+
+    return { tokens, reviewing: total === TOTAL_TOKENS && saved.reviewing === true };
+  } catch {
+    return EMPTY_DRAFT;
+  }
+}
+
+function writeDraft(storageKey: string | undefined, draft: PriorityDraft | null) {
+  if (!storageKey) return;
+  try {
+    if (draft) window.localStorage.setItem(storageKey, JSON.stringify(draft));
+    else window.localStorage.removeItem(storageKey);
+  } catch {
+    // Token allocation remains usable if browser storage is unavailable.
+  }
+}
 
 function animateToken(from: HTMLElement, to: HTMLElement) {
   const start = from.getBoundingClientRect();
@@ -54,10 +94,18 @@ function animateToken(from: HTMLElement, to: HTMLElement) {
   );
 }
 
-export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
+export function ValueBankroll({ userId, ...props }: ValueBankrollProps) {
+  const storageKey = userId ? `reson:priority-draft:${userId}` : undefined;
+  return <PriorityAllocation key={storageKey} storageKey={storageKey} {...props} />;
+}
+
+function PriorityAllocation({
+  storageKey,
+  onDone,
+  onSliderChange,
+}: Omit<ValueBankrollProps, "userId"> & { storageKey?: string }) {
   const haptic = useHaptic();
-  const [tokens, setTokens] = useState<Record<string, number>>(EMPTY_ALLOCATION);
-  const [reviewing, setReviewing] = useState(false);
+  const [{ tokens, reviewing }, setDraft] = useState(() => readDraft(storageKey));
   const title = useRef<HTMLHeadingElement>(null);
   const reserve = useRef<HTMLElement>(null);
   const focusSummary = useCallback((heading: HTMLHeadingElement | null) => {
@@ -86,8 +134,14 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
     return { c: clampedC, e: Math.max(0.1, Math.min(0.99, extraversion)) };
   };
 
+  const updateDraft = (next: Record<string, number>, reviewing: boolean) => {
+    const draft = { tokens: next, reviewing };
+    setDraft(draft);
+    writeDraft(storageKey, Object.values(next).some(Boolean) ? draft : null);
+  };
+
   const updateAllocation = (next: Record<string, number>) => {
-    setTokens(next);
+    updateDraft(next, false);
     const { c, e } = getDerivedMetrics(next);
     onSliderChange?.(c, e);
   };
@@ -115,7 +169,12 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
   };
 
   const editAllocation = () => {
-    setReviewing(false);
+    updateDraft(tokens, false);
+    title.current?.focus();
+  };
+
+  const resetAllocation = () => {
+    updateAllocation(EMPTY_ALLOCATION);
     title.current?.focus();
   };
 
@@ -124,6 +183,7 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
     haptic("success");
     const { c } = getDerivedMetrics(tokens);
     onDone(c, toPercentages(tokens));
+    writeDraft(storageKey, null);
   };
 
   return (
@@ -204,7 +264,7 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
           <button
             type="button"
             disabled={remainingTokens !== 0}
-            onClick={() => setReviewing(true)}
+            onClick={() => updateDraft(tokens, true)}
             className="priority-primary"
           >
             Pokračovať
@@ -241,17 +301,12 @@ export function ValueBankroll({ onDone, onSliderChange }: ValueBankrollProps) {
           <button type="button" onClick={editAllocation} className="priority-secondary">
             Upraviť rozdelenie
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              updateAllocation(EMPTY_ALLOCATION);
-              editAllocation();
-            }}
-            className="priority-secondary"
-          >
-            Začať odznova
-          </button>
         </>
+      )}
+      {allocatedTokens > 0 && (
+        <button type="button" onClick={resetAllocation} className="priority-secondary">
+          Začať odznova
+        </button>
       )}
     </section>
   );

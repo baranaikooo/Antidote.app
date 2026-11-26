@@ -474,14 +474,14 @@ export function calcContextualScore(
 }
 
 // Diversity constraint: ensure variety in recommendations
-export function ensureDiversity(
-  rankedMatches: RankedMatch[],
+export function ensureDiversity<T extends RankedMatch & { answers: FullAnswers }>(
+  rankedMatches: T[],
   topN: number,
   minArchetypes: number = 2,
-): RankedMatch[] {
+): T[] {
   if (rankedMatches.length <= topN) return rankedMatches;
 
-  const selected: RankedMatch[] = [];
+  const selected: T[] = [];
   const usedArchetypes = new Set<ArchetypeId>();
 
   // First pass: pick top matches while ensuring archetype diversity
@@ -904,118 +904,35 @@ export function isCompatible(me: UserProfile, other: UserProfile): boolean {
   return wants(me, other) && wants(other, me);
 }
 
-function ageBonus(myAge: number, partnerAge: number): number {
-  const diff = Math.abs(myAge - partnerAge);
-  if (diff <= 2) return 10;
-  if (diff <= 5) return 5;
-  return 0;
-}
-
-// ============ Mock matches ============
-
-export type MockMatch = {
+export type RecommendationRow = {
   id: string;
   name: string;
   age: number;
-  city: string;
-  gender: Gender;
-  orientation: Orientation;
-  bio: string;
-  img: string;
-  answers: FullAnswers;
-  coords?: { lat: number; lon: number };
-  // New EV variables
-  cognitive_depth: number;
-  conscientiousness: number;
-  extraversion: number;
-  attachment_style: "Secure" | "Anxious" | "Avoidant" | "Fearful";
-  avg_response_time: number;
-  top_priority: string;
-  shared_reflection?: string | null;
-  hesitated?: boolean;
-  videoUrls?: string[];
+  city: string | null;
+  top_priority: string | null;
+  shared_reflection: string | null;
+  distance_km: number | null;
+  score: number;
 };
 
-export const MOCK_MATCHES: MockMatch[] = [];
-
-export type RankedMatch = MockMatch & { score: number; distanceKm?: number; isAutoExpanded?: boolean };
+export type RankedMatch = Omit<RecommendationRow, "city" | "distance_km"> & {
+  city: string;
+  distanceKm?: number;
+};
 
 export const MAX_MATCH_PHOTOS = 6;
 
-function scoreRecommendation(depthP: number, depthQ: number, priorityP: number, priorityQ: number,
-  extP: number, extQ: number, target: number) {
-  const similarity = 1 - Math.hypot(depthP - depthQ, priorityP - priorityQ) / Math.SQRT2;
-  const balance = extP + extQ - target;
-  const complementarity = 1 - Math.min(1, balance < 0 ? -balance * 0.5 : balance);
-  return 0.6 * similarity + 0.4 * complementarity;
-}
-
-export function rankMatches(me: UserProfile, list: MockMatch[]): RankedMatch[] {
-  const isGlobal = me.radiusKm === undefined || me.radiusKm >= 500;
-  let currentRadius = me.radiusKm ?? 200;
-  const MIN_CANDIDATE_POOL = 50;
-
-  const cDepthP = me.cognitiveDepth ?? 0.5;
-  const consP = me.conscientiousness ?? 0.5;
-  const extP = me.extraversion ?? 0.5;
-
-  const compatibleCandidates = list.filter((m) => isCompatible(me, m));
-
-  const avgCandidateE =
-    compatibleCandidates.length > 0
-      ? compatibleCandidates.reduce((acc, c) => acc + c.extraversion, 0) /
-        compatibleCandidates.length
-      : 0.5;
-  const dynamicTargetT = Math.max(0.6, Math.min(1.4, avgCandidateE * 2.0));
-
-  const allScored = compatibleCandidates.map((m) => {
-    const base = scoreRecommendation(
-      cDepthP,
-      m.cognitive_depth,
-      consP,
-      m.conscientiousness,
-      extP,
-      m.extraversion,
-      dynamicTargetT,
-    );
-    const bonus = ageBonus(me.age, m.age) / 100.0;
-    const distanceKm = me.coords && m.coords ? haversineKm(me.coords, m.coords) : undefined;
-    return {
-      ...m,
-      distanceKm,
-      score: Math.min(100, Math.round((base + bonus) * 1000) / 10),
-    };
-  });
-
-  // Iterative auto-expansion
-  let filtered = allScored.filter(
-    (m) => isGlobal || m.distanceKm === undefined || m.distanceKm <= currentRadius,
-  );
-  const totalCompatibleCount = allScored.length;
-  const targetThreshold = Math.min(MIN_CANDIDATE_POOL, totalCompatibleCount);
-  let autoExpanded = false;
-
-  if (!isGlobal && filtered.length < targetThreshold) {
-    autoExpanded = true;
-    while (filtered.length < targetThreshold && currentRadius < 500) {
-      currentRadius += 25;
-      filtered = allScored.filter(
-        (m) => m.distanceKm === undefined || m.distanceKm <= currentRadius,
-      );
-    }
-    if (filtered.length < targetThreshold) {
-      filtered = allScored; // fallback to global
-    }
-  }
-
-  const originalRadius = me.radiusKm ?? 200;
-  return filtered
-    .map((m) => ({
-      ...m,
-      isAutoExpanded:
-        !isGlobal && autoExpanded && m.distanceKm !== undefined && m.distanceKm > originalRadius,
-    }))
-    .sort((a, b) => b.score - a.score);
+export function toRankedMatch(row: RecommendationRow): RankedMatch {
+  return {
+    id: row.id,
+    name: row.name,
+    age: row.age,
+    city: row.city ?? "",
+    top_priority: row.top_priority,
+    shared_reflection: row.shared_reflection,
+    distanceKm: row.distance_km ?? undefined,
+    score: row.score,
+  };
 }
 
 // ============ Conversations (text DMs after voice chamber) ============

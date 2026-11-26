@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   videos: vi.fn(),
   messages: vi.fn(),
   send: vi.fn(),
+  markRead: vi.fn(),
+  readFeedback: vi.fn(),
+  saveFeedback: vi.fn(),
 }));
 
 vi.mock("@/lib/conversations", () => ({
@@ -28,6 +31,11 @@ vi.mock("@/lib/supabase", () => ({
     },
     removeChannel: vi.fn(),
   },
+}));
+vi.mock("@/lib/conversation-inbox", () => ({
+  markConversationRead: mocks.markRead,
+  hasConversationPilotResponse: mocks.readFeedback,
+  submitConversationPilotResponse: mocks.saveFeedback,
 }));
 vi.mock("@/hooks/use-haptics", () => ({ useHaptic: () => () => {} }));
 
@@ -68,6 +76,9 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.read.mockResolvedValue(open);
   mocks.messages.mockResolvedValue([]);
+  mocks.markRead.mockResolvedValue(undefined);
+  mocks.readFeedback.mockResolvedValue(false);
+  mocks.saveFeedback.mockResolvedValue(undefined);
 });
 
 afterEach(cleanup);
@@ -85,7 +96,7 @@ it("retries a first reply with the same id, preserving the draft and real reply 
   expect(await screen.findByRole("alert")).toHaveTextContent("nepodarilo odoslať");
   expect(textbox).toHaveValue("Ako si na to prišla?");
 
-  fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+  fireEvent.click(screen.getByRole("button", { name: "Skúsiť znova" }));
   expect(await screen.findByText("Ako si na to prišla?")).toBeInTheDocument();
   const [, , , , firstId, context] = mocks.send.mock.calls[0];
   expect(context).toBe(reply);
@@ -118,4 +129,17 @@ it("waits for the server's mutual consent before requesting video and closes wit
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
   expect(mocks.choice).toHaveBeenLastCalledWith("match", "close");
   expect(mocks.send).not.toHaveBeenCalled();
+});
+
+it("marks the last incoming message as read and offers voluntary feedback only once both have replied", async () => {
+  mocks.messages.mockResolvedValue([
+    { id: "sent", from: "me", text: "Ahoj", ts: 1 },
+    { id: "reply", from: "them", text: "Rada ťa počujem.", ts: 2 },
+  ]);
+  render(<Thread />);
+  const yes = await screen.findByRole("button", { name: "Áno" });
+  await waitFor(() => expect(mocks.markRead).toHaveBeenCalledExactlyOnceWith("match", "reply"));
+  fireEvent.click(yes);
+  await waitFor(() => expect(mocks.saveFeedback).toHaveBeenCalledExactlyOnceWith("match", true));
+  await waitFor(() => expect(yes).not.toBeInTheDocument());
 });

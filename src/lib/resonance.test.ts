@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calcResonance, FullAnswers, pickScenarios } from "./resonance";
+import { calcResonance, FullAnswers, pickScenarios, toRankedMatch } from "./resonance";
 
 describe("Resonance Algorithm", () => {
   const baseAnswers: FullAnswers = {
@@ -71,5 +71,21 @@ describe("Resonance Algorithm", () => {
     // 4.2 / 11.0 * 100 = 38.18... rounds to 38.2
     const score = calcResonance(baseAnswers, terribleAnswers);
     expect(score).toBe(38.2);
+  });
+
+  it("preserves the database's rounded distance, including zero and missing distance", () => {
+    const row = {
+      id: "1",
+      name: "Match",
+      age: 25,
+      city: null,
+      top_priority: null,
+      shared_reflection: null,
+      score: 93,
+    };
+
+    const matches = [0, 15, null].map((distance_km) => toRankedMatch({ ...row, distance_km }));
+    expect(matches.map((match) => match.distanceKm)).toEqual([0, 15, undefined]);
+    expect(matches.every((match) => match.score === row.score)).toBe(true);
   });
 });

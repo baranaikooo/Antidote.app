@@ -44,7 +44,8 @@ import {
   resonanceBreakdown,
   catalystFor,
   orbSeedFor,
-  rankMatches,
+  toRankedMatch,
+  type RecommendationRow,
   partnerContinueDecision,
   mockReply,
   archetypeOf,
@@ -92,7 +93,8 @@ import {
 import { SemanticMirror } from "@/components/SemanticMirror";
 import { PRIORITY_CATEGORIES, ValueBankroll } from "@/components/ValueBankroll";
 import { ReflectionEditor } from "@/components/ReflectionEditor";
-import { fetchConversationPartnerIds, fetchConversationPartners, type ConversationPartner } from "@/lib/conversations";
+import { fetchConversationPartners, type ConversationPartner } from "@/lib/conversations";
+import { fetchConversationInbox, inboxMessageLabel, type InboxConversation } from "@/lib/conversation-inbox";
 import { IcebreakerDilemma } from "@/components/IcebreakerDilemma";
 import { BlindVote } from "@/components/BlindVote";
 import { VoiceBubble, VoiceMsg } from "@/components/chat/VoiceBubble";
@@ -110,6 +112,9 @@ import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
 import { AndroidUpdateProvider, UpdateNotice } from "@/components/UpdateNotice";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import { shouldShowMessageAlert } from "@/lib/message-notifications";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
 
 export const Route = createFileRoute("/")({
@@ -405,12 +410,14 @@ function AntidoteApp() {
   const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<InboxConversation[]>([]);
   const [conversationPartners, setConversationPartners] = useState<ConversationPartner[]>([]);
   const [openingMatch, setOpeningMatch] = useState(false);
   const [openError, setOpenError] = useState(false);
   const openingRef = useRef<string | null>(null);
   const [inboxFailed, setInboxFailed] = useState(false);
+  const [inboxLoading, setInboxLoading] = useState(true);
+  const [inboxRevision, setInboxRevision] = useState(0);
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
@@ -615,6 +622,8 @@ function AntidoteApp() {
           openingRef.current = null;
           setOpeningMatch(false);
           setOpenError(false);
+          setInboxLoading(true);
+          setInboxFailed(false);
           setConversations([]);
           setConversationPartners([]);
           setExcluded(new Set());
@@ -839,41 +848,12 @@ function AntidoteApp() {
       setMarketFailed(false);
       try {
         const { data, error } = await supabase.rpc("get_recommended_matches", {
-          caller_id: p.id,
-          caller_gender: p.gender || "other",
-          caller_orientation: p.orientation || "bi",
-          caller_vector: `[${p.cognitiveDepth || 0.5},${p.conscientiousness || 0.5}]`,
           max_limit: 100,
         });
 
         if (error) throw error;
 
-        // Map Supabase rows to RankedMatch interface
-        const mapped: RankedMatch[] = (data || []).map((row: any) => ({
-          id: row.id,
-          name: row.name,
-          age: row.age,
-          city: row.city,
-          gender: row.gender as Gender,
-          orientation: row.orientation as Orientation,
-          bio: "",
-          img: "",
-          score: 0,
-          answers: { q1: "A", q2: "A", q3: "A", q4: "A", q5: "A", q6: "A" },
-          cognitive_depth: row.cognitive_depth,
-          conscientiousness: row.conscientiousness,
-          extraversion: row.extraversion,
-          attachment_style: row.attachment_style || "Secure",
-          avg_response_time: row.avg_response_time || 3.0,
-          top_priority: row.top_priority || "",
-          distanceKm: row.distance ? Math.round(row.distance * 100) : undefined,
-          coords:
-            row.latitude && row.longitude ? { lat: row.latitude, lon: row.longitude } : undefined,
-        }));
-
-        const partners = await fetchConversationPartners(mapped.map(({ id }) => id));
-        const reflections = new Map(partners.map(partner => [partner.id, partner.shared_reflection]));
-        if (!cancelled) setLiveCandidates(mapped.map(match => ({ ...match, shared_reflection: reflections.get(match.id) })));
+        if (!cancelled) setLiveCandidates(((data ?? []) as RecommendationRow[]).map(toRankedMatch));
       } catch (err) {
         console.error("Market fetch failed:", err);
         if (!cancelled) setMarketFailed(true);
@@ -886,52 +866,83 @@ function AntidoteApp() {
     return () => { cancelled = true; };
   }, [profile, marketRevision]);
 
-  async function widenSearch() {
+  async function updateSearchRadius(radius: number) {
     const id = profile?.id;
     if (id && id !== "00000000-0000-0000-0000-000000000001") {
-      const { error } = await supabase.from("profiles").update({ radius_km: 500 }).eq("id", id);
+      const { error } = await supabase.from("profiles").update({ radius_km: radius }).eq("id", id);
       if (error) throw error;
     }
     setIsLoadingMarket(true);
-    setProfile((current) => current && current.id === id ? { ...current, radiusKm: 500 } : current);
+    setLiveCandidates([]);
+    setProfile(current => current && current.id === id ? { ...current, radiusKm: radius } : current);
+    setMarketRevision(revision => revision + 1);
   }
 
+  const isInboxActive = Boolean(profile?.topPriority) &&
+    (screen === "messages" || screen === "noOne" || screen === "settings" || screen === "profile-dossier");
+
   useEffect(() => {
-    if (!authUserId || (screen !== "messages" && screen !== "noOne")) return;
+    if (!authUserId || !isInboxActive) return;
     const account = authUserId;
     let active = true;
+    let request = 0;
+    let debounce: ReturnType<typeof setTimeout> | undefined;
 
     async function loadInbox() {
-      setInboxFailed(false);
+      const current = ++request;
       try {
-        const rows = await fetchConversationPartnerIds(account);
-        const partnerId = (match: { user_p: string; user_q: string }) => match.user_p === account ? match.user_q : match.user_p;
-        const open = rows.filter(row => row.status === "active" && row.messages.length > 0);
-        const partners = await fetchConversationPartners(open.map(partnerId));
-        if (!active) return;
-        setExcluded(new Set(rows.filter(row => row.status === "deleted").map(partnerId)));
+        const inbox = await fetchConversationInbox(account);
+        const partners = await fetchConversationPartners(inbox.conversations.map(conversation => conversation.matchId));
+        if (!active || current !== request || openingRef.current) return;
+        setExcluded(inbox.excluded);
         setConversationPartners(partners);
         setConversations(previous => {
           const byId = new Map(previous.map(conversation => [conversation.id, conversation]));
-          return open.map(row => byId.get(row.id) ?? {
-            id: row.id, matchId: partnerId(row), messages: [], unread: false, createdAt: Date.parse(row.created_at),
-          });
+          return inbox.conversations.map(conversation => ({
+            ...conversation, messages: byId.get(conversation.id)?.messages ?? [],
+          }));
         });
+        setInboxFailed(false);
       } catch {
-        if (active) setInboxFailed(true);
+        if (active && current === request) setInboxFailed(true);
+      } finally {
+        if (active && current === request) setInboxLoading(false);
       }
     }
 
-    const onVisible = () => { if (document.visibilityState === "visible") void loadInbox(); };
-    document.addEventListener("visibilitychange", onVisible);
+    function queueRefresh() {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => void loadInbox(), 100);
+    }
+
+    const visible = () => { if (document.visibilityState === "visible") queueRefresh(); };
+    const channel = supabase.channel("inbox:" + account)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
+        queueRefresh();
+        if (payload.new.sender_id && payload.new.sender_id !== account && document.visibilityState === "visible" && shouldShowMessageAlert(account)) {
+          toast("Prišla nová správa", { id: "new-message", action: { label: "Správy", onClick: () => setScreen("messages") } });
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: "user_p=eq." + account }, queueRefresh)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "matches", filter: "user_q=eq." + account }, queueRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_reads", filter: "reader_id=eq." + account }, queueRefresh)
+      .subscribe(state => { if (state === "SUBSCRIBED") queueRefresh(); });
+    document.addEventListener("visibilitychange", visible);
+    window.addEventListener("online", visible);
     void loadInbox();
-    return () => { active = false; document.removeEventListener("visibilitychange", onVisible); };
-  }, [authUserId, screen, marketRevision]);
+    return () => {
+      active = false;
+      clearTimeout(debounce);
+      document.removeEventListener("visibilitychange", visible);
+      window.removeEventListener("online", visible);
+      void supabase.removeChannel(channel);
+    };
+  }, [authUserId, isInboxActive, inboxRevision]);
 
   const rankedMatches = useMemo(() => {
     if (!profile) return [];
     const currentPartners = new Set(conversations.map(conversation => conversation.matchId));
-    return rankMatches(profile, liveCandidates).slice(0, 3)
+    return liveCandidates.slice(0, 3)
       .filter(match => !excluded.has(match.id) && !currentPartners.has(match.id));
   }, [profile, liveCandidates, excluded, conversations]);
 
@@ -945,15 +956,14 @@ function AntidoteApp() {
     setOpeningMatch(true);
     setOpenError(false);
     try {
-      const [row, [partner]] = await Promise.all([
-        getOrCreateMatch(account, match.id, match.score),
-        fetchConversationPartners([match.id]),
-      ]);
+      const row = await getOrCreateMatch(account, match.id, match.score);
       if (openingRef.current !== match.id) return;
       if (!row || row.status !== "active") {
         setExcluded(previous => new Set(previous).add(match.id));
         return;
       }
+      const [partner] = await fetchConversationPartners([match.id]);
+      if (openingRef.current !== match.id) return;
       setConversationPartners(previous => [...previous.filter(current => current.id !== match.id), partner ?? {
         ...toConversationPartner(match), shared_reflection: null,
       }]);
@@ -979,6 +989,15 @@ function AntidoteApp() {
   const activeConversation = conversations.find(conversation => conversation.id === activeConversationId);
   const activeConversationMatch = conversationPartners.find(partner => partner.id === activeConversation?.matchId);
   const activePrompt = activeConversationMatch && profile ? introductionFor(profile.topPriority, activeConversationMatch) : null;
+
+  const unreadConversation = conversations.find(conversation => conversation.unread);
+  const replyPartner = conversationPartners.find(partner => partner.id === unreadConversation?.matchId);
+
+  function openConversation(id: string) {
+    haptic("tap");
+    setActiveConversationId(id);
+    setScreen("thread");
+  }
 
   function closeActiveConversation() {
     if (activeConversation) {
@@ -1062,6 +1081,7 @@ function AntidoteApp() {
       onboardingScreen={onboardingStage >= 0 ? screen : undefined}
       resumedOnboarding={resumedOnboarding === screen}
     >
+      <Toaster theme={theme} position="top-center" />
       <AndroidUpdateProvider enabled={showUpdateNotice}>
       {showUpdateNotice && <UpdateNotice />}
       {screen === "landing" && (
@@ -1192,6 +1212,7 @@ function AntidoteApp() {
       {screen === "bankroll" && (
         <div>
           <ValueBankroll
+            userId={authUserId}
             onSliderChange={(c, e) => {
               setPreviewC(c);
               setPreviewE(e);
@@ -1359,13 +1380,16 @@ function AntidoteApp() {
               setIsLoadingMarket(true);
               setMarketRevision((revision) => revision + 1);
             }}
-            onWidenSearch={widenSearch}
+            onChangeRadius={updateSearchRadius}
             onProfile={goProfile}
             onSelectMatch={openIntroduction}
             openingMatch={openingMatch}
             openError={openError}
             onMessages={() => setScreen("messages")}
             hasMessages={conversations.length > 0}
+            recentReply={unreadConversation && replyPartner ? { name: replyPartner.name,
+              preview: unreadConversation.preview?.from === "them" ? inboxMessageLabel(unreadConversation.preview) : undefined,
+              onOpen: () => openConversation(unreadConversation.id) } : undefined}
           />
         </div>
       )}
@@ -1375,13 +1399,9 @@ function AntidoteApp() {
             conversations={conversations}
             matches={conversationPartners}
             failed={inboxFailed}
-            onRetry={() => setMarketRevision(previous => previous + 1)}
-            onOpen={(id) => {
-              haptic("tap");
-              setActiveConversationId(id);
-              setConversations((cs) => cs.map((c) => (c.id === id ? { ...c, unread: false } : c)));
-              setScreen("thread");
-            }}
+            loading={inboxLoading}
+            onRetry={() => setInboxRevision(previous => previous + 1)}
+            onOpen={openConversation}
             onFindNew={() => {
               haptic("tap");
               goToNextMatch();
@@ -2181,46 +2201,52 @@ function Dashboard({
   loading,
   failed,
   onRefresh,
-  onWidenSearch,
+  onChangeRadius,
   onProfile,
   onSelectMatch,
   openingMatch,
   openError,
   onMessages,
   hasMessages,
+  recentReply,
 }: {
   profile: UserProfile;
   matches: RankedMatch[];
   loading: boolean;
   failed: boolean;
   onRefresh: () => void;
-  onWidenSearch: () => Promise<void>;
+  onChangeRadius: (radius: number) => Promise<void>;
   onProfile: () => void;
   onSelectMatch: (match: RankedMatch) => void;
   openingMatch: boolean;
   openError: boolean;
   onMessages: () => void;
   hasMessages: boolean;
+  recentReply?: { name: string; preview?: string; onOpen: () => void };
 }) {
   const haptic = useHaptic();
 
   const [matchIndex, setMatchIndex] = useState(0);
-  const [widening, setWidening] = useState(false);
-  const [widenFailed, setWidenFailed] = useState(false);
+  const [editingRadius, setEditingRadius] = useState(false);
+  const [radiusChoice, setRadiusChoice] = useState(profile.radiusKm ?? 500);
+  const [savingRadius, setSavingRadius] = useState(false);
+  const [radiusFailed, setRadiusFailed] = useState(false);
   const nearby = profile.radiusKm !== undefined && profile.radiusKm < 500;
   const searchRange = nearby ? `Do ${profile.radiusKm} km` : "Celý svet";
   const initial = Array.from(profile.name.trim())[0]?.toLocaleUpperCase("sk");
 
-  async function handleWidenSearch() {
+  async function saveSearchRadius() {
     haptic("tap");
-    setWidening(true);
-    setWidenFailed(false);
+    setSavingRadius(true);
+    setRadiusFailed(false);
     try {
-      await onWidenSearch();
+      await onChangeRadius(radiusChoice);
+      setMatchIndex(0);
+      setEditingRadius(false);
     } catch {
-      setWidenFailed(true);
+      setRadiusFailed(true);
     } finally {
-      setWidening(false);
+      setSavingRadius(false);
     }
   }
   const availableMatches = matches;
@@ -2244,8 +2270,19 @@ function Dashboard({
             <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
           </button>
         </div>
-        <h1 className="personal-title">Odporúčané spojenia</h1>
+        <h1 className="personal-title">Spojenia</h1>
       </header>
+
+      {recentReply && (
+        <section className="discover-reply editorial-panel" aria-labelledby="discover-reply-title">
+          <MessageCircle className="size-5 text-accent" aria-hidden="true" />
+          <div className="min-w-0">
+            <h2 id="discover-reply-title" className="font-bold text-foreground">Nová správa od {recentReply.name}</h2>
+            {recentReply.preview && <p className="mt-1 truncate text-sm text-muted-foreground">{recentReply.preview}</p>}
+            <button type="button" className="personal-action mt-3" onClick={recentReply.onOpen}>Pokračovať v rozhovore</button>
+          </div>
+        </section>
+      )}
 
       {activeMatch ? (
         <section className="match-deck" aria-label="Dnešné odporúčania">
@@ -2279,8 +2316,8 @@ function Dashboard({
           {activeIndex === availableMatches.length - 1 && <p className="mt-3 text-sm text-muted-foreground">Tu sa táto sada odporúčaní končí.</p>}
         </section>
       ) : (
-        <section className="discover-search" aria-busy={loading || widening}>
-          <div className="discover-search-icon" data-busy={loading || widening}>
+        <section className="discover-search" aria-busy={loading || savingRadius}>
+          <div className="discover-search-icon" data-busy={loading || savingRadius}>
             <Radar className="size-6" aria-hidden="true" />
           </div>
           <div>
@@ -2290,22 +2327,40 @@ function Dashboard({
             </h2>
             <p className="discover-search-copy">
               {failed ? "Skontroluj pripojenie a skús hľadať znova." :
-                nearby ? "Rozšír dosah a spoznaj ľudí aj mimo svojho okolia." :
-                "Máš zapnuté hľadanie bez obmedzenia vzdialenosti."}
+                nearby ? "V tomto okruhu momentálne nemáš žiadne odporúčania." :
+                "Odporúčania sa tu objavia, keď budú dostupné."}
             </p>
           </div>
 
-          {nearby && !failed && (
-            <button type="button" className="match-card-action" disabled={loading || widening} onClick={handleWidenSearch}>
-              {widening ? "Ukladám dosah…" : "Hľadať po celom svete"}
-              <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
+          {!failed && !loading && (editingRadius ? (
+            <form className="discover-radius-form" onSubmit={event => { event.preventDefault(); void saveSearchRadius(); }}>
+              <label className="font-semibold" htmlFor="discover-radius">Dosah odporúčaní</label>
+              <select id="discover-radius" className="min-h-12 rounded-lg border border-foreground/35 bg-card px-3" value={radiusChoice}
+                onChange={event => setRadiusChoice(Number(event.target.value))} disabled={savingRadius}>
+                {[...new Set([25, 50, 100, 200, profile.radiusKm ?? 500, 500])].sort((a, b) => a - b)
+                  .map(radius => <option key={radius} value={radius}>{radius >= 500 ? "Celý svet" : "Do " + radius + " km"}</option>)}
+              </select>
+              {radiusFailed && <p role="alert" className="text-destructive">Dosah sa nepodarilo uložiť. Skús to znova.</p>}
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" className="personal-action" disabled={savingRadius || radiusChoice === (profile.radiusKm ?? 500)}>
+                  {savingRadius ? "Ukladám…" : "Uložiť dosah"}
+                </button>
+                <button type="button" className="personal-action" disabled={savingRadius} onClick={() => setEditingRadius(false)}>Zrušiť</button>
+              </div>
+            </form>
+          ) : (
+            <button type="button" className="match-card-action" onClick={() => {
+              setRadiusChoice(profile.radiusKm ?? 500);
+              setRadiusFailed(false);
+              setEditingRadius(true);
+            }}>
+              Zmeniť dosah <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
             </button>
-          )}
-          {widenFailed && <p role="alert">Dosah sa nepodarilo uložiť. Skús to znova.</p>}
+          ))}
           <button
             type="button"
             className="discover-refresh"
-            disabled={loading || widening}
+            disabled={loading || savingRadius}
             onClick={() => { haptic("tap"); onRefresh(); }}
           >
             <RefreshCw className="size-4 shrink-0" aria-hidden="true" />
@@ -2959,13 +3014,15 @@ function MessagesList({
   conversations,
   matches,
   failed,
+  loading,
   onRetry,
   onOpen,
   onFindNew,
 }: {
-  conversations: Conversation[];
+  conversations: InboxConversation[];
   matches: ConversationPartner[];
   failed: boolean;
+  loading: boolean;
   onRetry: () => void;
   onOpen: (id: string) => void;
   onFindNew: () => void;
@@ -2978,7 +3035,7 @@ function MessagesList({
       </header>
 
       {failed && <p role="alert" className="mb-3">Rozhovory sa nepodarilo načítať. <button type="button" className="underline" onClick={onRetry}>Skúsiť znova</button></p>}
-      {conversations.length === 0 && !failed ? (
+      {loading && conversations.length === 0 ? <p role="status">Načítavam rozhovory…</p> : conversations.length === 0 && !failed ? (
         <div className="app-empty">
           <MessageCircle className="size-6" aria-hidden="true" />
           <h2 className="personal-heading mt-2">Zatiaľ žiadne správy</h2>
@@ -2991,7 +3048,7 @@ function MessagesList({
           {conversations.map((c) => {
             const m = matches.find((x) => x.id === c.matchId);
             if (!m) return null;
-            const last = c.messages[c.messages.length - 1];
+            const last = c.preview;
             return (
               <button
                 key={c.id}
@@ -3019,10 +3076,7 @@ function MessagesList({
                     )}
                   </div>
                   <p className="mt-1 flex items-center gap-2 text-sm text-foreground/70">
-                    {last?.media?.kind === "audio" && <span aria-hidden="true" className="text-cerebral">▂▅▃▆▂</span>}
-                    <span className="truncate">{last
-                      ? (last.from === "me" ? "Ty: " : "") + (last.text || (last.media?.kind === "audio" ? "Hlasová správa" : "Médiá"))
-                      : "Otvoriť rozhovor"}</span>
+                    <span className="truncate">{last ? inboxMessageLabel(last) : "Otvoriť rozhovor"}</span>
                   </p>
                 </div>
                 <ChevronRight className="size-5 shrink-0 text-foreground/30 group-hover:text-foreground" />
