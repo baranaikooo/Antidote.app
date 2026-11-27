@@ -4,6 +4,7 @@ import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { ChatMessage } from "./resonance";
 import { readPriorityDistribution } from "./priority-distribution";
+import { readSituationScores } from "./situation-scores";
 
 const sanitize = (val: string) => {
   return (val || "").trim().replace(/[^\x20-\x7E]/g, "");
@@ -312,6 +313,7 @@ export async function saveUserProfile(
     avg_response_time: profileData.avgResponseTime,
     top_priority: profileData.topPriority,
     priority_distribution: readPriorityDistribution(profileData.priorityDistribution),
+    situation_scores: readSituationScores(profileData.situationScores),
     status: profileData.status || "ACTIVE",
     directive_goal: profileData.directive_goal || "",
     directive_redflags: profileData.directive_redflags || "",
@@ -437,6 +439,7 @@ export async function fetchUserProfile(userId: string): Promise<any | null> {
     avgResponseTime: data.avg_response_time,
     topPriority: data.top_priority,
     priorityDistribution: readPriorityDistribution(data.priority_distribution),
+    situationScores: readSituationScores(data.situation_scores),
     hesitated: data.hesitated,
     redemptionQuota: data.redemption_quota,
     completedPressureScenarios: data.completed_pressure_scenarios || [],

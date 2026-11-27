@@ -2,6 +2,7 @@
 // Simple Slovak, no jargon.
 
 import type { PriorityDistribution } from "./priority-distribution";
+import type { SituationScores } from "./situation-scores";
 
 export type Answer = "A" | "B";
 export type Answers = Partial<Record<`q${1 | 2 | 3 | 4 | 5 | 6}`, Answer>>;
@@ -849,6 +850,7 @@ export type UserProfile = {
   avgResponseTime?: number;
   topPriority?: string;
   priorityDistribution?: PriorityDistribution;
+  situationScores?: SituationScores;
   hesitated?: boolean; // gyroscopic volatility flag
   redemptionQuota?: number; // drawdown redemption quota
   completedPressureScenarios?: string[]; // track completed pressure scenarios

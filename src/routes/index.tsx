@@ -95,6 +95,7 @@ import {
   getOrCreateMatch,
 } from "@/lib/supabase";
 import { SemanticMirror } from "@/components/SemanticMirror";
+import { readSituationScores } from "@/lib/situation-scores";
 import { PRIORITY_CATEGORIES, ValueBankroll } from "@/components/ValueBankroll";
 import { ReflectionEditor } from "@/components/ReflectionEditor";
 import { fetchConversationPartners, type ConversationPartner } from "@/lib/conversations";
@@ -517,7 +518,7 @@ function AntidoteApp() {
     if (typeof window !== "undefined") {
       if (profile) {
         const draft = profile.topPriority
-          ? { ...profile, priorityDistribution: undefined }
+          ? { ...profile, priorityDistribution: undefined, situationScores: undefined }
           : profile;
         localStorage.setItem("reson:onboarding_profile_draft", JSON.stringify(draft));
       } else {
@@ -629,15 +630,16 @@ function AntidoteApp() {
               savedScreen === "profile");
 
           if (existingProfile) {
-            const pendingDistribution =
-              canResume && hasLocalProfile
-                ? readPriorityDistribution(localProfile?.priorityDistribution)
-                : undefined;
-            setProfile(
-              pendingDistribution
-                ? { ...existingProfile, priorityDistribution: pendingDistribution }
-                : existingProfile,
-            );
+            const pendingProfile = canResume && hasLocalProfile ? localProfile : null;
+            setProfile({
+              ...existingProfile,
+              priorityDistribution:
+                readPriorityDistribution(pendingProfile?.priorityDistribution) ??
+                existingProfile.priorityDistribution,
+              situationScores:
+                readSituationScores(pendingProfile?.situationScores) ??
+                existingProfile.situationScores,
+            });
           } else if (!hasLocalProfile) setProfile(null);
 
           if (canResume) {
@@ -1355,8 +1357,9 @@ function AntidoteApp() {
 
         {screen === "mirror" && (
           <SemanticMirror
-            onDone={(depth) => {
+            onDone={(depth, situationScores) => {
               setCognitiveDepth(depth);
+              setProfile((previous) => (previous ? { ...previous, situationScores } : previous));
               setScreen("bankroll");
             }}
           />

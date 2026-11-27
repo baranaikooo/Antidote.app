@@ -1,13 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 
 import { useHaptic } from "@/hooks/use-haptics";
+import {
+  readSituationScores,
+  scaleSituationWeight,
+  type SituationScores,
+} from "@/lib/situation-scores";
 
 interface SemanticMirrorProps {
-  onDone: (cognitiveDepth: number) => void;
+  onDone: (cognitiveDepth: number, situationScores: SituationScores) => void;
 }
 
-const PROMPTS_POOL = [
+// The order defines the positions in profiles.situation_scores.
+const prompts = [
   {
     text: "Dobré ticho medzi dvoma ľuďmi znamená, že...",
     options: [
@@ -44,49 +50,13 @@ const PROMPTS_POOL = [
       },
     ],
   },
-  {
-    text: "Človeka spoznám najlepšie vtedy, keď...",
-    options: [
-      { text: "vidím, ako sa správa, keď mu niečo nevyjde podľa predstáv.", weight: 1.0 },
-      {
-        text: "sa spolu rozprávame neskoro večer bez toho, aby niekto pozeral na hodinky.",
-        weight: 0.8,
-      },
-      { text: "zistím, aký má vkus, humor a tempo bežného dňa.", weight: 0.45 },
-    ],
-  },
-  {
-    text: "Pocit domova pri druhom človeku vzniká, keď...",
-    options: [
-      { text: "pred ním nemusím filtrovať ani to, v čom si práve nie som istý/á.", weight: 1.0 },
-      { text: "viem, že sa na neho dá spoľahnúť aj v úplne obyčajný utorok.", weight: 0.75 },
-      { text: "si rozumieme bez dlhého vysvetľovania a máme podobné zvyky.", weight: 0.45 },
-    ],
-  },
-  {
-    text: "Keď sa na sebe niečo snažím zmeniť...",
-    options: [
-      {
-        text: "väčšinou to ide pomaly, ale všímam si, prečo sa vraciam k starým zvykom.",
-        weight: 1.0,
-      },
-      { text: "pomôže mi, keď mám pri sebe niekoho, kto mi nastaví úprimné zrkadlo.", weight: 0.8 },
-      { text: "najlepšie mi funguje rázny reštart a nové prostredie.", weight: 0.45 },
-    ],
-  },
 ];
 
 export function SemanticMirror({ onDone }: SemanticMirrorProps) {
   const haptic = useHaptic();
-  const [prompts, setPrompts] = useState<typeof PROMPTS_POOL>([]);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-
-  useEffect(() => {
-    const shuffled = [...PROMPTS_POOL].sort(() => 0.5 - Math.random());
-    setPrompts(shuffled.slice(0, 3));
-  }, []);
 
   const handleSelect = (idx: number) => {
     haptic("tap");
@@ -94,7 +64,7 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
   };
 
   const handleNext = () => {
-    if (selectedIdx === null || prompts.length === 0) return;
+    if (selectedIdx === null) return;
 
     haptic("medium");
     const weight = prompts[step].options[selectedIdx].weight;
@@ -106,17 +76,17 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
       setSelectedIdx(null);
     } else {
       const avgDepth = newAnswers.reduce((a, b) => a + b, 0) / prompts.length;
-      onDone(avgDepth);
+      const scores = readSituationScores(
+        newAnswers.map((answer, index) =>
+          scaleSituationWeight(
+            answer,
+            prompts[index].options.map(({ weight }) => weight),
+          ),
+        ),
+      );
+      if (scores) onDone(avgDepth, scores);
     }
   };
-
-  if (prompts.length === 0) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <div className="size-7 animate-spin rounded-full border-2 border-foreground border-t-transparent" />
-      </div>
-    );
-  }
 
   const current = prompts[step];
 
@@ -155,7 +125,10 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
               }`}
             >
               <span className="font-display text-lg font-bold leading-tight">{opt.text}</span>
-              <span className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-sm" aria-hidden="true">
+              <span
+                className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-sm"
+                aria-hidden="true"
+              >
                 {isSelected ? <Check size={16} /> : letter}
               </span>
             </button>
