@@ -36,7 +36,7 @@ Deno.serve(async (request) => {
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data.user) return json({ error: "Unauthorized" }, 401);
 
-    const key = Deno.env.get("KLIPY_APP_KEY");
+    const key = Deno.env.get("KLIPY_APP_KEY")?.trim() || Deno.env.get("Klipy")?.trim();
     if (!key) return json({ source: "featured" });
 
     const input = await request.json().catch(() => null);
