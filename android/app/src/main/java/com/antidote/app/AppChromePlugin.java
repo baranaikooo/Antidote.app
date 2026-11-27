@@ -30,8 +30,8 @@ public class AppChromePlugin extends Plugin {
     }
 
     private void applyTheme(boolean dark) {
-        // Match Antidote's warm light and deep indigo-plum page backgrounds.
-        int color = dark ? 0xff131624 : 0xfff7f2ea;
+        // Match Antidote's warm cream and deep plum-espresso page backgrounds.
+        int color = dark ? 0xff14111d : 0xfff9f4ea;
         Window window = getActivity().getWindow();
         window.getDecorView().setBackgroundColor(color);
         View webView = getBridge().getWebView();
