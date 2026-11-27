@@ -99,7 +99,7 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
     p: [
       "Identifikačné: telefónne číslo, krstné meno alebo prezývka, vek, mesto, pohlavie, orientácia.",
       "Overovacie: krátky 3-sekundový videoklip tváre slúžiaci na potvrdenie, že si reálny človek.",
-      "Spracúvame odpovede z dotazníka, výsledky párovania a obsah rozhovorov vrátane dobrovoľných odpovedí na spoločné otázky. Odpoveď na spoločnú otázku sa druhému účastníkovi sprístupní, keď odpovie aj on.",
+      "Spracúvame odpovede z dotazníka, výsledky párovania a obsah rozhovorov vrátane odpovedí na spoločné otázky na začiatku rozhovoru. Odpoveď na spoločnú otázku sa druhému účastníkovi sprístupní, keď odpovie aj on.",
     ],
   },
   {

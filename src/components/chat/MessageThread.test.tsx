@@ -316,3 +316,40 @@ it("searches the featured catalog without accents if the provider is not configu
   ).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Odoslať GIF – Mávanie" })).not.toBeInTheDocument();
 });
+
+it("only allows answering the required question until both people have responded", async () => {
+  const pending = {
+    question: "Ako vyzerá tvoj dobrý víkend?",
+    own_answer: null,
+    partner_answer: null,
+    required: true,
+    skipped: false,
+  };
+  mocks.question.mockResolvedValue({ data: pending, error: null });
+  render(<Thread />);
+  const answer = await screen.findByRole("textbox", { name: "Tvoja odpoveď" });
+  expect(screen.queryByText("Zdieľaná odpoveď")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Preskočiť" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("textbox", { name: "Správa" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "GIFy" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Nahrať hlasovú správu" })).not.toBeInTheDocument();
+
+  fireEvent.change(answer, { target: { value: "Ráno vonku." } });
+  mocks.question.mockResolvedValue({
+    data: { ...pending, own_answer: "Ráno vonku." },
+    error: null,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Odoslať odpoveď" }));
+  await screen.findByText(/Chat sa otvorí/);
+  expect(screen.queryByRole("textbox", { name: "Správa" })).not.toBeInTheDocument();
+  expect(mocks.send).not.toHaveBeenCalled();
+
+  mocks.question.mockResolvedValue({
+    data: { ...pending, own_answer: "Ráno vonku.", partner_answer: "Káva s priateľmi." },
+    error: null,
+  });
+  fireEvent(window, new Event("online"));
+  expect(await screen.findByRole("textbox", { name: "Správa" })).toBeEnabled();
+  expect(screen.getByText("Káva s priateľmi.")).toBeVisible();
+  expect(screen.queryByRole("button", { name: /Nadviazať/ })).not.toBeInTheDocument();
+});
