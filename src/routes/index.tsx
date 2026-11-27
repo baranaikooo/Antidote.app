@@ -903,6 +903,8 @@ function AntidoteApp() {
   const [isLoadingMarket, setIsLoadingMarket] = useState(true);
   const [marketFailed, setMarketFailed] = useState(false);
   const [marketRevision, setMarketRevision] = useState(0);
+  const [pendingRadius, setPendingRadius] = useState<number | null>(null);
+  const savingRadiusRef = useRef(false);
 
   useEffect(() => {
     if (!profile?.topPriority) return;
@@ -936,17 +938,28 @@ function AntidoteApp() {
   }, [profile, marketRevision]);
 
   async function updateSearchRadius(radius: number) {
-    const id = profile?.id;
-    if (id && id !== "00000000-0000-0000-0000-000000000001") {
-      const { error } = await supabase.from("profiles").update({ radius_km: radius }).eq("id", id);
-      if (error) throw error;
+    if (savingRadiusRef.current || !profile) throw new Error("Radius unavailable");
+    const id = profile.id;
+    savingRadiusRef.current = true;
+    setPendingRadius(radius);
+    try {
+      if (id && id !== "00000000-0000-0000-0000-000000000001") {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ radius_km: radius })
+          .eq("id", id);
+        if (error) throw error;
+      }
+      if (profileRef.current?.id !== id) return;
+      setIsLoadingMarket(true);
+      setLiveCandidates([]);
+      setProfile((current) =>
+        current && current.id === id ? { ...current, radiusKm: radius } : current,
+      );
+    } finally {
+      savingRadiusRef.current = false;
+      setPendingRadius(null);
     }
-    setIsLoadingMarket(true);
-    setLiveCandidates([]);
-    setProfile((current) =>
-      current && current.id === id ? { ...current, radiusKm: radius } : current,
-    );
-    setMarketRevision((revision) => revision + 1);
   }
 
   const isInboxActive =
@@ -1555,7 +1568,8 @@ function AntidoteApp() {
           <div className="animate-kinetic-fade">
             <Dashboard
               profile={profile}
-              matches={rankedMatches}
+              matches={pendingRadius === null ? rankedMatches : []}
+              pendingRadius={pendingRadius}
               loading={isLoadingMarket}
               failed={marketFailed}
               onRefresh={() => {
@@ -1661,6 +1675,8 @@ function AntidoteApp() {
               user={profile}
               onBack={() => setScreen("noOne")}
               onUpdateUser={setProfile}
+              pendingRadius={pendingRadius}
+              onChangeRadius={updateSearchRadius}
             />
           </div>
         )}
@@ -2471,6 +2487,7 @@ function MatchCard({
 function Dashboard({
   profile,
   matches,
+  pendingRadius,
   loading,
   failed,
   onRefresh,
@@ -2485,6 +2502,7 @@ function Dashboard({
 }: {
   profile: UserProfile;
   matches: RankedMatch[];
+  pendingRadius: number | null;
   loading: boolean;
   failed: boolean;
   onRefresh: () => void;
@@ -2503,35 +2521,35 @@ function Dashboard({
   const [editingRadius, setEditingRadius] = useState(false);
   const savedRadius = Math.min(profile.radiusKm ?? 500, 500);
   const [radiusChoice, setRadiusChoice] = useState(savedRadius);
-  const [savingRadius, setSavingRadius] = useState(false);
+  const savingRadius = pendingRadius !== null;
   const [radiusFailed, setRadiusFailed] = useState(false);
-  const nearby = profile.radiusKm !== undefined && profile.radiusKm < 500;
-  const searchRange = nearby ? `Do ${profile.radiusKm} km` : "Celý svet";
+  const displayedRadius = pendingRadius ?? savedRadius;
+  const nearby = displayedRadius < 500;
+  const searchRange = nearby ? `Do ${displayedRadius} km` : "Celý svet";
   const radiusButton = useRef<HTMLButtonElement>(null);
   const radiusSelect = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (editingRadius) radiusSelect.current?.focus();
+    if (editingRadius) radiusSelect.current?.focus({ preventScroll: true });
   }, [editingRadius]);
 
   function closeRadiusEditor() {
     setEditingRadius(false);
-    requestAnimationFrame(() => radiusButton.current?.focus());
+    requestAnimationFrame(() => radiusButton.current?.focus({ preventScroll: true }));
   }
   const initial = Array.from(profile.name.trim())[0]?.toLocaleUpperCase("sk");
 
   async function saveSearchRadius() {
+    if (savingRadius || radiusChoice === savedRadius) return;
     haptic("tap");
-    setSavingRadius(true);
     setRadiusFailed(false);
+    closeRadiusEditor();
     try {
       await onChangeRadius(radiusChoice);
       setMatchIndex(0);
-      closeRadiusEditor();
     } catch {
       setRadiusFailed(true);
-    } finally {
-      setSavingRadius(false);
+      setEditingRadius(true);
     }
   }
   const availableMatches = matches;
@@ -2580,8 +2598,9 @@ function Dashboard({
             className="personal-action"
             aria-expanded={editingRadius}
             aria-controls="discover-radius-editor"
-            disabled={savingRadius}
+            aria-disabled={savingRadius}
             onClick={() => {
+              if (savingRadius) return;
               if (editingRadius) {
                 closeRadiusEditor();
               } else {
@@ -2591,7 +2610,7 @@ function Dashboard({
               }
             }}
           >
-            Upraviť dosah
+            {savingRadius ? "Ukladám dosah…" : "Upraviť dosah"}
           </button>
         </div>
         <div id="discover-radius-editor" hidden={!editingRadius}>
@@ -2725,11 +2744,13 @@ function Dashboard({
           </div>
           <div>
             <h2 className="personal-heading">
-              {loading
-                ? "Hľadám nové spojenia…"
-                : failed
-                  ? "Spojenia sa nepodarilo načítať"
-                  : "Zatiaľ žiadne nové spojenia"}
+              {savingRadius
+                ? "Ukladám nový dosah…"
+                : loading
+                  ? "Hľadám nové spojenia…"
+                  : failed
+                    ? "Spojenia sa nepodarilo načítať"
+                    : "Zatiaľ žiadne nové spojenia"}
             </h2>
             <p className="discover-search-copy">
               {failed
