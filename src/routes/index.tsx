@@ -3506,7 +3506,7 @@ function MessagesList({
                   </div>
                   <p className="mt-1 flex items-center gap-2 text-sm text-foreground/70">
                     <span className="truncate">
-                      {last ? inboxMessageLabel(last) : "Otvoriť rozhovor"}
+                      {last ? inboxMessageLabel(last) : "Spoločná otázka"}
                     </span>
                   </p>
                 </div>

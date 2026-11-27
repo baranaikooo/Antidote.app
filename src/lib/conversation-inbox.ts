@@ -34,20 +34,23 @@ export async function fetchConversationInbox(userId: string) {
   for (const row of rows) {
     if (row.status === "deleted") {
       excluded.add(row.partner_id);
-    } else if (row.message_id && row.message_at) {
+    } else {
       conversations.push({
         id: row.match_id,
         matchId: row.partner_id,
         messages: [],
         unread: row.unread,
         createdAt: Date.parse(row.created_at),
-        preview: {
-          id: row.message_id,
-          from: row.sender_id === userId ? "me" : "them",
-          text: row.message_text ?? "",
-          kind: row.duration !== null ? "voice" : row.has_media ? "media" : "text",
-          ts: Date.parse(row.message_at),
-        },
+        preview:
+          row.message_id && row.message_at
+            ? {
+                id: row.message_id,
+                from: row.sender_id === userId ? "me" : "them",
+                text: row.message_text ?? "",
+                kind: row.duration !== null ? "voice" : row.has_media ? "media" : "text",
+                ts: Date.parse(row.message_at),
+              }
+            : undefined,
       });
     }
   }

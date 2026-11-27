@@ -6,6 +6,7 @@ import { MessageThread } from "./MessageThread";
 
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
+  question: vi.fn(),
   choice: vi.fn(),
   videos: vi.fn(),
   messages: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock("@/lib/supabase", () => ({
   fetchChatMessages: mocks.messages,
   saveChatMessage: mocks.send,
   supabase: {
+    rpc: (name: string, args: unknown) => mocks.question(name, args),
     channel: () => {
       const channel = { on: () => channel, subscribe: () => channel };
       return channel;
@@ -75,6 +77,7 @@ function Thread({ onClose = () => {} }: { onClose?: () => void }) {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.read.mockResolvedValue(open);
+  mocks.question.mockResolvedValue({ data: null, error: null });
   mocks.messages.mockResolvedValue([]);
   mocks.markRead.mockResolvedValue(undefined);
   mocks.readFeedback.mockResolvedValue(false);
@@ -168,4 +171,84 @@ it("marks the last incoming message as read and offers voluntary feedback only o
   fireEvent.click(yes);
   await waitFor(() => expect(mocks.saveFeedback).toHaveBeenCalledExactlyOnceWith("match", true));
   await waitFor(() => expect(yes).not.toBeInTheDocument());
+});
+
+it("keeps the shared question after a normal message and attaches a revealed answer to a reply", async () => {
+  mocks.messages.mockResolvedValue([{ id: "existing", from: "me", text: "Ahoj", ts: 1 }]);
+  mocks.question.mockResolvedValue({
+    data: {
+      question: "Ako vyzerá tvoj dobrý víkend?",
+      own_answer: "Ráno vonku.",
+      partner_answer: null,
+      skipped: false,
+    },
+    error: null,
+  });
+  render(<Thread />);
+  expect(await screen.findByText("Ako vyzerá tvoj dobrý víkend?")).toBeInTheDocument();
+  expect(screen.getByText("Ráno vonku.")).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Správa" })).toBeEnabled();
+
+  mocks.question.mockResolvedValue({
+    data: {
+      question: "Ako vyzerá tvoj dobrý víkend?",
+      own_answer: "Ráno vonku.",
+      partner_answer: "Káva s priateľmi.",
+      skipped: false,
+    },
+    error: null,
+  });
+  fireEvent(window, new Event("online"));
+  const followUp = await screen.findByRole("button", { name: "Nadviazať na odpoveď" });
+  fireEvent.click(followUp);
+  expect(screen.getByRole("textbox", { name: "Správa" })).toHaveFocus();
+  fireEvent.change(screen.getByRole("textbox", { name: "Správa" }), {
+    target: { value: "Kam chodíte?" },
+  });
+  mocks.send.mockResolvedValue({
+    id: "next",
+    created_at: "2026-11-01T10:00:00Z",
+    reply_context: "Káva s priateľmi.",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Odoslať správu" }));
+  await screen.findByText("Kam chodíte?");
+  expect(mocks.send.mock.calls[0][5]).toBe("Káva s priateľmi.");
+});
+
+it("submits an optional answer and can withdraw it before the mutual reveal", async () => {
+  const pending = {
+    question: "Ako vyzerá tvoj dobrý víkend?",
+    own_answer: null,
+    partner_answer: null,
+    skipped: false,
+  };
+  mocks.question.mockResolvedValue({ data: pending, error: null });
+  render(<Thread />);
+  fireEvent.click(await screen.findByRole("button", { name: "Odpovedať" }));
+  const answer = screen.getByRole("textbox", { name: "Tvoja odpoveď" });
+  expect(answer).toHaveFocus();
+  expect(answer).toHaveAccessibleDescription("Odpovede sa zobrazia, keď odpoviete obaja.");
+  expect(screen.getByRole("textbox", { name: "Správa" })).toBeEnabled();
+  fireEvent.change(answer, { target: { value: " Večer s kamarátmi. " } });
+
+  mocks.question.mockResolvedValue({
+    data: { ...pending, own_answer: "Večer s kamarátmi." },
+    error: null,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Odoslať odpoveď" }));
+  await screen.findByText(/Odpoveď je uložená/);
+  expect(screen.getByText("Večer s kamarátmi.", { selector: "dd" })).toBeInTheDocument();
+  expect(mocks.question).toHaveBeenCalledWith("respond_shared_conversation_question", {
+    p_match_id: "match",
+    p_answer: "Večer s kamarátmi.",
+  });
+  expect(mocks.send).not.toHaveBeenCalled();
+
+  mocks.question.mockResolvedValue({ data: { ...pending, skipped: true }, error: null });
+  fireEvent.click(screen.getByRole("button", { name: "Stiahnuť odpoveď" }));
+  await waitFor(() => expect(screen.queryByText(pending.question)).not.toBeInTheDocument());
+  expect(mocks.question).toHaveBeenCalledWith("respond_shared_conversation_question", {
+    p_match_id: "match",
+    p_answer: null,
+  });
 });

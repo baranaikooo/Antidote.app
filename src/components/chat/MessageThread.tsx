@@ -15,6 +15,8 @@ import { useHaptic } from "@/hooks/use-haptics";
 import { VoiceBubble } from "./VoiceBubble";
 import { markConversationRead } from "@/lib/conversation-inbox";
 import { ConversationFeedback } from "./ConversationFeedback";
+import { SharedConversationQuestion } from "./SharedConversationQuestion";
+import { readSharedQuestion, type SharedQuestion } from "@/lib/shared-question";
 
 const GIFS = [
   "https://media.tenor.com/x8v1oNUOmg4AAAAi/heart-love.gif",
@@ -45,6 +47,7 @@ export function MessageThread({
   const [status, setStatus] = useState<ConversationStatus | null>(null);
   const [input, setInput] = useState("");
   const [selectedReply, setSelectedReply] = useState<string | null>(null);
+  const [sharedQuestion, setSharedQuestion] = useState<SharedQuestion | null>(null);
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
   const [error, setError] = useState("");
@@ -71,6 +74,11 @@ export function MessageThread({
   // The lock only serializes saves. The server decides whether a conversation is open.
   const refresh = useCallback(async () => {
     const current = ++request.current;
+    void readSharedQuestion(conversation.id)
+      .then((question) => {
+        if (current === request.current) setSharedQuestion(question);
+      })
+      .catch(() => {});
     try {
       const [next, messages] = await Promise.all([
         readConversationStatus(conversation.id, userId),
@@ -197,7 +205,10 @@ export function MessageThread({
 
   const hasMessages = conversation.messages.length > 0;
   const reflection = match.shared_reflection?.trim() ? match.shared_reflection : null;
-  const replyContext = !hasMessages && selectedReply === reflection ? selectedReply : null;
+  const hasReplyContext =
+    selectedReply === sharedQuestion?.partner_answer ||
+    (!hasMessages && selectedReply === reflection);
+  const replyContext = hasReplyContext ? selectedReply : null;
 
   function selectReply(value: string | null) {
     if (sendLock.current) return;
@@ -290,7 +301,21 @@ export function MessageThread({
           </p>
         )}
 
-        {isOpen && !hasMessages && (
+        {isOpen && sharedQuestion && (
+          <SharedConversationQuestion
+            matchId={conversation.id}
+            name={match.name}
+            question={sharedQuestion}
+            selected={replyContext !== null && replyContext === sharedQuestion.partner_answer}
+            sending={sending}
+            onChange={(next) => {
+              void refresh();
+              setSharedQuestion(next);
+            }}
+            onReply={selectReply}
+          />
+        )}
+        {isOpen && !hasMessages && (reflection || !sharedQuestion) && (
           <section className="conversation-intro" aria-labelledby="conversation-intro">
             <h2 id="conversation-intro" className="font-semibold">
               {reflection ? "Zdieľaná odpoveď" : "Otázka na úvod"}
