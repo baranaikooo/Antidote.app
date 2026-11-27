@@ -59,7 +59,16 @@ import {
   recordLivenessVerified,
   getOrCreateMatch,
 } from "@/lib/supabase";
-import { ChoiceSelect } from "@/components/ui/choice-select";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { ResonanceAvatar } from "@/components/ResonanceAvatar";
 import { BirthDateFields } from "@/components/BirthDateFields";
 import { SemanticMirror } from "@/components/SemanticMirror";
 import { recommendationReason } from "@/lib/recommendation-reason";
@@ -180,11 +189,14 @@ function Shell({
 
 function AppSplash() {
   return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center text-center animate-fade-in">
-      <div className="size-16 rounded-full border border-foreground/10 bg-foreground/[0.02] flex items-center justify-center animate-pulse">
-        <span className="size-4 rounded-full bg-foreground/40 animate-ping" />
-      </div>
-      <p className="mt-6 text-sm font-medium text-muted-foreground">Načítavam Antidote…</p>
+    <div
+      className="flex min-h-[80vh] flex-col items-center justify-center text-center animate-fade-in"
+      role="status"
+      aria-label="Načítavam Antidote"
+    >
+      <AntidoteLogo markClassName="h-9" />
+      <Skeleton className="mt-5 h-1.5 w-28 rounded-full" />
+      <p className="mt-3 text-sm font-medium text-muted-foreground">Načítavam Antidote…</p>
     </div>
   );
 }
@@ -1741,6 +1753,7 @@ function BottomNav({
 function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   const haptic = useHaptic();
   const [choice, setChoice] = useState<"travel" | "love" | null>(null);
+  const [showReturningLogin, setShowReturningLogin] = useState(false);
   const options = [
     { value: "travel", label: "Možnosť cestovať", icon: Compass },
     { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
@@ -1749,6 +1762,7 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
   const choose = (nextChoice: "travel" | "love") => {
     haptic("medium");
     setChoice(nextChoice);
+    setShowReturningLogin(false);
   };
 
   return (
@@ -1761,8 +1775,11 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
           <p>Zoznamka, ktorá začína otázkou.</p>
         </header>
         <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
+        <p className="landing-trust-pill">
+          Hlasový úvod · 3 s video overenie tváre · Bez swipovania
+        </p>
       </div>
-      <div className="landing-interaction" data-answered={choice !== null}>
+      <div className="landing-interaction" data-answered={choice !== null || showReturningLogin}>
         <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
           {options.map(({ value, label, icon: Icon }) => (
             <button
@@ -1785,12 +1802,34 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
         <div role="status" className="sr-only">
           {choice && "Odpoveď vybraná. Môžeš pokračovať cez Google."}
         </div>
-        {choice && (
+        {choice ? (
           <div className="landing-result">
             <p>Podľa odpovedí v dotazníku ti odporučíme ľudí.</p>
             <div className="landing-sign-in">
               <GoogleSignInButton onSuccess={onGoogle} />
             </div>
+          </div>
+        ) : (
+          <div className="landing-returning">
+            {showReturningLogin ? (
+              <div className="landing-result">
+                <p>Prihlás sa k svojmu existujúcemu profilu.</p>
+                <div className="landing-sign-in">
+                  <GoogleSignInButton onSuccess={onGoogle} />
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="landing-returning-toggle"
+                onClick={() => {
+                  haptic("tap");
+                  setShowReturningLogin(true);
+                }}
+              >
+                Už mám účet — Prihlásiť sa cez Google
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -2378,6 +2417,7 @@ function MatchCard({
         age={match.age}
         city={match.city}
         distanceKm={match.distanceKm}
+        orbSeed={match.id}
       />
       {priorityLabel && (
         <div className="match-card-meta">
@@ -2447,11 +2487,7 @@ function Dashboard({
   const nearby = displayedRadius < 500;
   const searchRange = nearby ? `Do ${displayedRadius} km` : "Celý svet";
   const radiusButton = useRef<HTMLButtonElement>(null);
-  const radiusSelect = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (editingRadius) radiusSelect.current?.focus({ preventScroll: true });
-  }, [editingRadius]);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
   function closeRadiusEditor() {
     setEditingRadius(false);
@@ -2475,6 +2511,11 @@ function Dashboard({
   const availableMatches = matches;
   const activeIndex = Math.max(0, Math.min(matchIndex, availableMatches.length - 1));
   const activeMatch = availableMatches[activeIndex];
+  const radiusOptions = [...new Set([25, 50, 100, 200, savedRadius])]
+    .filter((radius) => radius < 500)
+    .sort((a, b) => a - b)
+    .map((radius) => ({ value: radius, label: `Do ${radius} km` }))
+    .concat({ value: 500, label: "Celý svet" });
 
   function selectProfile(index: number) {
     if (index === activeIndex || index < 0 || index >= availableMatches.length) return;
@@ -2525,56 +2566,69 @@ function Dashboard({
             <span>{savingRadius ? "Ukladám…" : searchRange}</span>
           </button>
         </div>
-        <div id="discover-radius-editor" className="discover-radius-editor" hidden={!editingRadius}>
-          {editingRadius && (
+        <Drawer
+          open={editingRadius}
+          onOpenChange={(open) => {
+            if (!open && !savingRadius) closeRadiusEditor();
+          }}
+        >
+          <DrawerContent className="mx-auto max-w-md border-border bg-card text-foreground">
+            <DrawerHeader>
+              <DrawerTitle className="font-display text-xl">Nový dosah odporúčaní</DrawerTitle>
+            </DrawerHeader>
             <form
-              className="discover-radius-form"
+              className="grid gap-2 px-4 pb-2"
               onSubmit={(event) => {
                 event.preventDefault();
                 void saveSearchRadius();
               }}
             >
-              <label className="font-semibold" htmlFor="discover-radius">
-                Nový dosah odporúčaní
-              </label>
-              <ChoiceSelect
-                id="discover-radius"
-                label="Nový dosah odporúčaní"
-                triggerRef={radiusSelect}
-                value={String(radiusChoice)}
-                onValueChange={(value) => setRadiusChoice(Number(value))}
-                disabled={savingRadius}
-                options={[...new Set([25, 50, 100, 200, savedRadius])]
-                  .filter((radius) => radius < 500)
-                  .sort((a, b) => a - b)
-                  .map((radius) => ({ value: String(radius), label: `Do ${radius} km` }))
-                  .concat({ value: "500", label: "Celý svet" })}
-              />
+              <div className="grid gap-1.5" role="radiogroup" aria-label="Nový dosah odporúčaní">
+                {radiusOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={radiusChoice === opt.value}
+                    disabled={savingRadius}
+                    onClick={() => {
+                      haptic("tap");
+                      setRadiusChoice(opt.value);
+                    }}
+                    className="drawer-option"
+                  >
+                    <span>{opt.label}</span>
+                    {radiusChoice === opt.value && <Check className="size-4 shrink-0" aria-hidden="true" />}
+                  </button>
+                ))}
+              </div>
               {radiusFailed && (
-                <p role="alert" className="text-destructive">
+                <p role="alert" className="text-sm text-destructive">
                   Dosah sa nepodarilo uložiť. Skús to znova.
                 </p>
               )}
-              <div className="flex flex-wrap gap-2">
+              <DrawerFooter className="px-0 pt-3">
                 <button
                   type="submit"
-                  className="personal-action"
+                  className="match-card-action"
                   disabled={savingRadius || radiusChoice === savedRadius}
                 >
                   {savingRadius ? "Ukladám…" : "Uložiť dosah"}
                 </button>
-                <button
-                  type="button"
-                  className="personal-action"
-                  disabled={savingRadius}
-                  onClick={closeRadiusEditor}
-                >
-                  Zrušiť
-                </button>
-              </div>
+                <DrawerClose asChild>
+                  <button
+                    type="button"
+                    className="personal-action w-full justify-center"
+                    disabled={savingRadius}
+                    onClick={closeRadiusEditor}
+                  >
+                    Zrušiť
+                  </button>
+                </DrawerClose>
+              </DrawerFooter>
             </form>
-          )}
-        </div>
+          </DrawerContent>
+        </Drawer>
       </header>
 
       {recentReply && (
@@ -2595,7 +2649,24 @@ function Dashboard({
       )}
 
       {activeMatch ? (
-        <section className="match-deck" aria-label="Dnešné odporúčania">
+        <section
+          className="match-deck match-swipe-area"
+          aria-label="Dnešné odporúčania"
+          onPointerDown={(e) => {
+            if (availableMatches.length < 2) return;
+            swipeStart.current = { x: e.clientX, y: e.clientY };
+          }}
+          onPointerUp={(e) => {
+            const start = swipeStart.current;
+            swipeStart.current = null;
+            if (!start || availableMatches.length < 2) return;
+            const dx = e.clientX - start.x;
+            const dy = e.clientY - start.y;
+            if (Math.abs(dx) < 56 || Math.abs(dx) <= Math.abs(dy) * 1.4) return;
+            if (dx < 0 && activeIndex < availableMatches.length - 1) selectProfile(activeIndex + 1);
+            if (dx > 0 && activeIndex > 0) selectProfile(activeIndex - 1);
+          }}
+        >
           <MatchCard
             key={activeMatch.id}
             match={activeMatch}
@@ -3297,6 +3368,19 @@ function ProfileForm({
 }
 
 // ============ Messages list ============
+function formatRelativeInboxTime(ts?: number): string | null {
+  if (!ts || !Number.isFinite(ts)) return null;
+  const diffMin = Math.max(0, Math.floor((Date.now() - ts) / 60000));
+  if (diffMin < 1) return "teraz";
+  if (diffMin < 60) return `pred ${diffMin} min`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `pred ${diffHours} h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "včera";
+  if (diffDays < 7) return `pred ${diffDays} dňami`;
+  return new Date(ts).toLocaleDateString("sk-SK", { day: "numeric", month: "numeric" });
+}
+
 function MessagesList({
   conversations,
   matches,
@@ -3330,7 +3414,17 @@ function MessagesList({
         </p>
       )}
       {loading && conversations.length === 0 ? (
-        <p role="status">Načítavam rozhovory…</p>
+        <div className="message-list" role="status" aria-label="Načítavam rozhovory">
+          {[0, 1, 2].map((item) => (
+            <div key={item} className="message-list-row pointer-events-none">
+              <Skeleton className="size-12 shrink-0 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <Skeleton className="h-4 w-40 rounded-md" />
+                <Skeleton className="h-3.5 w-56 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : conversations.length === 0 && !failed ? (
         <div className="app-empty">
           <MessageCircle className="size-6" aria-hidden="true" />
@@ -3343,6 +3437,7 @@ function MessagesList({
             const m = matches.find((x) => x.id === c.matchId);
             if (!m) return null;
             const last = c.preview;
+            const timeLabel = formatRelativeInboxTime(last?.ts ?? c.createdAt);
             return (
               <button
                 key={c.id}
@@ -3350,32 +3445,35 @@ function MessagesList({
                 className="message-list-row group"
                 data-unread={!!c.unread}
               >
-                <span
-                  className="grid size-12 shrink-0 place-items-center rounded-full bg-muted font-bold"
-                  aria-hidden="true"
-                >
-                  {Array.from(m.name)[0]?.toLocaleUpperCase("sk")}
-                </span>
+                <ResonanceAvatar name={m.name} seed={m.id} unread={Boolean(c.unread)} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className={`truncate text-base ${c.unread ? "font-bold" : "font-medium"}`}>
-                      {m.name}
-                    </h3>
-                    <span className="shrink-0 text-sm text-muted-foreground">{m.age}</span>
-                    <span className="truncate text-sm text-muted-foreground">· {m.city}</span>
-                    {c.unread && (
-                      <>
-                        <span
-                          className="size-2 shrink-0 rounded-full bg-accent"
-                          aria-hidden="true"
-                        />
-                        <span className="sr-only">Neprečítané</span>
-                      </>
-                    )}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <h3 className={`truncate text-base ${c.unread ? "font-bold" : "font-medium"}`}>
+                        {m.name}
+                      </h3>
+                      <span className="shrink-0 text-sm text-muted-foreground">{m.age}</span>
+                      <span className="truncate text-sm text-muted-foreground">· {m.city}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {timeLabel && (
+                        <span className="text-xs text-muted-foreground">{timeLabel}</span>
+                      )}
+                      {c.unread && (
+                        <>
+                          <span
+                            className="size-2 shrink-0 rounded-full bg-accent"
+                            aria-hidden="true"
+                          />
+                          <span className="sr-only">Neprečítané</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <p className="mt-1 flex items-center gap-2 text-sm text-foreground/70">
+                  <p className="mt-1 flex items-center gap-2 text-sm text-foreground/75">
+                    {!last && <span className="message-list-stage">Spoločná otázka</span>}
                     <span className="truncate">
-                      {last ? inboxMessageLabel(last) : "Spoločná otázka"}
+                      {last ? inboxMessageLabel(last) : "Odpovedzte hlasom pre otvorenie chatu"}
                     </span>
                   </p>
                 </div>

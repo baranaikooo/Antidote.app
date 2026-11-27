@@ -17,45 +17,66 @@ export function SnippetRows({
   blurred?: boolean;
   slotIndices?: readonly number[];
 }) {
+  const isGrid = slotIndices.length > 1;
   return (
-    <ul className={slotIndices.length > 1 ? "grid gap-x-5 sm:grid-cols-2" : undefined}>
+    <ul className={isGrid ? "video-slot-grid" : "mt-2 grid"}>
       {slotIndices.map((idx) => {
         const url = snippets[idx];
         return (
-          <li key={idx} className="personal-row py-2">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="personal-thumbnail rounded-lg" aria-hidden="true">
-                {url ? (
-                  <video
-                    src={url}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    onTimeUpdate={(e) => {
-                      if (e.currentTarget.currentTime >= 3) e.currentTarget.currentTime = 0;
-                    }}
-                    className={`size-full bg-black object-cover -scale-x-100 ${blurred ? "blur-[10px]" : ""}`}
-                  />
-                ) : <Film className="size-5" />}
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold">Video {idx + 1}</p>
-                <p className="personal-status">{url ? "Pridané" : "Prázdne"}</p>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
+          <li key={idx} className="video-slot-card" data-filled={Boolean(url)}>
+            <div className="video-slot-media" aria-hidden="true">
               {url ? (
-                <button type="button" onClick={() => onRemove(idx)} aria-label={`Odstrániť video ${idx + 1}`} className="personal-icon-button rounded-lg">
-                  <X className="size-5" />
+                <video
+                  src={url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  onTimeUpdate={(e) => {
+                    if (e.currentTarget.currentTime >= 3) e.currentTarget.currentTime = 0;
+                  }}
+                  className={`size-full bg-black object-cover -scale-x-100 ${blurred ? "blur-[10px]" : ""}`}
+                />
+              ) : (
+                <div className="grid place-items-center gap-1 text-center text-muted-foreground">
+                  <Film className="size-6 opacity-75" />
+                  <span className="text-xs font-medium">3 s klip</span>
+                </div>
+              )}
+              <span className="video-slot-badge" data-filled={Boolean(url)}>
+                Video {idx + 1} · {url ? "Pridané" : "Prázdne"}
+              </span>
+            </div>
+            <div className="video-slot-actions">
+              {url ? (
+                <button
+                  type="button"
+                  onClick={() => onRemove(idx)}
+                  aria-label={`Odstrániť video ${idx + 1}`}
+                  className="video-slot-btn video-slot-btn-danger"
+                >
+                  <X className="size-4 shrink-0" />
+                  <span>Odstrániť</span>
                 </button>
               ) : (
                 <>
-                  <button type="button" onClick={() => onRecord(idx)} aria-label={`Nahrať video ${idx + 1} kamerou`} className="personal-icon-button rounded-lg">
-                    <Camera className="size-5" />
+                  <button
+                    type="button"
+                    onClick={() => onRecord(idx)}
+                    aria-label={`Nahrať video ${idx + 1} kamerou`}
+                    className="video-slot-btn video-slot-btn-primary"
+                  >
+                    <Camera className="size-4 shrink-0" />
+                    <span>Kamera</span>
                   </button>
-                  <button type="button" onClick={() => onUpload(idx)} aria-label={`Nahrať video ${idx + 1} z galérie`} className="personal-icon-button rounded-lg">
-                    <Upload className="size-5" />
+                  <button
+                    type="button"
+                    onClick={() => onUpload(idx)}
+                    aria-label={`Nahrať video ${idx + 1} z galérie`}
+                    className="video-slot-btn"
+                  >
+                    <Upload className="size-4 shrink-0" />
+                    <span>Galéria</span>
                   </button>
                 </>
               )}

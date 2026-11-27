@@ -27,7 +27,19 @@ export function LegalPage({
             <div className="space-y-3">
               {s.p.map((line, j) => (
                 <p key={j} className="leading-relaxed text-muted-foreground">
-                  {line}
+                  {line.split(/([a-zA-Z0-9._%+-]+@antidote\.app)/g).map((part, idx) =>
+                    part.endsWith("@antidote.app") ? (
+                      <a
+                        key={idx}
+                        href={`mailto:${part}`}
+                        className="font-medium text-accent underline underline-offset-4 hover:opacity-80"
+                      >
+                        {part}
+                      </a>
+                    ) : (
+                      part
+                    ),
+                  )}
                 </p>
               ))}
             </div>

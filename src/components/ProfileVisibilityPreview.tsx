@@ -1,4 +1,5 @@
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState } from "react";
 import { MatchCardIdentity } from "./MatchCardIdentity";
 import { fetchSharedProfileVideos } from "@/lib/conversations";
@@ -76,7 +77,13 @@ function ConsentedVideos({ ownerId, savedVideos }: { ownerId: string; savedVideo
   }, [ownerId, savedVideos]);
 
   const videos = result?.savedVideos === savedVideos ? result?.videos : undefined;
-  if (!videos) return <p role="status">Načítavam videá…</p>;
+  if (!videos)
+    return (
+      <div className="grid grid-cols-2 gap-2" role="status" aria-label="Načítavam videá">
+        <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+        <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+      </div>
+    );
   if (videos === "error") return <p role="alert">Náhľad videí sa nepodarilo načítať.</p>;
   if (!videos.length) return <p>Na profile zatiaľ nemáš žiadne videá.</p>;
 
