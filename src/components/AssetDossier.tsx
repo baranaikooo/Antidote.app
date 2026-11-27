@@ -1,6 +1,7 @@
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Loader2, ChevronDown } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { SnippetRows } from "@/components/SnippetRows";
 import { UserProfile } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
@@ -542,7 +543,12 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
 
         {/* Market Parameters (Moved from settings to DNA section) */}
         <details className="personal-section profile-filters" open>
-          <summary className="personal-summary"><span><span className="personal-heading">Koho chceš spoznať?</span><span className="summary-detail">{isGlobalMode ? "Celý svet" : `Do ${distance} km`}</span></span><ChevronDown className="size-5" aria-hidden="true" /></summary>
+          <DisclosureSummary className="personal-summary">
+            <span>
+              <span className="personal-heading">Koho chceš spoznať?</span>
+              <span className="summary-detail">{isGlobalMode ? "Celý svet" : `Do ${distance} km`}</span>
+            </span>
+          </DisclosureSummary>
 
           <div className="space-y-3 pt-3">
             {/* Global vs National Toggle */}
@@ -600,7 +606,7 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 }}
                 aria-label="Maximálna vzdialenosť"
                 aria-describedby={isGlobalMode ? undefined : "nearby-radius-info"}
-                className="my-3 h-2 w-full cursor-pointer accent-cerebral"
+                className="antidote-range w-full"
               />
               {!isGlobalMode && (
                 <p id="nearby-radius-info" className="personal-status">
@@ -637,10 +643,9 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
         </details>
 
         <details className="personal-section group">
-          <summary className="personal-summary">
+          <DisclosureSummary className="personal-summary">
             <h2 className="personal-heading">Tvoja osobnosť</h2>
-            <ChevronDown className="size-5 group-open:rotate-180" aria-hidden="true" />
-          </summary>
+          </DisclosureSummary>
           <div className="space-y-3 pt-3">
             <div className="flex justify-between border-b border-foreground/5 pb-2">
               <span className="text-foreground/70">Typ osobnosti</span>

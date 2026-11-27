@@ -1,3 +1,4 @@
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Eye, Mic, Reply, Send, Sparkles, X } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/lib/resonance";
@@ -340,10 +341,12 @@ export function MessageThread({
 
         {isOpen && hasMessages && (
           <details className="conversation-privacy-detail text-sm">
-            <summary>
-              <Eye className="mr-2 inline size-4" aria-hidden="true" />
-              Zdieľanie videí z profilu
-            </summary>
+            <DisclosureSummary>
+              <span className="flex items-center gap-2">
+                <Eye className="size-4 shrink-0" aria-hidden="true" />
+                Zdieľanie videí z profilu
+              </span>
+            </DisclosureSummary>
             {status.is_unlocked ? (
               <>
                 <p className="pb-2">Obaja ste súhlasili so zdieľaním profilových videí.</p>
@@ -559,9 +562,7 @@ export function MessageThread({
             </button>
           </form>
           <details className="px-3 pb-2 text-sm">
-            <summary className="min-h-11 cursor-pointer pt-2.5 font-semibold">
-              Možnosti rozhovoru
-            </summary>
+            <DisclosureSummary className="font-semibold">Možnosti rozhovoru</DisclosureSummary>
             <p className="mb-2 text-muted-foreground">Rozhovor môžeš ukončiť kedykoľvek.</p>
             <div className="flex flex-wrap gap-2">
               <button
@@ -574,9 +575,7 @@ export function MessageThread({
               </button>
             </div>
             <details className="mt-2">
-              <summary className="min-h-11 cursor-pointer pt-2.5 text-destructive">
-                Nahlásiť a ukončiť
-              </summary>
+              <DisclosureSummary className="text-destructive">Nahlásiť a ukončiť</DisclosureSummary>
               <div className="flex flex-wrap gap-2">
                 {(Object.entries(REPORT_REASONS) as [keyof typeof REPORT_REASONS, string][]).map(
                   ([reason, label]) => (

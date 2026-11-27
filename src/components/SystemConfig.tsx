@@ -1,3 +1,4 @@
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { AndroidUpdateSettings } from "@/components/UpdateNotice";
 import MessageNotificationSettings from "@/components/MessageNotificationSettings";
 import React, { useState, useEffect } from "react";
@@ -310,7 +311,12 @@ export function SystemConfig({
       {user.id && <MessageNotificationSettings key={user.id} userId={user.id} />}
 
       <details className="personal-section settings-disclosure">
-        <summary className="personal-summary"><span><span className="personal-heading">Súkromie a povolenia</span><span className="summary-detail">Kamera, mikrofón a poloha</span></span><ChevronRight className="size-5" aria-hidden="true" /></summary>
+        <DisclosureSummary className="personal-summary">
+          <span>
+            <span className="personal-heading">Súkromie a povolenia</span>
+            <span className="summary-detail">Kamera, mikrofón a poloha</span>
+          </span>
+        </DisclosureSummary>
         <div className="personal-row"><span><Mic className="size-5" /> Mikrofón</span><span className="personal-status">{micPermission === "granted" ? "Povolený" : "Nepovolený"}</span></div>
         <div className="personal-row"><span><Camera className="size-5" /> Kamera</span><span className="personal-status">{camPermission === "granted" ? "Povolená" : "Nepovolená"}</span></div>
         <button type="button" onClick={handleRefreshCoordinates} disabled={isGpsLoading} className="personal-link">
@@ -324,7 +330,12 @@ export function SystemConfig({
       </details>
 
       <details className="personal-section settings-disclosure">
-        <summary className="personal-summary"><span><span className="personal-heading">Informácie</span><span className="summary-detail">Podmienky, súkromie a kontakt</span></span><ChevronRight className="size-5" aria-hidden="true" /></summary>
+        <DisclosureSummary className="personal-summary">
+          <span>
+            <span className="personal-heading">Informácie</span>
+            <span className="summary-detail">Podmienky, súkromie a kontakt</span>
+          </span>
+        </DisclosureSummary>
         {([
           ["Podmienky používania", onOpenTerms], ["Ochrana súkromia", onOpenPrivacy], ["Cookies", onOpenCookies], ["Kontakt", onOpenContact],
         ] as const).map(([label, action]) => (
@@ -333,7 +344,12 @@ export function SystemConfig({
       </details>
 
       <details className="personal-section settings-disclosure">
-        <summary className="personal-summary"><span><span className="personal-heading">Účet</span><span className="summary-detail">{isFrozen ? "Profil je skrytý" : "Profil je viditeľný"}</span></span><ChevronRight className="size-5" aria-hidden="true" /></summary>
+        <DisclosureSummary className="personal-summary">
+          <span>
+            <span className="personal-heading">Účet</span>
+            <span className="summary-detail">{isFrozen ? "Profil je skrytý" : "Profil je viditeľný"}</span>
+          </span>
+        </DisclosureSummary>
         {freezeMessage && <p role="status" className="mb-3 text-foreground/75">{freezeMessage}</p>}
         {showWipeConfirm ? (
           <div className="bg-red-500/10 p-4">

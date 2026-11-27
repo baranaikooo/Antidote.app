@@ -10,7 +10,6 @@ import {
   Mic,
   Send,
   Phone,
-  ChevronDown,
   Compass,
   Heart,
   ChevronLeft,
@@ -94,6 +93,9 @@ import {
   recordLivenessVerified,
   getOrCreateMatch,
 } from "@/lib/supabase";
+import { ChoiceSelect } from "@/components/ui/choice-select";
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
+import { BirthDateFields } from "@/components/BirthDateFields";
 import { SemanticMirror } from "@/components/SemanticMirror";
 import { readSituationScores } from "@/lib/situation-scores";
 import { PRIORITY_CATEGORIES, ValueBankroll } from "@/components/ValueBankroll";
@@ -2452,10 +2454,7 @@ function MatchCard({
       />
       {shared && (
         <details className="match-card-details">
-          <summary>
-            Prečo toto odporúčanie?
-            <ChevronDown className="size-4 shrink-0" aria-hidden="true" />
-          </summary>
+          <DisclosureSummary>Prečo toto odporúčanie?</DisclosureSummary>
           <p className="match-card-facts">
             Spoločná priorita z dotazníka je {shared.label.toLocaleLowerCase("sk")}.
           </p>
@@ -2502,13 +2501,14 @@ function Dashboard({
 
   const [matchIndex, setMatchIndex] = useState(0);
   const [editingRadius, setEditingRadius] = useState(false);
-  const [radiusChoice, setRadiusChoice] = useState(profile.radiusKm ?? 500);
+  const savedRadius = Math.min(profile.radiusKm ?? 500, 500);
+  const [radiusChoice, setRadiusChoice] = useState(savedRadius);
   const [savingRadius, setSavingRadius] = useState(false);
   const [radiusFailed, setRadiusFailed] = useState(false);
   const nearby = profile.radiusKm !== undefined && profile.radiusKm < 500;
   const searchRange = nearby ? `Do ${profile.radiusKm} km` : "Celý svet";
   const radiusButton = useRef<HTMLButtonElement>(null);
-  const radiusSelect = useRef<HTMLSelectElement>(null);
+  const radiusSelect = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (editingRadius) radiusSelect.current?.focus();
@@ -2585,7 +2585,7 @@ function Dashboard({
               if (editingRadius) {
                 closeRadiusEditor();
               } else {
-                setRadiusChoice(profile.radiusKm ?? 500);
+                setRadiusChoice(savedRadius);
                 setRadiusFailed(false);
                 setEditingRadius(true);
               }
@@ -2606,22 +2606,19 @@ function Dashboard({
               <label className="font-semibold" htmlFor="discover-radius">
                 Nový dosah odporúčaní
               </label>
-              <select
-                ref={radiusSelect}
+              <ChoiceSelect
                 id="discover-radius"
-                className="min-h-12 rounded-lg border border-foreground/35 bg-card px-3"
-                value={radiusChoice}
-                onChange={(event) => setRadiusChoice(Number(event.target.value))}
+                label="Nový dosah odporúčaní"
+                triggerRef={radiusSelect}
+                value={String(radiusChoice)}
+                onValueChange={(value) => setRadiusChoice(Number(value))}
                 disabled={savingRadius}
-              >
-                {[...new Set([25, 50, 100, 200, profile.radiusKm ?? 500, 500])]
+                options={[...new Set([25, 50, 100, 200, savedRadius])]
+                  .filter((radius) => radius < 500)
                   .sort((a, b) => a - b)
-                  .map((radius) => (
-                    <option key={radius} value={radius}>
-                      {radius >= 500 ? "Celý svet" : "Do " + radius + " km"}
-                    </option>
-                  ))}
-              </select>
+                  .map((radius) => ({ value: String(radius), label: `Do ${radius} km` }))
+                  .concat({ value: "500", label: "Celý svet" })}
+              />
               {radiusFailed && (
                 <p role="alert" className="text-destructive">
                   Dosah sa nepodarilo uložiť. Skús to znova.
@@ -2631,7 +2628,7 @@ function Dashboard({
                 <button
                   type="submit"
                   className="personal-action"
-                  disabled={savingRadius || radiusChoice === (profile.radiusKm ?? 500)}
+                  disabled={savingRadius || radiusChoice === savedRadius}
                 >
                   {savingRadius ? "Ukladám…" : "Uložiť dosah"}
                 </button>
@@ -3024,7 +3021,7 @@ function ProfileForm({
   const [errorMessage, setErrorMessage] = useState("");
 
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
+  const dateInputRef = useRef<HTMLButtonElement>(null);
 
   // Autofocus input fields on step transitions
   useEffect(() => {
@@ -3038,7 +3035,8 @@ function ProfileForm({
   function calculateAge(birthDateString: string): number {
     if (!birthDateString) return 0;
     const today = new Date();
-    const birth = new Date(birthDateString);
+    const [year, month, day] = birthDateString.split("-").map(Number);
+    const birth = new Date(year, month - 1, day);
     let calculatedAge = today.getFullYear() - birth.getFullYear();
     const m = today.getMonth() - birth.getMonth();
     if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
@@ -3159,19 +3157,11 @@ function ProfileForm({
             Potrebujeme vedieť tvoj dátum narodenia, aby sme ti mohli zobraziť ľudí v správnom veku.
           </p>
 
-          <div className="text-left space-y-2">
-            <label htmlFor="profile-birth-date" className="mb-2 block font-semibold">
-              Dátum narodenia (DD / MM / RRRR)
-            </label>
-            <input
-              id="profile-birth-date"
-              ref={dateInputRef}
-              type="date"
-              value={birthDate}
-              onChange={(e) => handleBirthDateChange(e.target.value)}
-              className="w-full border border-foreground/30 bg-card p-3 text-base text-foreground focus:bg-foreground/5"
-            />
-          </div>
+          <BirthDateFields
+            initialValue={birthDate}
+            firstFieldRef={dateInputRef}
+            onChange={handleBirthDateChange}
+          />
 
           {errorMessage && (
             <div

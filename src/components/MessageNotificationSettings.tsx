@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { ChoiceSelect } from "@/components/ui/choice-select";
+import { Switch } from "@/components/ui/switch";
 import { readMessageAlertSettings, saveMessageAlertSettings } from "@/lib/message-notifications";
 
 export default function MessageNotificationSettings({ userId }: { userId: string }) {
@@ -32,48 +34,34 @@ export default function MessageNotificationSettings({ userId }: { userId: string
           }
         }}
       >
-        <label className="flex min-h-11 items-center gap-3">
-          <input
-            type="checkbox"
+        <label className="settings-switch-row">
+          <span>Zobrazovať upozornenia v aplikácii</span>
+          <Switch
             checked={settings.enabled}
-            onChange={(event) => setSettings({ ...settings, enabled: event.target.checked })}
+            onCheckedChange={(enabled) => setSettings({ ...settings, enabled })}
           />
-          Zobrazovať upozornenia v aplikácii
         </label>
         {settings.enabled && (
           <>
-            <label className="flex min-h-11 items-center gap-3">
-              <input
-                type="checkbox"
+            <label className="settings-switch-row">
+              <span>Tiché hodiny</span>
+              <Switch
                 checked={settings.quiet}
-                onChange={(event) => setSettings({ ...settings, quiet: event.target.checked })}
+                onCheckedChange={(quiet) => setSettings({ ...settings, quiet })}
               />
-              Tiché hodiny
             </label>
             {settings.quiet && (
-              <div className="flex flex-wrap gap-3">
-                <label className="grid gap-1">
-                  Od{" "}
-                  <input
-                    aria-label="Začiatok tichých hodín"
-                    type="time"
-                    required
-                    value={settings.start}
-                    onChange={(event) => setSettings({ ...settings, start: event.target.value })}
-                    className="min-h-11 rounded-lg border border-foreground/35 bg-card px-3"
-                  />
-                </label>
-                <label className="grid gap-1">
-                  Do{" "}
-                  <input
-                    aria-label="Koniec tichých hodín"
-                    type="time"
-                    required
-                    value={settings.end}
-                    onChange={(event) => setSettings({ ...settings, end: event.target.value })}
-                    className="min-h-11 rounded-lg border border-foreground/35 bg-card px-3"
-                  />
-                </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <QuietTimeFields
+                  label="Od"
+                  time={settings.start}
+                  onChange={(start) => setSettings({ ...settings, start })}
+                />
+                <QuietTimeFields
+                  label="Do"
+                  time={settings.end}
+                  onChange={(end) => setSettings({ ...settings, end })}
+                />
               </div>
             )}
           </>
@@ -91,5 +79,47 @@ export default function MessageNotificationSettings({ userId }: { userId: string
         </button>
       </form>
     </section>
+  );
+}
+
+function timeChoices(count: number) {
+  return Array.from({ length: count }, (_, number) => {
+    const value = String(number).padStart(2, "0");
+    return { value, label: value };
+  });
+}
+
+const hourChoices = timeChoices(24);
+const minuteChoices = timeChoices(60);
+
+function QuietTimeFields({
+  label,
+  time,
+  onChange,
+}: {
+  label: string;
+  time: string;
+  onChange: (time: string) => void;
+}) {
+  const [hours, minutes] = time.split(":");
+  return (
+    <fieldset className="min-w-0">
+      <legend className="mb-1 font-semibold">{label}</legend>
+      <div className="quiet-time-fields">
+        <ChoiceSelect
+          label={`${label} – hodina`}
+          value={hours}
+          options={hourChoices}
+          onValueChange={(value) => onChange(`${value}:${minutes}`)}
+        />
+        <span aria-hidden="true">:</span>
+        <ChoiceSelect
+          label={`${label} – minúta`}
+          value={minutes}
+          options={minuteChoices}
+          onValueChange={(value) => onChange(`${hours}:${value}`)}
+        />
+      </div>
+    </fieldset>
   );
 }

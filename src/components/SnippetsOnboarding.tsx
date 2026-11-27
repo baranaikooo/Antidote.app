@@ -1,3 +1,4 @@
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { PROFILE_SLOTS, SnippetRows } from "@/components/SnippetRows";
@@ -292,7 +293,11 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
         )}
       </section>
       <details className="onboarding-panel optional-profile-videos">
-        <summary className="font-semibold">Ďalšie videá <span className="font-normal text-muted-foreground">· voliteľné</span></summary>
+        <DisclosureSummary className="font-semibold">
+          <span>
+            Ďalšie videá <span className="font-normal text-muted-foreground">· voliteľné</span>
+          </span>
+        </DisclosureSummary>
         <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} slotIndices={optionalSlots} />
       </details>
 
