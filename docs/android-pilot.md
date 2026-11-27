@@ -32,6 +32,9 @@ where id = '00000000-0000-0000-0000-000000000000'::uuid -- Nahraď ID účastní
 on conflict (user_id) do nothing;
 
 select * from profile_private.matching_pilot_metrics order by variant;
+select * from profile_private.matching_pilot_exposure_metrics order by variant, position;
 ```
 
 Opakovaný zápis skupinu nezmení. Na odvolanie súhlasu odstráň zápis účastníka z `profile_private.matching_pilot_assignments`. Výsledky zahŕňajú iba dokončené 14-dňové obdobia a nové rozhovory priraďujú skupine odosielateľa prvej správy. Porovnaj počet obojstranných rozhovorov na účastníka, podiel obojstranných zo začatých rozhovorov a podiel odpovedí „áno“ z dobrovoľných odpovedí. Pri každom ukazovateli uveď menovateľ.
+
+Report zobrazení počíta prvé zobrazenie kandidáta každému účastníkovi pri viditeľnej aspoň štvrtine karty. Celkový riadok skupiny má prázdnu pozíciu. Obojstranný rozhovor sa pripočíta, keď účastník po zobrazení pošle prvú správu a kandidát odpovie v danom 14-dňovom období. Pokrytie ukazuje podiel zobrazení, pri ktorých majú rozdelenie žetónov uložené obaja. Odvolanie súhlasu odstráni aj záznamy zobrazení daného účastníka.
