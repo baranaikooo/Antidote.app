@@ -59,3 +59,25 @@ where variant in ('current', 'without_extraversion') order by variant, position;
 ```
 
 Po 14 dňoch porovnaj celkové obojstranné rozhovory na 100 zobrazení aj výsledky podľa pozície. Záujem pokračovať vyhodnoť ako podiel kladných odpovedí zo všetkých dobrovoľných odpovedí a uveď aj ich počet.
+
+## Porovnanie hodnôt a odpovedí na situácie
+
+Po súhlase zaraď dobrovoľníkov, ktorí majú uložené žetóny aj odpovede na tri rovnaké situácie. Skupina `situations_control` používa rozdelenie žetónov. Skupina `values_and_situations` používa rovnaké filtre a rovnaký zoznam kandidátov, potom kombinuje 70 % zhody žetónov a 30 % podobnosti odpovedí. Pri rovnakom skóre rozhoduje vzdialenosť. Kandidáti bez porovnateľných odpovedí zostávajú na pozícii z hodnotového poradia.
+
+```sql
+insert into profile_private.matching_pilot_assignments (user_id, variant)
+select id, case when random() < 0.5 then 'situations_control' else 'values_and_situations' end
+from public.profiles
+where id = '00000000-0000-0000-0000-000000000000'::uuid -- Nahraď ID účastníka.
+  and priority_distribution is not null
+  and situation_scores is not null
+on conflict (user_id) do nothing;
+
+select * from profile_private.matching_pilot_metrics
+where variant in ('situations_control', 'values_and_situations') order by variant;
+
+select * from profile_private.matching_pilot_exposure_metrics
+where variant in ('situations_control', 'values_and_situations') order by variant, position;
+```
+
+Po dokončení 14-dňového obdobia porovnaj obojstranné rozhovory na 100 prvých zobrazení kandidáta, spolu s počtom zobrazení a výsledkami podľa pozície.
