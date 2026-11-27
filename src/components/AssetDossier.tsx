@@ -1,3 +1,4 @@
+import { Slider } from "@/components/ui/slider";
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -15,9 +16,11 @@ interface AssetDossierProps {
   user: UserProfile;
   onUpdateUser: React.Dispatch<React.SetStateAction<UserProfile | null>>;
   onBack: () => void;
+  pendingRadius: number | null;
+  onChangeRadius: (radius: number) => Promise<void>;
 }
 
-export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) {
+export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChangeRadius }: AssetDossierProps) {
   const haptic = useHaptic();
   const profileHeader = useRef<HTMLElement>(null);
 
@@ -79,9 +82,21 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
   const [distance, setDistance] = useState(
     user.radiusKm && user.radiusKm < 500 ? user.radiusKm : 200,
   );
-  const [isGlobalMode, setIsGlobalMode] = useState(
-    user.radiusKm === undefined || user.radiusKm >= 500,
-  );
+  const savedRadius = Math.min(user.radiusKm ?? 500, 500);
+  const isGlobalMode = (pendingRadius ?? savedRadius) >= 500;
+  const savingRadius = pendingRadius !== null;
+  const [radiusFailed, setRadiusFailed] = useState(false);
+
+  async function saveRadius(radius: number) {
+    if (savingRadius || radius === savedRadius) return;
+    setRadiusFailed(false);
+    try {
+      await onChangeRadius(radius);
+    } catch {
+      if (savedRadius < 500) setDistance(savedRadius);
+      setRadiusFailed(true);
+    }
+  }
   const [orientation, setOrientation] = useState(user.orientation || "hetero");
 
   function getTargetMarket(gender: string, orient: string): "male" | "female" | "all" {
@@ -103,27 +118,26 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
       calculatedOrientation = "hetero";
     }
     setOrientation(calculatedOrientation);
-    saveFilterChange("orientation", calculatedOrientation);
+    void saveOrientation(calculatedOrientation);
   }
 
-  async function saveFilterChange(key: string, value: any) {
+  async function saveOrientation(value: "hetero" | "homo" | "bi") {
     onUpdateUser((prev) => {
       if (!prev) return null;
       return {
         ...prev,
-        [key]: value,
+        orientation: value,
       };
     });
 
     const userId = user.id;
-    const dbKey = key === "radiusKm" ? "radius_km" : key;
     if (userId && userId !== "00000000-0000-0000-0000-000000000001") {
       const { error } = await supabase
         .from("profiles")
-        .update({ [dbKey]: value })
+        .update({ orientation: value })
         .eq("id", userId);
       if (error) {
-        console.error(`[AssetDossier] Failed to update ${key} in DB:`, error);
+        console.error("[AssetDossier] Failed to update orientation in DB:", error);
       }
     }
   }
@@ -558,9 +572,9 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 <button
                   onClick={() => {
                     haptic("tap");
-                    setIsGlobalMode(false);
-                    saveFilterChange("radiusKm", distance);
+                    void saveRadius(distance);
                   }}
+                  disabled={savingRadius}
                   aria-pressed={!isGlobalMode}
                   className="personal-segment"
                 >
@@ -569,9 +583,9 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 <button
                   onClick={() => {
                     haptic("tap");
-                    setIsGlobalMode(true);
-                    saveFilterChange("radiusKm", 500); // 500+ triggers Global search
+                    void saveRadius(500);
                   }}
+                  disabled={savingRadius}
                   aria-pressed={isGlobalMode}
                   className="personal-segment"
                 >
@@ -592,21 +606,17 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 <span className="text-foreground/75 text-sm font-medium">Maximálna vzdialenosť</span>
                 <span className="font-bold text-cerebral">{distance} km</span>
               </div>
-              <input
-                type="range"
-                min="5"
-                max="250"
-                step="5"
-                value={distance}
-                disabled={isGlobalMode}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setDistance(val);
-                  saveFilterChange("radiusKm", val);
-                }}
+              <Slider
+                min={5}
+                max={250}
+                step={5}
+                value={[distance]}
+                disabled={isGlobalMode || savingRadius}
+                onValueChange={([value]) => setDistance(value)}
+                onValueCommit={([value]) => void saveRadius(value)}
                 aria-label="Maximálna vzdialenosť"
+                aria-valuetext={`${distance} km`}
                 aria-describedby={isGlobalMode ? undefined : "nearby-radius-info"}
-                className="antidote-range w-full"
               />
               {!isGlobalMode && (
                 <p id="nearby-radius-info" className="personal-status">
@@ -614,6 +624,13 @@ export function AssetDossier({ user, onUpdateUser, onBack }: AssetDossierProps) 
                 </p>
               )}
             </div>
+
+            {savingRadius && <p role="status" className="personal-status">Ukladám dosah…</p>}
+            {radiusFailed && (
+              <p role="alert" className="text-destructive">
+                Dosah sa nepodarilo uložiť. Skús to znova.
+              </p>
+            )}
 
             <fieldset>
               <legend className="mb-2 font-medium">Koho hľadáš</legend>
