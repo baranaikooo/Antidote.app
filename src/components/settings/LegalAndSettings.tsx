@@ -13,10 +13,7 @@ export function LegalPage({
   return (
     <div className="personal-screen">
       <header className="personal-header">
-        <button
-          onClick={onBack}
-          className="personal-action mb-2 inline-flex items-center gap-2"
-        >
+        <button onClick={onBack} className="personal-action mb-2 inline-flex items-center gap-2">
           <ArrowLeft className="size-4" aria-hidden="true" /> Nastavenia
         </button>
         <h1 className="personal-title">{title}</h1>
@@ -64,7 +61,7 @@ export const TERMS_BODY: Array<{ h: string; p: string[] }> = [
   {
     h: "3. Obsah a komunikácia",
     p: [
-      "Hlasovky aj textové správy sú medzi tebou a tvojím partnerom v rozhovore. Ukončením konverzácie sa obsah natrvalo zmaže z oboch zariadení.",
+      "Hlasovky aj textové správy zdieľaš s druhým účastníkom rozhovoru. Ukončený rozhovor už účastníci v aplikácii neotvoria.",
       "Zakazuje sa zdieľať obsah, ktorý je nezákonný, urážlivý, sexuálne explicitný bez súhlasu druhej strany alebo porušuje práva tretích osôb.",
     ],
   },
@@ -102,7 +99,7 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
     p: [
       "Identifikačné: telefónne číslo, krstné meno alebo prezývka, vek, mesto, pohlavie, orientácia.",
       "Overovacie: krátky 3-sekundový videoklip tváre slúžiaci na potvrdenie, že si reálny človek.",
-      "Behaviorálne: odpovede na 6 testových otázok, hodnotenia rezonancie, história rozhovorov (uložené iba v tvojom zariadení).",
+      "Spracúvame odpovede z dotazníka, výsledky párovania a obsah rozhovorov vrátane dobrovoľných odpovedí na spoločné otázky. Odpoveď na spoločnú otázku sa druhému účastníkovi sprístupní, keď odpovie aj on.",
     ],
   },
   {
@@ -118,7 +115,7 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
     p: [
       "Profilové údaje: po dobu existencie účtu.",
       "Overovacie video: maximálne 30 dní, alebo do úspešného overenia.",
-      "Konverzácie: ukladajú sa lokálne v tvojom zariadení. Ukončením rozhovoru sú natrvalo zmazané.",
+      "Správy a odpovede na spoločné otázky ukladáme v Supabase. Ukončenie rozhovoru zruší prístup účastníkov cez aplikáciu. Odpoveď na spoločnú otázku môžeš stiahnuť pred jej sprístupnením druhému účastníkovi.",
     ],
   },
   {
@@ -149,7 +146,7 @@ export const COOKIES_BODY: Array<{ h: string; p: string[] }> = [
   {
     h: "Lokálne úložisko",
     p: [
-      "Tvoje rozhovory ukladáme do localStorage tvojho zariadenia. Nemáme k nim na našom serveri prístup.",
+      "Lokálne úložisko používame na nastavenia aplikácie a obnovenie rozpracovanej registrácie.",
       "Údaje môžeš kedykoľvek zmazať v Nastaveniach.",
     ],
   },
