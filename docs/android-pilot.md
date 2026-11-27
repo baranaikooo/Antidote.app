@@ -38,3 +38,24 @@ select * from profile_private.matching_pilot_exposure_metrics order by variant, 
 Opakovaný zápis skupinu nezmení. Na odvolanie súhlasu odstráň zápis účastníka z `profile_private.matching_pilot_assignments`. Výsledky zahŕňajú iba dokončené 14-dňové obdobia a nové rozhovory priraďujú skupine odosielateľa prvej správy. Porovnaj počet obojstranných rozhovorov na účastníka, podiel obojstranných zo začatých rozhovorov a podiel odpovedí „áno“ z dobrovoľných odpovedí. Pri každom ukazovateli uveď menovateľ.
 
 Report zobrazení počíta prvé zobrazenie kandidáta každému účastníkovi pri viditeľnej aspoň štvrtine karty. Celkový riadok skupiny má prázdnu pozíciu. Obojstranný rozhovor sa pripočíta, keď účastník po zobrazení pošle prvú správu a kandidát odpovie v danom 14-dňovom období. Pokrytie ukazuje podiel zobrazení, pri ktorých majú rozdelenie žetónov uložené obaja. Odvolanie súhlasu odstráni aj záznamy zobrazení daného účastníka.
+
+## Porovnanie prínosu extraverzie
+
+Dobrovoľníkov, ktorí súhlasia s týmto porovnaním, prideľ náhodne medzi `current` a `without_extraversion`. Obe skupiny používajú rovnaké filtre, výber kandidátov, výpočet podobnosti a vekový bonus. Druhý model počíta skóre zo 60 bodov za podobnosť a najviac 10 bodov za vek. Každý účet sa môže zúčastniť jednej skupiny pilotu.
+
+```sql
+insert into profile_private.matching_pilot_assignments (user_id, variant)
+select id, case when random() < 0.5 then 'current' else 'without_extraversion' end
+from public.profiles
+where id = '00000000-0000-0000-0000-000000000000'::uuid -- Nahraď ID účastníka.
+  and top_priority is not null
+on conflict (user_id) do nothing;
+
+select * from profile_private.matching_pilot_metrics
+where variant in ('current', 'without_extraversion') order by variant;
+
+select * from profile_private.matching_pilot_exposure_metrics
+where variant in ('current', 'without_extraversion') order by variant, position;
+```
+
+Po 14 dňoch porovnaj celkové obojstranné rozhovory na 100 zobrazení aj výsledky podľa pozície. Záujem pokračovať vyhodnoť ako podiel kladných odpovedí zo všetkých dobrovoľných odpovedí a uveď aj ich počet.
