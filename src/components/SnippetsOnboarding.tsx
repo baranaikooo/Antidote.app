@@ -273,16 +273,16 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
         <p className="personal-eyebrow">Tvoj profil</p>
         <h1 className="personal-title">Pridaj krátke video</h1>
         <p className="personal-intro">
-          Na profil potrebuješ jedno trojsekundové video. Ďalšie tri sú voliteľné.
+          Jedno trojsekundové video na profil. Ďalšie tri sú voliteľné.
         </p>
       </header>
       <section className="onboarding-panel first-profile-video" aria-labelledby="first-profile-video">
-        <h2 id="first-profile-video" className="personal-heading">{videoCount ? "Prvé video" : "Pridaj prvé video"}</h2>
+        <h2 id="first-profile-video" className="personal-heading">{videoCount ? "Prvé video" : "Prvé video do profilu"}</h2>
         {videoCount ? (
           <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} slotIndices={[firstSlot]} />
         ) : (
-          <div className="mt-3 grid gap-2">
-            <button type="button" className="tactile-button min-h-12 bg-accent px-3 font-semibold text-accent-foreground" onClick={() => startRecording(0)}>
+          <div className="mt-3 grid gap-2.5">
+            <button type="button" className="tactile-button min-h-12 bg-coral px-4 font-semibold text-coral-foreground" onClick={() => startRecording(0)}>
               Nahrať kamerou
             </button>
             <button type="button" className="personal-action min-h-12 font-semibold" onClick={() => triggerFileUpload(0)}>
@@ -294,7 +294,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       <details className="onboarding-panel optional-profile-videos">
         <DisclosureSummary className="font-semibold">
           <span>
-            Ďalšie videá <span className="font-normal text-muted-foreground">· voliteľné</span>
+            Ďalšie videá <span className="font-normal text-muted-foreground">(voliteľné)</span>
           </span>
         </DisclosureSummary>
         <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} slotIndices={optionalSlots} />

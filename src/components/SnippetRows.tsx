@@ -19,7 +19,7 @@ export function SnippetRows({
 }) {
   const isGrid = slotIndices.length > 1;
   return (
-    <ul className={isGrid ? "video-slot-grid" : "mt-2 grid"}>
+    <ul className={isGrid ? "video-slot-grid" : "mt-3 grid"}>
       {slotIndices.map((idx) => {
         const url = snippets[idx];
         return (
@@ -38,13 +38,10 @@ export function SnippetRows({
                   className={`size-full bg-black object-cover -scale-x-100 ${blurred ? "blur-[10px]" : ""}`}
                 />
               ) : (
-                <div className="grid place-items-center gap-1 text-center text-muted-foreground">
-                  <Film className="size-6 opacity-75" />
-                  <span className="text-xs font-medium">3 s klip</span>
-                </div>
+                <Film className="size-7 text-muted-foreground/65" />
               )}
               <span className="video-slot-badge" data-filled={Boolean(url)}>
-                Video {idx + 1} · {url ? "Pridané" : "Prázdne"}
+                {url ? `Video ${idx + 1}` : `Moment ${idx + 1}`}
               </span>
             </div>
             <div className="video-slot-actions">
@@ -55,7 +52,7 @@ export function SnippetRows({
                   aria-label={`Odstrániť video ${idx + 1}`}
                   className="video-slot-btn video-slot-btn-danger"
                 >
-                  <X className="size-4 shrink-0" />
+                  <X className="size-4 shrink-0" aria-hidden="true" />
                   <span>Odstrániť</span>
                 </button>
               ) : (
@@ -66,17 +63,16 @@ export function SnippetRows({
                     aria-label={`Nahrať video ${idx + 1} kamerou`}
                     className="video-slot-btn video-slot-btn-primary"
                   >
-                    <Camera className="size-4 shrink-0" />
-                    <span>Kamera</span>
+                    <Camera className="size-4 shrink-0" aria-hidden="true" />
+                    <span>Nahrať</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onUpload(idx)}
                     aria-label={`Nahrať video ${idx + 1} z galérie`}
-                    className="video-slot-btn"
+                    className="video-slot-btn video-slot-btn-icon"
                   >
-                    <Upload className="size-4 shrink-0" />
-                    <span>Galéria</span>
+                    <Upload className="size-4 shrink-0" aria-hidden="true" />
                   </button>
                 </>
               )}

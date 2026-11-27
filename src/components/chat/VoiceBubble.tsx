@@ -172,9 +172,11 @@ export function VoiceBubble({
             disabled={!canPlay}
             aria-label={playing ? "Pozastaviť hlasovku" : "Prehrať hlasovku"}
             className={`grid size-10 shrink-0 place-items-center rounded-full border transition-transform active:scale-95 disabled:opacity-40 cursor-pointer ${
-              playing || mine
-                ? "border-accent bg-accent text-accent-foreground"
-                : "border-foreground/25 bg-muted text-foreground hover:border-accent"
+              playing
+                ? "border-coral bg-coral text-coral-foreground"
+                : mine
+                  ? "border-accent bg-accent text-accent-foreground"
+                  : "border-foreground/15 bg-muted text-foreground hover:border-coral"
             }`}
           >
             {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-[1px]" />}
@@ -216,7 +218,9 @@ export function VoiceBubble({
                     <span
                       className={`w-[3px] rounded-full transition-colors ${
                         lit
-                          ? "bg-cerebral"
+                          ? playing
+                            ? "bg-coral"
+                            : "bg-cerebral"
                           : playing
                             ? "bg-foreground/35 group-hover:bg-foreground/65"
                             : "bg-foreground/25 group-hover:bg-foreground/55"
