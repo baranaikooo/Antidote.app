@@ -73,8 +73,8 @@ export function RecordButton({
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-foreground/20 bg-[#101722]/95 px-4 pt-3 pb-7 text-[#f4efe5] backdrop-blur-md">
-      <div className="mx-auto w-full max-w-md">
+    <div className="conversation-composer shrink-0">
+      <div className="mx-auto w-full max-w-md px-4 py-3">
         {draft ? (
           <div className="space-y-3 animate-fade-up">
             <div className="flex items-center justify-between text-xs text-foreground/60">
@@ -166,7 +166,7 @@ export function RecordButton({
                   previewAudioRef.current?.pause();
                   onSendDraft?.();
                 }}
-                className="tactile-button flex items-center justify-center gap-2 bg-cerebral px-4 py-3.5 font-display text-sm font-bold text-background disabled:opacity-40 cursor-pointer"
+                className="tactile-button flex items-center justify-center gap-2 bg-accent px-4 py-3.5 font-display text-sm font-bold text-accent-foreground disabled:opacity-40 cursor-pointer"
               >
                 <span>{sending ? "Odosielam…" : "Odoslať"}</span>
                 <Send className="size-4" />
@@ -243,7 +243,7 @@ export function RecordButton({
                 onStart();
               }}
               aria-label="Nahrať hlasovú odpoveď"
-              className="grid size-16 place-items-center rounded-full bg-cerebral text-background transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cerebral disabled:opacity-35 cursor-pointer"
+              className="grid size-16 place-items-center rounded-full bg-accent text-accent-foreground transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:opacity-35 cursor-pointer"
             >
               <Mic className="size-6" aria-hidden="true" />
             </button>
