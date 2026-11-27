@@ -30,8 +30,8 @@ public class AppChromePlugin extends Plugin {
     }
 
     private void applyTheme(boolean dark) {
-        // Match Antidote's light and dark page backgrounds, including the inset around the WebView.
-        int color = dark ? 0xff101722 : 0xfff2efe7;
+        // Match Antidote's warm light and deep indigo-plum page backgrounds.
+        int color = dark ? 0xff131624 : 0xfff7f2ea;
         Window window = getActivity().getWindow();
         window.getDecorView().setBackgroundColor(color);
         View webView = getBridge().getWebView();

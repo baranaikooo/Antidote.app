@@ -1772,11 +1772,11 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
           <div className="landing-brand">
             <AntidoteLogo markClassName="h-8" />
           </div>
-          <p>Zoznamka, ktorá začína otázkou.</p>
+          <p>Zoznamka, ktorá začína otázkou</p>
         </header>
         <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
-        <p className="landing-trust-pill">
-          Hlasový úvod · 3 s video overenie tváre · Bez swipovania
+        <p className="landing-subcopy">
+          Najprv sa spoznáte hlasom, až potom odhalíte tvár.
         </p>
       </div>
       <div className="landing-interaction" data-answered={choice !== null || showReturningLogin}>
@@ -1787,6 +1787,7 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
               type="button"
               onClick={() => choose(value)}
               aria-pressed={choice === value}
+              data-option={value}
               className="landing-option"
             >
               <span className="landing-option-icon" aria-hidden="true">
@@ -1813,7 +1814,7 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
           <div className="landing-returning">
             {showReturningLogin ? (
               <div className="landing-result">
-                <p>Prihlás sa k svojmu existujúcemu profilu.</p>
+                <p>Prihlás sa k svojmu profilu.</p>
                 <div className="landing-sign-in">
                   <GoogleSignInButton onSuccess={onGoogle} />
                 </div>
@@ -1827,7 +1828,7 @@ function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
                   setShowReturningLogin(true);
                 }}
               >
-                Už mám účet — Prihlásiť sa cez Google
+                Už mám účet · Prihlásiť sa
               </button>
             )}
           </div>
@@ -2301,19 +2302,19 @@ function Briefing({ onBegin }: { onBegin: () => void }) {
       <h1 className="mb-2 max-w-sm font-display text-[clamp(2.35rem,10vw,3.5rem)] font-extrabold leading-none tracking-[-0.04em]">
         Poďme sa trochu spoznať.
       </h1>
-      <p className="text-sm font-medium text-accent">Približne 2 minúty</p>
-      <div className="mt-6 border-t border-foreground/20 pt-5 text-muted-foreground">
+      <p className="text-sm font-medium text-coral">Približne 2 minúty</p>
+      <div className="mt-6 pt-4 text-muted-foreground">
         <p className="max-w-sm text-base leading-relaxed">
           Prvé otázky sa týkajú toho, ako sa rozhoduješ vo vzťahoch.
         </p>
         <p className="mt-3 text-sm leading-relaxed">
-          Odpovedaj tak, ako to cítiš. Neexistujú správne odpovede.
+          Žiadne správne odpovede — iba to, čo je ti blízke.
         </p>
       </div>
       <button
         type="button"
         onClick={onBegin}
-        className="tactile-button mt-6 flex min-h-14 w-full items-center justify-between bg-accent p-4 text-left text-accent-foreground"
+        className="tactile-button mt-6 flex min-h-14 w-full items-center justify-between bg-coral p-4 text-left text-coral-foreground"
       >
         <span className="font-display text-xl font-bold">Začať</span>
         <ChevronRight className="size-5" aria-hidden="true" />
@@ -2411,7 +2412,7 @@ function MatchCard({
   }, [match.id, position]);
 
   return (
-    <article ref={card} className="match-card">
+    <article ref={card} className="match-card" data-tone={match.top_priority ?? "default"}>
       <MatchCardIdentity
         name={match.name}
         age={match.age}
@@ -3429,7 +3430,7 @@ function MessagesList({
         <div className="app-empty">
           <MessageCircle className="size-6" aria-hidden="true" />
           <h2 className="personal-heading mt-2">Zatiaľ žiadne správy</h2>
-          <p className="personal-intro">Tu nájdeš rozhovor, keď jeden z vás odošle prvú správu.</p>
+          <p className="personal-intro">Keď niekto z vás odošle prvú správu, rozhovor sa objaví tu.</p>
         </div>
       ) : (
         <div className="message-list">
@@ -3473,7 +3474,7 @@ function MessagesList({
                   <p className="mt-1 flex items-center gap-2 text-sm text-foreground/75">
                     {!last && <span className="message-list-stage">Spoločná otázka</span>}
                     <span className="truncate">
-                      {last ? inboxMessageLabel(last) : "Odpovedzte hlasom pre otvorenie chatu"}
+                      {last ? inboxMessageLabel(last) : "Odpovedz hlasom a chat sa otvorí"}
                     </span>
                   </p>
                 </div>
