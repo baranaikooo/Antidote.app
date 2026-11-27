@@ -97,6 +97,7 @@ import { ChoiceSelect } from "@/components/ui/choice-select";
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { BirthDateFields } from "@/components/BirthDateFields";
 import { SemanticMirror } from "@/components/SemanticMirror";
+import { recommendationReason } from "@/lib/recommendation-reason";
 import { readSituationScores } from "@/lib/situation-scores";
 import { PRIORITY_CATEGORIES, ValueBankroll } from "@/components/ValueBankroll";
 import { ReflectionEditor } from "@/components/ReflectionEditor";
@@ -2416,17 +2417,19 @@ function introductionFor(myPriority: string | undefined, partner: ConversationPa
 function MatchCard({
   match,
   myPriority,
+  radiusKm,
   position,
   busy,
   onSelect,
 }: {
   match: RankedMatch;
   myPriority?: string;
+  radiusKm?: number;
   position?: number;
   busy: boolean;
   onSelect: () => void;
 }) {
-  const shared = sharedPriority(myPriority, match.top_priority);
+  const reason = recommendationReason(myPriority, match.top_priority, radiusKm, match.distanceKm);
   const card = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -2468,12 +2471,10 @@ function MatchCard({
         city={match.city}
         distanceKm={match.distanceKm}
       />
-      {shared && (
+      {reason && (
         <details className="match-card-details">
           <DisclosureSummary>Prečo toto odporúčanie?</DisclosureSummary>
-          <p className="match-card-facts">
-            Spoločná priorita z dotazníka je {shared.label.toLocaleLowerCase("sk")}.
-          </p>
+          <p className="match-card-facts">{reason}</p>
         </details>
       )}
       <button type="button" onClick={onSelect} disabled={busy} className="match-card-action">
@@ -2688,6 +2689,7 @@ function Dashboard({
             key={activeMatch.id}
             match={activeMatch}
             myPriority={profile.topPriority}
+            radiusKm={profile.radiusKm}
             position={loading || failed ? undefined : activeIndex + 1}
             busy={openingMatch}
             onSelect={() => onSelectMatch(activeMatch)}

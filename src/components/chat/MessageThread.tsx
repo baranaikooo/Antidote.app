@@ -18,6 +18,11 @@ import { markConversationRead } from "@/lib/conversation-inbox";
 import { ConversationFeedback } from "./ConversationFeedback";
 import { SharedConversationQuestion } from "./SharedConversationQuestion";
 import { readSharedQuestion, type SharedQuestion } from "@/lib/shared-question";
+import {
+  readMeetingInterest,
+  setMeetingInterest,
+  type MeetingInterest,
+} from "@/lib/meeting-interest";
 
 const GIFS = [
   "https://media.tenor.com/x8v1oNUOmg4AAAAi/heart-love.gif",
@@ -49,6 +54,9 @@ export function MessageThread({
   const [input, setInput] = useState("");
   const [selectedReply, setSelectedReply] = useState<string | null>(null);
   const [sharedQuestion, setSharedQuestion] = useState<SharedQuestion | null>(null);
+  const [meeting, setMeeting] = useState<MeetingInterest | null>(null);
+  const [savingMeeting, setSavingMeeting] = useState(false);
+  const [meetingError, setMeetingError] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
   const [error, setError] = useState("");
@@ -64,6 +72,7 @@ export function MessageThread({
   const draft = useRef<{ key: string; id: string } | null>(null);
   const sendLock = useRef(false);
   const choiceLock = useRef(false);
+  const meetingLock = useRef(false);
   const request = useRef(0);
   const lastReadId = useRef<string | null>(null);
   const latestIncoming = conversation.messages.reduce<ChatMessage | null>(
@@ -88,6 +97,17 @@ export function MessageThread({
       if (current !== request.current) return;
       setStatus(next);
       setLoadFailed(false);
+      if (
+        next.status === "active" &&
+        messages.some((message) => message.from === "me") &&
+        messages.some((message) => message.from === "them")
+      ) {
+        void readMeetingInterest(conversation.id)
+          .then((result) => {
+            if (current === request.current) setMeeting(result);
+          })
+          .catch(() => {});
+      }
       onUpdate((previous) => ({
         ...previous,
         status: next.status === "active" ? "active" : "closed",
@@ -201,6 +221,24 @@ export function MessageThread({
     } finally {
       choiceLock.current = false;
       setSavingChoice(false);
+    }
+  }
+
+  async function changeMeetingInterest(interested: boolean) {
+    if (meetingLock.current) return;
+    meetingLock.current = true;
+    setSavingMeeting(true);
+    setMeetingError(false);
+    try {
+      const result = await setMeetingInterest(conversation.id, interested);
+      void refresh();
+      setMeeting(result);
+      haptic("tap");
+    } catch {
+      setMeetingError(true);
+    } finally {
+      meetingLock.current = false;
+      setSavingMeeting(false);
     }
   }
 
@@ -449,6 +487,11 @@ export function MessageThread({
             </div>
           ),
         )}
+        {isOpen && meeting?.mutual && (
+          <p role="status" className="conversation-intro font-semibold">
+            Obaja sa chcete stretnúť.
+          </p>
+        )}
         {showPilotQuestion && <ConversationFeedback matchId={conversation.id} userId={userId} />}
         <div ref={listEnd} />
       </div>
@@ -563,6 +606,30 @@ export function MessageThread({
           </form>
           <details className="px-3 pb-2 text-sm">
             <DisclosureSummary className="font-semibold">Možnosti rozhovoru</DisclosureSummary>
+            {meeting && (
+              <section className="mb-3 border-b border-foreground/15 pb-3" aria-label="Stretnutie">
+                <p className="mb-2 text-muted-foreground">
+                  {meeting.mutual
+                    ? "Záujem o stretnutie ste potvrdili obaja."
+                    : meeting.interested
+                      ? "Tvoj záujem je uložený. Druhý človek ho uvidí, len ak má záujem aj on."
+                      : "Tvoj záujem sa zobrazí, len ak ho vyjadríte obaja."}
+                </p>
+                <button
+                  type="button"
+                  className="personal-action"
+                  disabled={savingMeeting}
+                  onClick={() => void changeMeetingInterest(!meeting.interested)}
+                >
+                  {meeting.interested ? "Odvolať záujem" : "Chcem sa stretnúť"}
+                </button>
+                {meetingError && (
+                  <p role="alert" className="mt-2 text-destructive">
+                    Záujem sa nepodarilo uložiť. Skús to znova.
+                  </p>
+                )}
+              </section>
+            )}
             <p className="mb-2 text-muted-foreground">Rozhovor môžeš ukončiť kedykoľvek.</p>
             <div className="flex flex-wrap gap-2">
               <button
