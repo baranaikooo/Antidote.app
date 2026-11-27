@@ -1,6 +1,6 @@
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Eye, ImagePlus, Mic, Reply, Send, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Eye, Mic, Reply, Send, Sparkles, X } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/lib/resonance";
 import {
   fetchSharedProfileVideos,
@@ -11,23 +11,14 @@ import {
   type ConversationPartner,
   type ConversationStatus,
 } from "@/lib/conversations";
-import { fetchChatMessages, saveChatMessage, uploadChatImage, supabase } from "@/lib/supabase";
-import { CHAT_IMAGE_ACCEPT, getChatImageExtension } from "@/lib/chat-images";
+import { fetchChatMessages, saveChatMessage, supabase } from "@/lib/supabase";
+import { FEATURED_GIFS, isKlipyGif, matchFeaturedGifs, type ChatGif } from "@/lib/chat-reactions";
 import { useHaptic } from "@/hooks/use-haptics";
 import { VoiceBubble } from "./VoiceBubble";
 import { markConversationRead } from "@/lib/conversation-inbox";
 import { ConversationFeedback } from "./ConversationFeedback";
 import { SharedConversationQuestion } from "./SharedConversationQuestion";
 import { readSharedQuestion, type SharedQuestion } from "@/lib/shared-question";
-
-const GIFS = [
-  { label: "Srdce", url: "https://media.tenor.com/x8v1oNUOmg4AAAAi/heart-love.gif" },
-  { label: "Pozdrav", url: "https://media.tenor.com/Mxv-AaTHraEAAAAi/wave-hello.gif" },
-  { label: "Iskry", url: "https://media.tenor.com/I6kN-6X2HgAAAAi/sparkle-stars.gif" },
-];
-
-type ImageDraft = { kind: "upload"; file: File; id: string };
-type MediaDraft = { kind: "gif"; url: string } | ImageDraft;
 
 export function MessageThread({
   conversation,
@@ -56,17 +47,23 @@ export function MessageThread({
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
   const [error, setError] = useState("");
-  const [failedSend, setFailedSend] = useState<{ text: string; media?: MediaDraft } | null>(null);
+  const [failedSend, setFailedSend] = useState<{ text: string; reaction?: ChatGif } | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [playing, setPlaying] = useState<string | null>(null);
   const [showGifs, setShowGifs] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<ImageDraft | null>(null);
+  const [gifQuery, setGifQuery] = useState("");
+  const [gifResults, setGifResults] = useState<{
+    query: string;
+    gifs: ChatGif[];
+    live: boolean;
+  } | null>(null);
   const [showVideos, setShowVideos] = useState(false);
   const [videos, setVideos] = useState<string[] | null>(null);
   const [videosFailed, setVideosFailed] = useState(false);
   const listEnd = useRef<HTMLDivElement>(null);
   const composerInput = useRef<HTMLTextAreaElement>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const reactionTrigger = useRef<HTMLButtonElement>(null);
+  const gifSearchInput = useRef<HTMLInputElement>(null);
   const draft = useRef<{ key: string; id: string } | null>(null);
   const sendLock = useRef(false);
   const choiceLock = useRef(false);
@@ -77,6 +74,43 @@ export function MessageThread({
     null,
   );
   const seenMessageId = latestIncoming?.id;
+
+  useEffect(() => {
+    if (showGifs && window.matchMedia?.("(pointer: fine)").matches)
+      gifSearchInput.current?.focus({ preventScroll: true });
+  }, [showGifs]);
+
+  const query = gifQuery.trim();
+  const search = query.length >= 2 && gifResults?.query === query ? gifResults : null;
+  const displayedGifs = query.length < 2 ? FEATURED_GIFS : (search?.gifs ?? []);
+
+  useEffect(() => {
+    if (!showGifs || query.length < 2) return;
+    let current = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("search-chat-gifs", {
+          body: { query },
+        });
+        if (!current) return;
+        if (error || data?.source !== "klipy" || !Array.isArray(data.gifs)) {
+          setGifResults({ query, gifs: matchFeaturedGifs(query), live: false });
+          return;
+        }
+        const gifs = (data.gifs as ChatGif[]).filter(
+          (gif) =>
+            isKlipyGif(gif?.url) && isKlipyGif(gif.previewUrl) && typeof gif.label === "string",
+        );
+        setGifResults({ query, gifs, live: true });
+      } catch {
+        if (current) setGifResults({ query, gifs: matchFeaturedGifs(query), live: false });
+      }
+    }, 450);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [query, showGifs]);
 
   // The lock only serializes saves. The server decides whether a conversation is open.
   const refresh = useCallback(async () => {
@@ -227,57 +261,50 @@ export function MessageThread({
     composerInput.current?.focus();
   }
 
-  async function send(mediaDraft?: MediaDraft) {
-    const text = mediaDraft ? "" : input.trim();
-    if ((!text && !mediaDraft) || sendLock.current || status?.status !== "active") return;
+  async function send(reaction?: ChatGif) {
+    const text = reaction ? "" : input.trim();
+    if ((!text && !reaction) || sendLock.current || status?.status !== "active") return;
     sendLock.current = true;
     setFailedSend(null);
     setSending(true);
     setError("");
-    const key = mediaDraft?.kind === "upload" ? mediaDraft.id : (mediaDraft?.url ?? text);
+    const key = reaction ? "reaction:" + reaction.url : "text:" + text;
     if (draft.current?.key !== key) draft.current = { key, id: crypto.randomUUID() };
 
     try {
-      const { message, media } =
-        mediaDraft?.kind === "upload"
-          ? await uploadChatImage(conversation.id, userId, mediaDraft.file, mediaDraft.id)
-          : {
-              message: await saveChatMessage(
-                conversation.id,
-                userId,
-                text,
-                mediaDraft,
-                draft.current.id,
-                mediaDraft ? undefined : (replyContext ?? undefined),
-              ),
-              media: mediaDraft,
-            };
+      const message = await saveChatMessage(
+        conversation.id,
+        userId,
+        text,
+        reaction?.url,
+        draft.current.id,
+        reaction ? undefined : (replyContext ?? undefined),
+      );
       onUpdate((previous) => ({
         ...previous,
         messages: mergeMessages(previous.messages, [
           {
             id: message.id,
             from: "me",
-            text:
-              mediaDraft?.kind === "upload" && !media
-                ? "Obrázok sa načíta po obnovení rozhovoru."
-                : text,
+            text,
             replyContext: message.reply_context ?? undefined,
             ts: new Date(message.created_at).getTime(),
-            media,
+            media: reaction ? { kind: "gif", url: reaction.url, label: reaction.label } : undefined,
           },
         ]),
       }));
-      if (!mediaDraft) {
+      if (reaction) {
+        setShowGifs(false);
+        reactionTrigger.current?.focus({ preventScroll: true });
+      } else {
         setInput((current) => (current.trim() !== text ? current : ""));
         setSelectedReply(null);
+        setShowGifs(false);
       }
-      if (mediaDraft?.kind === "upload") setSelectedImage(null);
-      setShowGifs(false);
       draft.current = null;
       haptic("send");
     } catch {
-      setFailedSend({ text, media: mediaDraft });
+      setFailedSend({ text, reaction });
       setError("Správu sa nepodarilo odoslať.");
       void refresh();
     } finally {
@@ -286,22 +313,10 @@ export function MessageThread({
     }
   }
 
-  function selectChatImage(file?: File) {
-    if (!file) return;
-    setFailedSend(null);
-    if (!getChatImageExtension(file)) {
-      setSelectedImage(null);
-      setError("Vyber GIF, JPG, PNG alebo WebP do 8 MB.");
-      return;
-    }
-    setError("");
-    setSelectedImage({ kind: "upload", file, id: crypto.randomUUID() });
-  }
-
   const isOpen = status?.status === "active";
   const showPilotQuestion =
     isOpen && latestIncoming && conversation.messages.some((message) => message.from === "me");
-  const canRetrySend = failedSend && (failedSend.media || failedSend.text === input.trim());
+  const canRetrySend = failedSend && (failedSend.reaction || failedSend.text === input.trim());
   return (
     <section className="conversation-screen" aria-label="Rozhovor">
       <header className="conversation-header flex shrink-0 items-center gap-3 px-3 py-3">
@@ -462,7 +477,8 @@ export function MessageThread({
                 {message.media && (
                   <img
                     src={message.media.url}
-                    alt={message.media.kind === "gif" ? "Odoslaný GIF" : "Odoslaný obrázok"}
+                    alt={message.media.label ?? "GIF"}
+                    referrerPolicy="no-referrer"
                     loading="lazy"
                     className="max-h-80 max-w-full rounded-md object-contain"
                   />
@@ -512,7 +528,7 @@ export function MessageThread({
                 <button
                   type="button"
                   disabled={sending}
-                  onClick={() => void send(failedSend.media)}
+                  onClick={() => void send(failedSend.reaction)}
                   className="personal-action"
                 >
                   Skúsiť znova
@@ -524,69 +540,60 @@ export function MessageThread({
             <section
               id="chat-media-picker"
               className="grid gap-2 px-3 pt-2"
-              aria-label="GIFy a mémy"
+              aria-label="Katalóg GIFov"
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                setShowGifs(false);
+                reactionTrigger.current?.focus({ preventScroll: true });
+              }}
             >
-              <div className="flex flex-wrap items-center gap-2">
-                {GIFS.map(({ label, url }) => (
+              <div className="grid gap-1">
+                <input
+                  ref={gifSearchInput}
+                  type="search"
+                  aria-label="Hľadať GIFy"
+                  placeholder="Search KLIPY"
+                  maxLength={80}
+                  value={gifQuery}
+                  onChange={(event) => setGifQuery(event.target.value)}
+                  className="conversation-input w-full"
+                />
+                {query.length < 2 || search?.live === false ? (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    {search?.live === false
+                      ? "Výsledky zo základného výberu GIPHY."
+                      : "Výber z GIPHY"}
+                  </p>
+                ) : search ? (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    {displayedGifs.length ? "Powered by KLIPY" : "Žiadne GIFy. Skús iné slovo."}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    Hľadám GIFy…
+                  </p>
+                )}
+              </div>
+              <div className="grid max-h-[min(16rem,34dvh)] grid-cols-3 gap-2 overflow-y-auto overscroll-contain px-0.5 py-0.5 sm:grid-cols-4">
+                {displayedGifs.map((gif) => (
                   <button
                     type="button"
-                    key={url}
+                    key={gif.url}
+                    className="min-h-11 overflow-hidden rounded-lg border border-foreground/15 bg-muted"
                     disabled={sending}
-                    className="min-h-12 rounded-md"
-                    aria-label={"Odoslať GIF – " + label}
-                    onClick={() => void send({ kind: "gif", url })}
+                    aria-label={`Odoslať GIF – ${gif.label}`}
+                    onClick={() => void send(gif)}
                   >
-                    <img src={url} alt="" className="size-12 rounded-md object-cover" />
+                    <img
+                      src={gif.previewUrl}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="aspect-[3/2] w-full object-cover"
+                    />
                   </button>
                 ))}
-                <button
-                  type="button"
-                  className="personal-action min-h-11"
-                  disabled={sending}
-                  onClick={() => fileInput.current?.click()}
-                >
-                  <ImagePlus className="size-4" aria-hidden="true" />Z galérie
-                </button>
-                <input
-                  ref={fileInput}
-                  type="file"
-                  accept={CHAT_IMAGE_ACCEPT}
-                  aria-label="Vybrať GIF alebo mém"
-                  className="hidden"
-                  onChange={(event) => {
-                    selectChatImage(event.currentTarget.files?.[0]);
-                    event.currentTarget.value = "";
-                  }}
-                />
               </div>
-              {selectedImage && (
-                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted p-2">
-                  <span className="min-w-0 flex-1 truncate text-sm">{selectedImage.file.name}</span>
-                  <button
-                    type="button"
-                    className="conversation-header-action"
-                    aria-label="Odstrániť prílohu"
-                    disabled={sending}
-                    onClick={() => {
-                      setSelectedImage(null);
-                      setFailedSend(null);
-                      setError("");
-                    }}
-                  >
-                    <X className="size-4" aria-hidden="true" />
-                  </button>
-                  {failedSend?.media?.kind !== "upload" && (
-                    <button
-                      type="button"
-                      className="personal-action"
-                      disabled={sending}
-                      onClick={() => void send(selectedImage)}
-                    >
-                      {sending ? "Odosielam…" : "Odoslať obrázok"}
-                    </button>
-                  )}
-                </div>
-              )}
             </section>
           )}
           <form
@@ -608,7 +615,8 @@ export function MessageThread({
             <button
               type="button"
               className="conversation-header-action shrink-0"
-              aria-label="GIFy a mémy"
+              ref={reactionTrigger}
+              aria-label="GIFy"
               aria-expanded={showGifs}
               aria-controls="chat-media-picker"
               onClick={() => setShowGifs((open) => !open)}

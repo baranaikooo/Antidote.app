@@ -5,7 +5,7 @@ import { Browser } from "@capacitor/browser";
 import { ChatMessage } from "./resonance";
 import { readPriorityDistribution } from "./priority-distribution";
 import { readSituationScores } from "./situation-scores";
-import { CHAT_IMAGE_BUCKET, chatImageKind, getChatImageExtension, privateChatImagePath } from "./chat-images";
+import { readChatGif } from "./chat-reactions";
 
 const sanitize = (val: string) => {
   return (val || "").trim().replace(/[^\x20-\x7E]/g, "");
@@ -461,7 +461,7 @@ export async function saveChatMessage(
   matchId: string,
   senderId: string,
   text: string,
-  media?: { kind: "image" | "gif"; url: string },
+  gifUrl?: string,
   messageId: string = crypto.randomUUID(),
   replyContext?: string,
 ): Promise<any> {
@@ -473,7 +473,7 @@ export async function saveChatMessage(
       sender_id: senderId,
       message_text: text,
       reply_context: replyContext,
-      media_url: media?.url || null,
+      media_url: gifUrl ?? null,
       duration: null,
     })
     .select()
@@ -488,32 +488,8 @@ export async function saveChatMessage(
   return data;
 }
 
-export async function uploadChatImage(
-  matchId: string,
-  senderId: string,
-  file: File,
-  messageId: string,
-) {
-  const extension = getChatImageExtension(file);
-  if (!extension) throw new Error("Unsupported chat image");
-
-  const path = `${senderId}/${matchId}_${messageId}.${extension}`;
-  const bucket = supabase.storage.from(CHAT_IMAGE_BUCKET);
-  const { error } = await bucket.upload(path, file, { contentType: file.type, upsert: false });
-  if (error && String(error.statusCode) !== "409") throw error;
-
-  const kind = chatImageKind(path);
-  const message = await saveChatMessage(matchId, senderId, "", {
-    kind,
-    url: CHAT_IMAGE_BUCKET + "/" + path,
-  }, messageId);
-  const { data } = await bucket.createSignedUrl(path, 300);
-  const media = data?.signedUrl ? { kind, url: data.signedUrl } : undefined;
-  return { message, media };
-}
-
 export async function removeOwnChatImages(userId: string) {
-  const bucket = supabase.storage.from(CHAT_IMAGE_BUCKET);
+  const bucket = supabase.storage.from("chat-images");
   for (;;) {
     const { data, error } = await bucket.list(userId, { limit: 100 });
     if (error) throw error;
@@ -537,31 +513,18 @@ export async function fetchChatMessages(
     throw error;
   }
 
-  const imagePaths = (data ?? []).flatMap((message) => privateChatImagePath(message.media_url) ?? []);
-  const imageUrls = new Map<string, string>();
-  if (imagePaths.length) {
-    const signed = await supabase.storage.from(CHAT_IMAGE_BUCKET).createSignedUrls(imagePaths, 300);
-    for (const item of signed.data ?? []) {
-      if (item.path && item.signedUrl) imageUrls.set(item.path, item.signedUrl);
-    }
-  }
-
   const messagesWithSignedUrls = await Promise.all(
     (data ?? []).map(async (m): Promise<ChatMessage> => {
-      const imagePath = privateChatImagePath(m.media_url);
-      let resolvedMediaUrl = imagePath ? imageUrls.get(imagePath) : m.media_url;
-      if (resolvedMediaUrl && m.duration) {
-        resolvedMediaUrl = await getSignedMediaUrl("voice-messages", resolvedMediaUrl);
-      }
+      const media = m.duration && m.media_url
+        ? { kind: "audio" as const, url: await getSignedMediaUrl("voice-messages", m.media_url), duration: m.duration }
+        : readChatGif(m.media_url);
       return {
         id: m.id,
         from: m.sender_id === myUserId ? "me" : "them",
-        text: m.message_text || (imagePath && !resolvedMediaUrl ? "Obrázok sa nepodarilo načítať." : ""),
+        text: m.message_text || (m.media_url && !media ? "Staršia obrazová príloha už nie je dostupná." : ""),
         replyContext: m.reply_context || undefined,
         ts: new Date(m.created_at).getTime(),
-        media: resolvedMediaUrl
-          ? { kind: m.duration ? "audio" : imagePath ? chatImageKind(imagePath) : "gif", url: resolvedMediaUrl, duration: m.duration }
-          : undefined,
+        media,
       };
     })
   );
