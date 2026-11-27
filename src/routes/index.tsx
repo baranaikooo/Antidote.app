@@ -67,7 +67,6 @@ import {
 } from "@/lib/resonance";
 
 import { GoogleSignInButton, type GoogleProfile } from "@/components/GoogleSignInButton";
-import { Chip, PillButton, SoftCard, HandNote } from "@/components/Playful";
 import { useHaptic } from "@/hooks/use-haptics";
 import {
   attachStreamToVideo,
@@ -108,7 +107,6 @@ import {
   type InboxConversation,
 } from "@/lib/conversation-inbox";
 import { IcebreakerDilemma } from "@/components/IcebreakerDilemma";
-import { BlindVote } from "@/components/BlindVote";
 import { VoiceBubble, VoiceMsg } from "@/components/chat/VoiceBubble";
 import { Chamber } from "@/components/chat/VoiceChamber";
 import { MessageThread } from "@/components/chat/MessageThread";
@@ -1245,7 +1243,7 @@ function AntidoteApp() {
     <Shell
       landing={screen === "landing"}
       main={showNav}
-      thread={screen === "thread"}
+      thread={screen === "thread" || screen === "chamber"}
       onboardingScreen={onboardingStage >= 0 ? screen : undefined}
       resumedOnboarding={resumedOnboarding === screen}
     >

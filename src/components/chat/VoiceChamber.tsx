@@ -304,8 +304,11 @@ export function Chamber({
   }
 
   return (
-    <section className="voice-screen night-radio mx-auto min-h-[100dvh] max-w-md px-4 py-4">
-      <header className="mb-5 flex items-center gap-3 border-b border-foreground/25 pb-3">
+    <section
+      className="conversation-screen"
+      aria-label={onAnswer ? "Hlasová odpoveď" : "Hlasová správa"}
+    >
+      <header className="conversation-header flex shrink-0 items-center gap-3 px-3 py-3">
         <button
           type="button"
           aria-label="Späť na rozhovor"
@@ -320,24 +323,26 @@ export function Chamber({
           <p className="text-sm text-muted-foreground">{name}</p>
         </div>
       </header>
-      <div className="editorial-panel p-4">
-        <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{prompt}</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {onAnswer
-            ? "Máš najviac 20 sekúnd. Odpovede si vypočujete, keď odpoviete obaja."
-            : "Nahrávku si môžeš vypočuť pred odoslaním."}
-        </p>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+        <div className="editorial-panel p-4">
+          <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{prompt}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {onAnswer
+              ? "Máš najviac 20 sekúnd. Odpovede si vypočujete, keď odpoviete obaja."
+              : "Nahrávku si môžeš vypočuť pred odoslaním."}
+          </p>
+        </div>
+        {micError && (
+          <p role="alert" className="mt-4 text-sm">
+            {micError}
+          </p>
+        )}
+        {preparing && (
+          <p role="status" className="mt-4 text-sm">
+            Čakám na mikrofón…
+          </p>
+        )}
       </div>
-      {micError && (
-        <p role="alert" className="mt-4 text-sm">
-          {micError}
-        </p>
-      )}
-      {preparing && (
-        <p role="status" className="mt-4 text-sm">
-          Čakám na mikrofón…
-        </p>
-      )}
       <RecordButton
         recording={recording}
         recLen={recLen}
