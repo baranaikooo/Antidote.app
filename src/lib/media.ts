@@ -30,22 +30,38 @@ export function pickAudioMime(): string {
   return pickSupportedMime(isAppleDevice() ? mp4First : webmFirst);
 }
 
-export function pickVideoMime(): string {
+export function pickVideoMime(hasAudio = false): string {
   const candidates = isAppleDevice()
-    ? [
-        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-        "video/mp4",
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm",
-      ]
-    : [
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm",
-        "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
-        "video/mp4",
-      ];
+    ? hasAudio
+      ? [
+          "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+          "video/mp4",
+          "video/webm;codecs=vp8,opus",
+          "video/webm;codecs=vp9,opus",
+          "video/webm",
+        ]
+      : [
+          "video/mp4;codecs=avc1.42E01E",
+          "video/mp4",
+          "video/webm;codecs=vp8",
+          "video/webm;codecs=vp9",
+          "video/webm",
+        ]
+    : hasAudio
+      ? [
+          "video/webm;codecs=vp8,opus",
+          "video/webm;codecs=vp9,opus",
+          "video/webm",
+          "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+          "video/mp4",
+        ]
+      : [
+          "video/webm;codecs=vp8",
+          "video/webm;codecs=vp9",
+          "video/webm",
+          "video/mp4;codecs=avc1.42E01E",
+          "video/mp4",
+        ];
   return pickSupportedMime(candidates);
 }
 
@@ -181,15 +197,15 @@ export function createMediaRecorder(
   const options: MediaRecorderOptions = {};
   if (mime) options.mimeType = mime;
   if (kind === "video") {
-    options.videoBitsPerSecond = 3500000; // 3.5 Mbps optimized for 720p vertical video size under 1.5MB-2MB
+    options.videoBitsPerSecond = 2000000;
   }
   try {
     return new MediaRecorder(stream, options);
   } catch {
     try {
+      return mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    } catch {
       return new MediaRecorder(stream);
-    } catch (err) {
-      throw err;
     }
   }
 }
@@ -201,40 +217,53 @@ export function recordStreamForMs(
   kind: "audio" | "video",
   timesliceMs = 250,
 ): Promise<{ blob: Blob; mimeType: string }> {
-  const preferred = kind === "audio" ? pickAudioMime() : pickVideoMime();
+  const hasAudio = stream.getAudioTracks().length > 0;
+  const preferred = kind === "audio" ? pickAudioMime() : pickVideoMime(hasAudio);
   const rec = createMediaRecorder(stream, preferred, kind);
   const mimeType = rec.mimeType || preferred || (kind === "audio" ? "audio/webm" : "video/webm");
   const chunks: Blob[] = [];
 
   return new Promise((resolve, reject) => {
+    let settled = false;
+    let timerId: number | undefined;
+
+    const finishError = (err: unknown) => {
+      if (settled) return;
+      settled = true;
+      if (timerId !== undefined) window.clearTimeout(timerId);
+      reject(err instanceof Error ? err : new Error("MediaRecorder error"));
+    };
+
     rec.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) chunks.push(e.data);
     };
-    rec.onerror = () => reject(new Error("MediaRecorder error"));
+    rec.onerror = () => finishError(new Error("MediaRecorder error"));
     rec.onstop = () => {
+      if (settled) return;
+      settled = true;
+      if (timerId !== undefined) window.clearTimeout(timerId);
       const blob = chunks.length
         ? new Blob(chunks, { type: mimeType })
         : new Blob([], { type: mimeType });
+      if (blob.size < 128) {
+        reject(new Error("Empty media recording"));
+        return;
+      }
       resolve({ blob, mimeType });
     };
 
     try {
       rec.start(timesliceMs);
     } catch (err) {
-      reject(err);
+      finishError(err);
       return;
     }
 
-    window.setTimeout(() => {
-      try {
-        if (rec.state === "recording") rec.requestData();
-      } catch {
-        /* ignore */
-      }
+    timerId = window.setTimeout(() => {
       try {
         if (rec.state !== "inactive") rec.stop();
       } catch (err) {
-        reject(err);
+        finishError(err);
       }
     }, durationMs);
   });
@@ -255,12 +284,23 @@ export async function attachStreamToVideo(
 }
 
 export async function openCamera(
-  constraints: MediaStreamConstraints = { video: { facingMode: "user" }, audio: false },
+  constraints: MediaStreamConstraints = {
+    video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 960 } },
+    audio: false,
+  },
 ): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new DOMException("getUserMedia unavailable", "NotSupportedError");
   }
-  return navigator.mediaDevices.getUserMedia(constraints);
+  try {
+    return await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (err) {
+    const name = (err as DOMException)?.name;
+    if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
+      return navigator.mediaDevices.getUserMedia({ video: true, audio: Boolean(constraints.audio) });
+    }
+    throw err;
+  }
 }
 
 export async function openMic(

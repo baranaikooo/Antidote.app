@@ -1,9 +1,9 @@
 const ORB_PALETTES = [
-  ["#FF7A66", "#EA3E23", "#2B1418"],
-  ["#6B8FFF", "#2653F5", "#141D44"],
-  ["#54EDB2", "#0EA96B", "#102E24"],
-  ["#FFD766", "#E59800", "#38240B"],
-  ["#E09EFF", "#8F3FE6", "#2A153E"],
+  ["#82A2FF", "#3159D6", "#172131"],
+  ["#9BB5FF", "#4E6EE6", "#1D2A44"],
+  ["#7AD6C4", "#2E7D8C", "#132934"],
+  ["#C6B4FF", "#6951C8", "#201B3B"],
+  ["#F0B98C", "#B85C43", "#2E1C1A"],
 ] as const;
 
 function hashSeed(input: string): number {

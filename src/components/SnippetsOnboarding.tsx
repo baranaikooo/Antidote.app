@@ -10,9 +10,10 @@ import { saveVideoBlob, getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
 async function syncSnippetsToDB(urls: string[]) {
   try {
     await clearVideoBlobs();
-    const active = urls.filter(Boolean);
-    for (let i = 0; i < active.length; i++) {
-      const res = await fetch(active[i]);
+    for (let i = 0; i < 4; i++) {
+      const url = urls[i];
+      if (!url) continue;
+      const res = await fetch(url);
       const blob = await res.blob();
       await saveVideoBlob(`snippet_${i + 1}`, blob);
     }
@@ -29,7 +30,7 @@ interface SnippetsOnboardingProps {
 export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnboardingProps) {
   const haptic = useHaptic();
 
-  // Initialize snippets list as empty slots
+  // Initialize snippets list preserving slot indices 0..3
   const [snippets, setSnippets] = useState<string[]>(initialSnippets || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,9 +45,8 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
           }
         }
       }
-      const filtered = loaded.filter(Boolean);
-      if (filtered.length > 0) {
-        setSnippets(filtered);
+      if (loaded.some(Boolean)) {
+        setSnippets(loaded);
       }
     }
     loadSnippets().catch((err) => console.error("Failed to load snippets on mount:", err));
@@ -60,7 +60,8 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionRef = useRef(0);
+  const triggeredSessionRef = useRef<number | null>(null);
   const [activeUploadIndex, setActiveUploadIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -71,19 +72,29 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
   }, [cameraStream]);
 
   useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
+    if (recordingIndex === null || !cameraStream || !videoRef.current) return;
+    void attachStreamToVideo(videoRef.current, cameraStream);
+  }, [cameraStream, recordingIndex]);
+
+  useEffect(() => {
+    if (recordingState !== "countdown" || recordingIndex === null || !cameraStream) return;
+    if (countdown > 0) {
+      const timer = window.setTimeout(() => {
+        setCountdown((prev) => Math.max(0, prev - 1));
+      }, 1000);
+      return () => window.clearTimeout(timer);
+    }
+    const session = sessionRef.current;
+    if (triggeredSessionRef.current === session) return;
+    triggeredSessionRef.current = session;
+    void triggerRecord(cameraStream, recordingIndex, session);
+  }, [recordingState, countdown, cameraStream, recordingIndex]);
 
   // Handle app going to background
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
+        sessionRef.current += 1;
         if (cameraStream) {
           stopStream(cameraStream);
           setCameraStream(null);
@@ -102,16 +113,23 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
   // JIT Camera Record Flow
   async function startRecording(index: number) {
     haptic("tap");
+    const session = ++sessionRef.current;
+    triggeredSessionRef.current = null;
+    if (cameraStream) {
+      stopStream(cameraStream);
+      setCameraStream(null);
+    }
     setRecordingIndex(index);
     setRecordingState("countdown");
     setCountdown(3);
 
     let stream: MediaStream;
     try {
-      stream = await openCamera({
-        video: { facingMode: "user" },
-        audio: false,
-      });
+      stream = await openCamera();
+      if (sessionRef.current !== session) {
+        stopStream(stream);
+        return;
+      }
       setCameraStream(stream);
     } catch (err) {
       console.error("[onboarding-snippets] openCamera failed:", err);
@@ -119,55 +137,44 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       cancelRecording();
       return;
     }
-
-    setTimeout(() => {
-      if (videoRef.current) {
-        attachStreamToVideo(videoRef.current, stream);
-      }
-    }, 100);
-
-    intervalRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          triggerRecord(stream, index);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
   }
 
-  async function triggerRecord(stream: MediaStream, index: number) {
+  async function triggerRecord(stream: MediaStream, index: number, session: number) {
+    if (sessionRef.current !== session) return;
     haptic("warning");
     setRecordingState("recording");
 
     try {
       const { blob } = await recordStreamForMs(stream, 3000, "video");
+      if (sessionRef.current !== session) return;
       setRecordingState("saving");
 
       const videoUrl = URL.createObjectURL(blob);
       setSnippets((prev) => {
         const next = [...prev];
         next[index] = videoUrl;
-        const filtered = next.filter(Boolean);
-        syncSnippetsToDB(filtered).catch(console.error);
-        return filtered;
+        syncSnippetsToDB(next).catch(console.error);
+        return next;
       });
 
       haptic("success");
     } catch (err) {
+      if (sessionRef.current !== session) return;
       console.error("[onboarding-snippets] recordStreamForMs failed:", err);
       toast.error("Nahrávanie zlyhalo. Skús to znova.");
     } finally {
       stopStream(stream);
-      setCameraStream(null);
-      setRecordingIndex(null);
-      setRecordingState("idle");
+      if (sessionRef.current === session) {
+        setCameraStream(null);
+        setRecordingIndex(null);
+        setRecordingState("idle");
+      }
     }
   }
 
   function cancelRecording() {
+    sessionRef.current += 1;
+    triggeredSessionRef.current = null;
     if (cameraStream) {
       stopStream(cameraStream);
       setCameraStream(null);
@@ -212,9 +219,8 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       setSnippets((prev) => {
         const next = [...prev];
         next[index] = videoUrl;
-        const filtered = next.filter(Boolean);
-        syncSnippetsToDB(filtered).catch(console.error);
-        return filtered;
+        syncSnippetsToDB(next).catch(console.error);
+        return next;
       });
       haptic("success");
       setActiveUploadIndex(null);
@@ -252,14 +258,9 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
     haptic("warning");
     setSnippets((prev) => {
       const next = [...prev];
-      if (index === 0) {
-        next[0] = "";
-      } else {
-        next[index] = "";
-      }
-      const filtered = next.filter(Boolean);
-      syncSnippetsToDB(filtered).catch(console.error);
-      return filtered;
+      next[index] = "";
+      syncSnippetsToDB(next).catch(console.error);
+      return next;
     });
   }
 
@@ -371,6 +372,12 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
                 <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-destructive px-2.5 py-1">
                   <span className="size-1.5 animate-pulse rounded-full bg-white" />
                   <span className="text-xs font-semibold text-white">Nahráva sa · 3 s</span>
+                </div>
+              )}
+
+              {recordingState === "saving" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/65">
+                  <span className="text-sm font-semibold text-white">Ukladám video…</span>
                 </div>
               )}
             </div>

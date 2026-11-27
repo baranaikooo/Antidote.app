@@ -27,8 +27,16 @@ describe("Media Helpers", () => {
     expect(mime).toContain("audio/");
   });
 
-  it("should pick supported video mime", () => {
-    const mime = pickVideoMime();
+  it("should pick supported video mime without audio codec when audio is absent", () => {
+    const mime = pickVideoMime(false);
+    expect(mime).not.toBe("");
+    expect(mime).toContain("video/");
+    expect(mime).not.toContain("opus");
+    expect(mime).not.toContain("mp4a");
+  });
+
+  it("should pick supported video mime with audio codec when audio is present", () => {
+    const mime = pickVideoMime(true);
     expect(mime).not.toBe("");
     expect(mime).toContain("video/");
   });

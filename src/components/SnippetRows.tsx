@@ -32,8 +32,12 @@ export function SnippetRows({
                   loop
                   muted
                   playsInline
+                  preload="auto"
                   onTimeUpdate={(e) => {
-                    if (e.currentTarget.currentTime >= 3) e.currentTarget.currentTime = 0;
+                    const v = e.currentTarget;
+                    if (Number.isFinite(v.duration) && v.duration > 3.2 && v.currentTime >= 3) {
+                      v.currentTime = 0;
+                    }
                   }}
                   className={`size-full bg-black object-cover -scale-x-100 ${blurred ? "blur-[10px]" : ""}`}
                 />
