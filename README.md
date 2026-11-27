@@ -2,14 +2,14 @@
 
 **No swiping. Just psychology.**
 
-Antidote is a next-generation anti-dopamine dating and matching application focused on cognitive resonance, deep psychological alignment, and authentic interactions. It replaces superficial swiping with a psychometric test, voice-only communication, and strict liveness verification.
+Antidote is a Slovak dating app that uses a psychometric questionnaire and user preferences to recommend people. New conversations start with a shared question and a short voice answer from each person.
 
 ## 🌟 Key Features
 
 - **No Swiping**: Matches are generated based on psychological alignment (Cognitive Depth, Conscientiousness, Extraversion).
 - **Liveness Verification**: A mandatory 3-second live video snippet using on-device face detection ensures everyone is a real human. No catfish, no AI bots.
-- **Voice-Only Communication**: The "Voice Chamber" and messaging threads enforce voice-only communication to build deeper, more authentic connections.
-- **Brutalist Dark Theme**: A sleek, strict, distraction-free "CCTV" dark mode aesthetic that prioritizes focus and immersion.
+- **Voice-first conversation**. Both voice answers become available at the same time. The conversation then supports text, GIFs, and voice messages.
+- **Appearance**. The welcome screen has a full-bleed illustration over a deep navy background and an interactive opening question. The signed-in app supports a warm light theme and a navy dark theme, with a system setting that follows the device. See [the live app](https://antidotesk.vercel.app) and [the current stylesheet](src/styles.css).
 - **Value Bankroll**: Users define their core priorities (Freedom, Family, Career, Creativity, Stability) via an interactive radar chart.
 - **Google OAuth**: Fast and secure one-tap login without SMS costs or passwords.
 
@@ -31,8 +31,8 @@ Antidote abandons the traditional "looks-first" matching approach. Instead, the 
 ## 🗺 Roadmap
 
 - [x] Liveness Verification (Anti-Catfish / On-device ML)
-- [x] Brutalist Dark UI Implementation
-- [x] Voice Chamber (Audio-only matching)
+- [x] Illustrated welcome screen and light and dark themes
+- [x] Shared voice question for new conversations
 - [x] Value Bankroll & Interactive Radar Chart
 - [ ] Advanced Matching Engine Algorithm Integration
 - [ ] iOS App Store Release
