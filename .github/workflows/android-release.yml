@@ -45,7 +45,7 @@ jobs:
             . as $asset | .name | capture($pattern) |
             {code: (.code | tonumber), name, asset: $asset.name, label: $asset.label}
           ]' <<< "$release")
-          latest=$(jq '[.[].code] | max // 0' <<< "$assets")
+          latest=$(jq '[.[].code, 34] | max' <<< "$assets")
           current=$(jq -r --arg sha "$GITHUB_SHA" '.[] | select(.label == $sha) | .asset' <<< "$assets")
           if [[ -n "$current" ]]; then
             if jq -e --arg sha "$GITHUB_SHA" '.assets | any(.name == "Antidote-debug.apk" and .label == $sha and .state == "uploaded")' <<< "$release" > /dev/null; then

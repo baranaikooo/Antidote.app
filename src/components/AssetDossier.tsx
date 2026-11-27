@@ -41,7 +41,8 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionRef = useRef(0);
+  const triggeredSessionRef = useRef<number | null>(null);
   const [activeUploadIndex, setActiveUploadIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [confirmDeleteIndex, setConfirmDeleteIndex] = useState<number | null>(null);
@@ -50,21 +51,33 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
     const currentStream = cameraStream;
     return () => {
       if (currentStream) stopStream(currentStream);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
     };
   }, [cameraStream]);
+
+  useEffect(() => {
+    if (recordingIndex === null || !cameraStream || !videoRef.current) return;
+    void attachStreamToVideo(videoRef.current, cameraStream);
+  }, [cameraStream, recordingIndex]);
+
+  useEffect(() => {
+    if (recordingState !== "countdown" || recordingIndex === null || !cameraStream) return;
+    if (countdown > 0) {
+      const timer = window.setTimeout(() => {
+        setCountdown((prev) => Math.max(0, prev - 1));
+      }, 1000);
+      return () => window.clearTimeout(timer);
+    }
+    const session = sessionRef.current;
+    if (triggeredSessionRef.current === session) return;
+    triggeredSessionRef.current = session;
+    void triggerRecord(cameraStream, recordingIndex, session);
+  }, [recordingState, countdown, cameraStream, recordingIndex]);
 
   // Handle app going to background / tab switch
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
+        sessionRef.current += 1;
         if (cameraStream) {
           stopStream(cameraStream);
           setCameraStream(null);
@@ -154,16 +167,23 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
   // JIT Camera Record Flow
   async function startRecording(index: number) {
     haptic("tap");
+    const session = ++sessionRef.current;
+    triggeredSessionRef.current = null;
+    if (cameraStream) {
+      stopStream(cameraStream);
+      setCameraStream(null);
+    }
     setRecordingIndex(index);
     setRecordingState("countdown");
     setCountdown(3);
 
     let stream: MediaStream;
     try {
-      stream = await openCamera({
-        video: { facingMode: "user" },
-        audio: false,
-      });
+      stream = await openCamera();
+      if (sessionRef.current !== session) {
+        stopStream(stream);
+        return;
+      }
       setCameraStream(stream);
     } catch (err) {
       console.error("[dossier] openCamera failed:", err);
@@ -171,30 +191,6 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       cancelRecording();
       return;
     }
-
-    setTimeout(() => {
-      if (videoRef.current) {
-        attachStreamToVideo(videoRef.current, stream);
-      }
-    }, 100);
-
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          intervalRef.current = null;
-          triggerRecord(stream, index);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    intervalRef.current = interval;
   }
 
   async function uploadFileAndSave(index: number, blob: Blob | File) {
@@ -211,10 +207,12 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       return;
     }
 
+    const mime = blob.type || "video/webm";
+    const ext = mime.includes("webm") ? "webm" : mime.includes("quicktime") ? "mov" : "mp4";
     // Upload to Storage
-    const filename = `${userId}/slot_${index + 1}_${Date.now()}.mp4`;
+    const filename = `${userId}/slot_${index + 1}_${Date.now()}.${ext}`;
     const { data, error } = await supabase.storage.from("media-snippets").upload(filename, blob, {
-      contentType: blob.type || "video/mp4",
+      contentType: mime,
       cacheControl: "3600",
       upsert: true,
     });
@@ -262,12 +260,14 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
     });
   }
 
-  async function triggerRecord(stream: MediaStream, index: number) {
+  async function triggerRecord(stream: MediaStream, index: number, session: number) {
+    if (sessionRef.current !== session) return;
     haptic("warning");
     setRecordingState("recording");
 
     try {
       const { blob } = await recordStreamForMs(stream, 3000, "video");
+      if (sessionRef.current !== session) return;
       setRecordingState("saving");
 
       // Enforce max upload limit of 5 MB
@@ -280,25 +280,22 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       await uploadFileAndSave(index, blob);
       haptic("success");
     } catch (err) {
+      if (sessionRef.current !== session) return;
       console.error("[dossier] recordStreamForMs failed:", err);
       toast.error("Video sa nepodarilo nahrať alebo uložiť.");
     } finally {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
       stopStream(stream);
-      setCameraStream(null);
-      setRecordingIndex(null);
-      setRecordingState("idle");
+      if (sessionRef.current === session) {
+        setCameraStream(null);
+        setRecordingIndex(null);
+        setRecordingState("idle");
+      }
     }
   }
 
   function cancelRecording() {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    sessionRef.current += 1;
+    triggeredSessionRef.current = null;
     if (cameraStream) {
       stopStream(cameraStream);
       setCameraStream(null);
@@ -373,8 +370,12 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
           };
 
           mediaRecorder.onstop = () => {
-            const finalBlob = new Blob(chunks, { type: mediaRecorder.mimeType || "video/mp4" });
+            const finalBlob = new Blob(chunks, { type: mediaRecorder.mimeType || "video/webm" });
             cleanup();
+            if (finalBlob.size < 128) {
+              reject(new Error("Compressed video is empty"));
+              return;
+            }
             resolve(finalBlob);
           };
 
@@ -389,8 +390,8 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
               return;
             }
 
-            const vWidth = video.videoWidth;
-            const vHeight = video.videoHeight;
+            const vWidth = video.videoWidth || canvas.width;
+            const vHeight = video.videoHeight || canvas.height;
             const targetWidth = canvas.width;
             const targetHeight = canvas.height;
             const vRatio = vWidth / vHeight;
@@ -410,10 +411,12 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
             animationFrameId = requestAnimationFrame(drawFrame);
           }
 
-          mediaRecorder.start();
+          mediaRecorder.start(250);
           drawFrame();
 
-          const maxDuration = Math.min(3000, video.duration * 1000);
+          const validDurationMs =
+            Number.isFinite(video.duration) && video.duration > 0 ? video.duration * 1000 : 3000;
+          const maxDuration = Math.min(3000, validDurationMs);
           setTimeout(() => {
             if (mediaRecorder.state === "recording") {
               video.pause();
@@ -439,7 +442,10 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("video/")) {
+    const isVideo =
+      file.type.startsWith("video/") ||
+      /\.(mp4|mov|webm|mkv|3gp|m4v|avi)$/i.test(file.name);
+    if (!isVideo) {
       toast.error("Vyber súbor s videom.");
       setActiveUploadIndex(null);
       return;
@@ -571,7 +577,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
               </div>
             </div>
           )}
-          <input type="file" ref={fileInputRef} accept="video/*" className="hidden" onChange={handleFileChange} />
+          <input type="file" ref={fileInputRef} accept="video/*,video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska" className="hidden" onChange={handleFileChange} />
         </section>
 
         {/* Market Parameters (Moved from settings to DNA section) */}
@@ -772,6 +778,12 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
                   <span className="text-xs font-semibold text-white">
                     Nahráva sa · 3 s
                   </span>
+                </div>
+              )}
+
+              {recordingState === "saving" && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/65">
+                  <span className="text-sm font-semibold text-white">Ukladám video…</span>
                 </div>
               )}
             </div>
