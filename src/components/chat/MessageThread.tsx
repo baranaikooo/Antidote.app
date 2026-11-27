@@ -17,8 +17,9 @@ import { useHaptic } from "@/hooks/use-haptics";
 import { VoiceBubble } from "./VoiceBubble";
 import { markConversationRead } from "@/lib/conversation-inbox";
 import { ConversationFeedback } from "./ConversationFeedback";
-import { SharedConversationQuestion } from "./SharedConversationQuestion";
-import { readSharedQuestion, type SharedQuestion } from "@/lib/shared-question";
+import { SharedConversationQuestion, SharedVoiceQuestion } from "./SharedConversationQuestion";
+import { Chamber } from "./VoiceChamber";
+import { readSharedQuestion, submitQuestionVoice, type SharedQuestion } from "@/lib/shared-question";
 
 export function MessageThread({
   conversation,
@@ -44,6 +45,7 @@ export function MessageThread({
   const [input, setInput] = useState("");
   const [selectedReply, setSelectedReply] = useState<string | null>(null);
   const [sharedQuestion, setSharedQuestion] = useState<SharedQuestion | null>();
+  const [recordingAnswer, setRecordingAnswer] = useState(false);
   const [questionLoadFailed, setQuestionLoadFailed] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
@@ -324,10 +326,34 @@ export function MessageThread({
     (hasMessages ||
       (sharedQuestion !== undefined &&
         (!sharedQuestion?.required ||
-          Boolean(sharedQuestion.own_answer && sharedQuestion.partner_answer))));
+          Boolean(
+            sharedQuestion.voice_required
+              ? sharedQuestion.own_voice_path && sharedQuestion.partner_voice_path
+              : sharedQuestion.own_answer && sharedQuestion.partner_answer,
+          ))));
   const showPilotQuestion =
     isOpen && latestIncoming && conversation.messages.some((message) => message.from === "me");
   const canRetrySend = failedSend && (failedSend.reaction || failedSend.text === input.trim());
+  function updateSharedQuestion(next: SharedQuestion) {
+    setSharedQuestion(next);
+    void refresh();
+  }
+
+  if (isOpen && recordingAnswer && sharedQuestion?.voice_required) {
+    return (
+      <Chamber
+        userId={userId}
+        matchId={conversation.id}
+        name={match.name}
+        prompt={sharedQuestion.question}
+        onBack={() => setRecordingAnswer(false)}
+        onAnswer={async (blob, id) => {
+          updateSharedQuestion(await submitQuestionVoice(conversation.id, userId, id, blob));
+        }}
+      />
+    );
+  }
+
   return (
     <section className="conversation-screen" aria-label="Rozhovor">
       <header className="conversation-header flex shrink-0 items-center gap-3 px-3 py-3">
@@ -376,17 +402,23 @@ export function MessageThread({
             )}
           </div>
         )}
-        {isOpen && sharedQuestion && (
+        {isOpen && sharedQuestion?.voice_required && (
+          <SharedVoiceQuestion
+            matchId={conversation.id}
+            name={match.name}
+            question={sharedQuestion}
+            onChange={updateSharedQuestion}
+            onRecord={() => setRecordingAnswer(true)}
+          />
+        )}
+        {isOpen && sharedQuestion && !sharedQuestion.voice_required && (
           <SharedConversationQuestion
             matchId={conversation.id}
             name={match.name}
             question={sharedQuestion}
             selected={replyContext !== null && replyContext === sharedQuestion.partner_answer}
             sending={sending}
-            onChange={(next) => {
-              void refresh();
-              setSharedQuestion(next);
-            }}
+            onChange={updateSharedQuestion}
             onReply={selectReply}
           />
         )}

@@ -32,15 +32,20 @@ export function Chamber({
   name,
   prompt,
   onBack,
+  onAnswer,
 }: {
   userId: string;
   matchId: string;
   name: string;
   prompt: string;
   onBack: () => void;
+  onAnswer?: (blob: Blob, draftId: string) => Promise<void>;
 }) {
   const haptic = useHaptic();
+  const maxSeconds = onAnswer ? 20 : MAX_REC_SECONDS;
   const [recording, setRecording] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const [recLen, setRecLen] = useState(0);
   const [liveLevel, setLiveLevel] = useState(0);
   const [draftVoice, setDraftVoice] = useState<{
@@ -53,6 +58,7 @@ export function Chamber({
   const [micError, setMicError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
+  const captureLock = useRef(false);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -61,12 +67,7 @@ export function Chamber({
   const draftUrlRef = useRef<string | null>(null);
   const recStartRef = useRef<number>(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pendingStopRef = useRef<Promise<void> | null>(null);
   const cancelledRef = useRef(false);
-
-  useEffect(() => {
-    draftUrlRef.current = draftVoice?.url ?? null;
-  }, [draftVoice]);
 
   function stopAudioMeter() {
     if (meterRafRef.current !== null) {
@@ -86,12 +87,13 @@ export function Chamber({
       cancelledRef.current = true;
       if (tickRef.current) clearInterval(tickRef.current);
       stopAudioMeter();
-      if (draftUrlRef.current && draftUrlRef.current.startsWith("blob:")) {
-        URL.revokeObjectURL(draftUrlRef.current);
-      }
+      if (draftUrlRef.current) URL.revokeObjectURL(draftUrlRef.current);
       try {
-        if (mediaRecRef.current && mediaRecRef.current.state !== "inactive") {
-          mediaRecRef.current.stop();
+        const rec = mediaRecRef.current;
+        if (rec) {
+          rec.onstop = null;
+          rec.onerror = null;
+          if (rec.state !== "inactive") rec.stop();
         }
       } catch {
         /* ignore */
@@ -106,7 +108,7 @@ export function Chamber({
   }
 
   async function startRec() {
-    if (recording || sendingRef.current) return;
+    if (captureLock.current || sendingRef.current) return;
     if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       const msg = "Tento prehliadač nepodporuje nahrávanie z mikrofónu.";
       console.warn("[voice]", msg);
@@ -120,35 +122,20 @@ export function Chamber({
       return;
     }
 
-    pendingStopRef.current = null;
+    captureLock.current = true;
+    setPreparing(true);
     cancelledRef.current = false;
     peakSamplesRef.current = [];
     setMicError(null);
     setRecLen(0);
-    setRecording(true);
-    recStartRef.current = performance.now();
-
-    try {
-      const perms = (navigator as Navigator & { permissions?: Permissions }).permissions;
-      if (perms?.query) {
-        const status = await perms.query({ name: "microphone" as PermissionName });
-        if (status.state === "denied") {
-          console.warn("[voice] microphone permission denied");
-          setMicError(
-            "Mikrofón je zablokovaný. Klikni na ikonu zámku v adresnom riadku a povoľ mikrofón.",
-          );
-          setRecording(false);
-          return;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
+      if (cancelledRef.current) {
+        stopStream(stream);
+        return;
+      }
       micStreamRef.current = stream;
 
       try {
@@ -194,103 +181,106 @@ export function Chamber({
         if (e.data.size > 0) chunks.push(e.data);
       };
 
-      const stopPromise = new Promise<void>((resolve) => {
-        rec.onstop = () => {
-          stopAudioMeter();
-          if (tickRef.current) {
-            clearInterval(tickRef.current);
-            tickRef.current = null;
-          }
-          if (micStreamRef.current) stopStream(micStreamRef.current);
-          micStreamRef.current = null;
+      rec.onerror = () => {
+        cancelledRef.current = true;
+        setMicError("Nahrávanie sa prerušilo. Skús to znova.");
+      };
+      rec.onstop = () => {
+        stopAudioMeter();
+        if (tickRef.current) {
+          clearInterval(tickRef.current);
+          tickRef.current = null;
+        }
+        if (micStreamRef.current) stopStream(micStreamRef.current);
+        micStreamRef.current = null;
+        mediaRecRef.current = null;
+        captureLock.current = false;
+        setFinishing(false);
+        setRecording(false);
 
-          if (cancelledRef.current) {
-            resolve();
-            return;
-          }
+        if (cancelledRef.current) return;
 
-          const elapsed = (performance.now() - recStartRef.current) / 1000;
-          if (elapsed < 1.0) {
-            setMicError("Hlasovka je príliš krátka.");
-            resolve();
-            return;
-          }
+        const elapsed = (performance.now() - recStartRef.current) / 1000;
+        if (elapsed < 1.0) {
+          setMicError("Hlasovka je príliš krátka.");
+          return;
+        }
 
-          const blob = chunks.length ? new Blob(chunks, { type: rec.mimeType || mime }) : null;
-          if (!blob || blob.size === 0) {
-            setMicError("V nahrávke nie je zvuk. Skús ju nahrať znova.");
-            resolve();
-            return;
-          }
+        const blob = chunks.length ? new Blob(chunks, { type: rec.mimeType || mime }) : null;
+        if (!blob || blob.size === 0) {
+          setMicError("V nahrávke nie je zvuk. Skús ju nahrať znova.");
+          return;
+        }
 
-          const dur = Math.min(MAX_REC_SECONDS, Math.round(elapsed));
-          const url = URL.createObjectURL(blob);
-          const peaks = normalizePeaks(peakSamplesRef.current);
+        const dur = Math.min(maxSeconds, Math.round(elapsed));
+        const url = URL.createObjectURL(blob);
+        const peaks = normalizePeaks(peakSamplesRef.current);
 
-          setDraftVoice((prev) => {
-            if (prev?.url && prev.url.startsWith("blob:")) {
-              URL.revokeObjectURL(prev.url);
-            }
-            return { id: crypto.randomUUID(), blob, url, duration: dur, peaks };
-          });
-          resolve();
-        };
-      });
+        if (draftUrlRef.current) URL.revokeObjectURL(draftUrlRef.current);
+        draftUrlRef.current = url;
+        setDraftVoice({ id: crypto.randomUUID(), blob, url, duration: dur, peaks });
+      };
 
-      pendingStopRef.current = stopPromise;
       rec.start(100);
+      recStartRef.current = performance.now();
+      setRecording(true);
 
       tickRef.current = setInterval(() => {
         const sec = (performance.now() - recStartRef.current) / 1000;
         setRecLen(sec);
-        if (sec >= MAX_REC_SECONDS) stopRec(true);
+        if (sec >= maxSeconds) stopRec(true);
       }, 250);
     } catch (err) {
       stopAudioMeter();
+      if (micStreamRef.current) stopStream(micStreamRef.current);
+      micStreamRef.current = null;
+      mediaRecRef.current = null;
+      captureLock.current = false;
+      if (cancelledRef.current) return;
       console.error("[voice] start recording failed:", err);
       const e = err as Error;
       if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
         setMicError(
-          "Prístup k mikrofónu bol zamietnutý. Povoľ ho prosím v nastaveniach prehliadača.",
+          "Prístup k mikrofónu bol zamietnutý. Povoľ mikrofón v nastaveniach aplikácie alebo prehliadača.",
         );
       } else {
         setMicError(`Nepodarilo sa spustiť mikrofón: ${e.message}`);
       }
       setRecording(false);
+    } finally {
+      if (!cancelledRef.current) setPreparing(false);
     }
   }
 
-  async function stopRec(commit: boolean) {
-    if (!recording) return;
+  function stopRec(commit: boolean) {
+    const rec = mediaRecRef.current;
+    if (!rec || rec.state === "inactive") return;
     cancelledRef.current = !commit;
     setRecording(false);
+    setFinishing(true);
     stopAudioMeter();
     if (tickRef.current) {
       clearInterval(tickRef.current);
       tickRef.current = null;
     }
 
-    const rec = mediaRecRef.current;
-    if (!rec) {
-      if (micStreamRef.current) stopStream(micStreamRef.current);
-      micStreamRef.current = null;
-      return;
-    }
     try {
-      if (rec.state !== "inactive") rec.stop();
+      rec.stop();
     } catch (err) {
       console.warn("[voice] stop error:", err);
+      if (micStreamRef.current) stopStream(micStreamRef.current);
+      micStreamRef.current = null;
+      mediaRecRef.current = null;
+      captureLock.current = false;
+      setFinishing(false);
+      setMicError("Nahrávanie sa prerušilo. Skús to znova.");
     }
-    mediaRecRef.current = null;
   }
 
   function discardDraftVoice() {
-    setDraftVoice((prev) => {
-      if (prev?.url && prev.url.startsWith("blob:")) {
-        URL.revokeObjectURL(prev.url);
-      }
-      return null;
-    });
+    if (draftUrlRef.current) URL.revokeObjectURL(draftUrlRef.current);
+    draftUrlRef.current = null;
+    setDraftVoice(null);
   }
 
   async function sendDraftVoice() {
@@ -300,7 +290,8 @@ export function Chamber({
     setMicError(null);
     const { id, blob, duration } = draftVoice;
     try {
-      await uploadVoiceMessageBlob(matchId, userId, blob, duration, id);
+      if (onAnswer) await onAnswer(blob, id);
+      else await uploadVoiceMessageBlob(matchId, userId, blob, duration, id);
       haptic("send");
       onBack();
     } catch (err) {
@@ -325,19 +316,26 @@ export function Chamber({
           <ArrowLeft aria-hidden="true" className="size-5" />
         </button>
         <div>
-          <h1 className="text-xl font-bold">Hlasová správa</h1>
+          <h1 className="text-xl font-bold">{onAnswer ? "Hlasová odpoveď" : "Hlasová správa"}</h1>
           <p className="text-sm text-muted-foreground">{name}</p>
         </div>
       </header>
       <div className="editorial-panel p-4">
         <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{prompt}</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Nahrávku si môžeš vypočuť pred odoslaním.
+          {onAnswer
+            ? "Máš najviac 20 sekúnd. Odpovede si vypočujete, keď odpoviete obaja."
+            : "Nahrávku si môžeš vypočuť pred odoslaním."}
         </p>
       </div>
       {micError && (
         <p role="alert" className="mt-4 text-sm">
           {micError}
+        </p>
+      )}
+      {preparing && (
+        <p role="status" className="mt-4 text-sm">
+          Čakám na mikrofón…
         </p>
       )}
       <RecordButton
@@ -349,7 +347,8 @@ export function Chamber({
             ? { url: draftVoice.url, duration: draftVoice.duration, peaks: draftVoice.peaks }
             : null
         }
-        disabled={sending}
+        disabled={sending || preparing || finishing}
+        maxSeconds={maxSeconds}
         sending={sending}
         onStart={startRec}
         onCommit={() => stopRec(true)}

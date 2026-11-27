@@ -22,6 +22,7 @@ export function RecordButton({
   liveLevel = 0,
   draft = null,
   disabled,
+  maxSeconds,
   sending = false,
   onStart,
   onCommit,
@@ -34,6 +35,7 @@ export function RecordButton({
   liveLevel?: number;
   draft?: VoiceDraft | null;
   disabled: boolean;
+  maxSeconds: number;
   sending?: boolean;
   onStart: () => void;
   onCommit: () => void;
@@ -179,7 +181,8 @@ export function RecordButton({
                 Nahrávaš odpoveď
               </span>
               <span className="text-foreground/75">
-                {formatClock(recLen)} <span className="text-foreground/35">/ 1:00</span>
+                {formatClock(Math.min(recLen, maxSeconds))}{" "}
+                <span className="text-foreground/35">/ {formatClock(maxSeconds)}</span>
               </span>
             </div>
 

@@ -488,14 +488,14 @@ export async function saveChatMessage(
   return data;
 }
 
-export async function removeOwnChatImages(userId: string) {
-  const bucket = supabase.storage.from("chat-images");
+export async function removeOwnChatAttachments(userId: string, bucketId: string) {
+  const bucket = supabase.storage.from(bucketId);
   for (;;) {
     const { data, error } = await bucket.list(userId, { limit: 100 });
     if (error) throw error;
     if (!data?.length) return;
     const removed = await bucket.remove(data.map(({ name }) => `${userId}/${name}`));
-    if (removed.error || !removed.data?.length) throw removed.error ?? new Error("Chat image removal did not finish");
+    if (removed.error || !removed.data?.length) throw removed.error ?? new Error("Attachment removal did not finish");
   }
 }
 
