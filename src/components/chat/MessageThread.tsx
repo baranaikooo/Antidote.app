@@ -1,6 +1,6 @@
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Eye, Mic, Reply, Send, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Eye, Mic, MoreVertical, Reply, Send, Sparkles, X } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/lib/resonance";
 import {
   fetchSharedProfileVideos,
@@ -61,6 +61,7 @@ export function MessageThread({
     live: boolean;
   } | null>(null);
   const [showVideos, setShowVideos] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
   const [videos, setVideos] = useState<string[] | null>(null);
   const [videosFailed, setVideosFailed] = useState(false);
   const listEnd = useRef<HTMLDivElement>(null);
@@ -356,17 +357,72 @@ export function MessageThread({
 
   return (
     <section className="conversation-screen" aria-label="Rozhovor">
-      <header className="conversation-header flex shrink-0 items-center gap-3 px-3 py-3">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Späť na správy"
-          className="conversation-header-action shrink-0"
-        >
-          <ArrowLeft className="size-5" aria-hidden="true" />
-        </button>
-        <h1 className="min-w-0 break-words text-lg font-bold">{match.name}</h1>
+      <header className="conversation-header flex shrink-0 items-center justify-between gap-3 px-3 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Späť na správy"
+            className="conversation-header-action shrink-0"
+          >
+            <ArrowLeft className="size-5" aria-hidden="true" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-bold">{match.name}</h1>
+            {match.city && <p className="truncate text-xs text-muted-foreground">{match.city}</p>}
+          </div>
+        </div>
+        {isOpen && (
+          <button
+            type="button"
+            className="conversation-header-action shrink-0"
+            aria-label="Možnosti rozhovoru"
+            aria-expanded={showOptions}
+            aria-controls="conversation-options-panel"
+            onClick={() => setShowOptions((open) => !open)}
+          >
+            <MoreVertical className="size-5" aria-hidden="true" />
+          </button>
+        )}
       </header>
+
+      {isOpen && (
+        <div
+          id="conversation-options-panel"
+          hidden={!showOptions}
+          className="shrink-0 border-b border-foreground/12 bg-card px-4 py-3 text-sm"
+        >
+          <p className="mb-2 text-muted-foreground">Rozhovor môžeš ukončiť kedykoľvek.</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={savingChoice}
+              className="personal-action rounded-lg"
+              onClick={() => void changeChoice("close")}
+            >
+              Ukončiť rozhovor
+            </button>
+          </div>
+          <details className="mt-2">
+            <DisclosureSummary className="text-destructive">Nahlásiť a ukončiť</DisclosureSummary>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {(Object.entries(REPORT_REASONS) as [keyof typeof REPORT_REASONS, string][]).map(
+                ([reason, label]) => (
+                  <button
+                    type="button"
+                    key={reason}
+                    disabled={savingChoice}
+                    className="personal-action rounded-lg"
+                    onClick={() => void changeChoice(reason)}
+                  >
+                    {label}
+                  </button>
+                ),
+              )}
+            </div>
+          </details>
+        </div>
+      )}
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
         {loadFailed && (
@@ -615,7 +671,7 @@ export function MessageThread({
                       ref={gifSearchInput}
                       type="search"
                       aria-label="Hľadať GIFy"
-                      placeholder="Search KLIPY"
+                      placeholder="Hľadať GIFy…"
                       maxLength={80}
                       value={gifQuery}
                       onChange={(event) => setGifQuery(event.target.value)}
@@ -624,12 +680,12 @@ export function MessageThread({
                     {query.length < 2 || search?.live === false ? (
                       <p className="text-xs text-muted-foreground" role="status">
                         {search?.live === false
-                          ? "Výsledky zo základného výberu GIPHY."
-                          : "Výber z GIPHY"}
+                          ? "Výsledky z obľúbeného výberu GIFov."
+                          : "Odporúčané GIFy"}
                       </p>
                     ) : search ? (
                       <p className="text-xs text-muted-foreground" role="status">
-                        {displayedGifs.length ? "Powered by KLIPY" : "Žiadne GIFy. Skús iné slovo."}
+                        {displayedGifs.length ? "Výsledky z KLIPY" : "Žiadne GIFy. Skús iné slovo."}
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground" role="status">
@@ -718,38 +774,6 @@ export function MessageThread({
               </form>
             </>
           )}
-          <details className="px-3 pb-2 text-sm">
-            <DisclosureSummary className="font-semibold">Možnosti rozhovoru</DisclosureSummary>
-            <p className="mb-2 text-muted-foreground">Rozhovor môžeš ukončiť kedykoľvek.</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={savingChoice}
-                className="personal-action"
-                onClick={() => void changeChoice("close")}
-              >
-                Ukončiť rozhovor
-              </button>
-            </div>
-            <details className="mt-2">
-              <DisclosureSummary className="text-destructive">Nahlásiť a ukončiť</DisclosureSummary>
-              <div className="flex flex-wrap gap-2">
-                {(Object.entries(REPORT_REASONS) as [keyof typeof REPORT_REASONS, string][]).map(
-                  ([reason, label]) => (
-                    <button
-                      type="button"
-                      key={reason}
-                      disabled={savingChoice}
-                      className="personal-action"
-                      onClick={() => void changeChoice(reason)}
-                    >
-                      {label}
-                    </button>
-                  ),
-                )}
-              </div>
-            </details>
-          </details>
         </div>
       )}
     </section>

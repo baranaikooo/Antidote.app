@@ -3,6 +3,7 @@ import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { SnippetRows } from "@/components/SnippetRows";
 import { UserProfile } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
@@ -43,6 +44,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [activeUploadIndex, setActiveUploadIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [confirmDeleteIndex, setConfirmDeleteIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const currentStream = cameraStream;
@@ -165,7 +167,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       setCameraStream(stream);
     } catch (err) {
       console.error("[dossier] openCamera failed:", err);
-      alert("Kamera sa nespustila. Skontroluj, či má Antidote prístup ku kamere.");
+      toast.error("Kamera sa nespustila. Skontroluj, či má Antidote prístup ku kamere.");
       cancelRecording();
       return;
     }
@@ -219,7 +221,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
 
     if (error) {
       console.error("[dossier] upload error:", error);
-      alert(`Ukladanie zlyhalo: ${error.message}`);
+      toast.error(`Ukladanie zlyhalo: ${error.message}`);
       throw error;
     }
 
@@ -230,7 +232,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
 
     if (signError || !signedData?.signedUrl) {
       console.error("[dossier] signed url error:", signError);
-      alert("Video je uložené, ale náhľad sa nepodarilo načítať.");
+      toast.error("Video je uložené, ale náhľad sa nepodarilo načítať.");
       throw signError || new Error("Signed URL failed");
     }
 
@@ -248,7 +250,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
 
     if (dbError) {
       console.error("[dossier] database save error:", dbError);
-      alert(`Video sa nepodarilo pridať do profilu.`);
+      toast.error("Video sa nepodarilo pridať do profilu.");
       throw dbError;
     }
 
@@ -271,7 +273,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       // Enforce max upload limit of 5 MB
       const maxLimit = 5 * 1024 * 1024;
       if (blob.size > maxLimit) {
-        alert(`Súbor je príliš veľký (${(blob.size / 1024 / 1024).toFixed(2)} MB). Limit je 5 MB.`);
+        toast.error(`Súbor je príliš veľký (${(blob.size / 1024 / 1024).toFixed(2)} MB). Limit je 5 MB.`);
         throw new Error("File size exceeds 5MB limit");
       }
 
@@ -279,7 +281,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       haptic("success");
     } catch (err) {
       console.error("[dossier] recordStreamForMs failed:", err);
-      alert("Video sa nepodarilo nahrať alebo uložiť.");
+      toast.error("Video sa nepodarilo nahrať alebo uložiť.");
     } finally {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -438,7 +440,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
     if (!file) return;
 
     if (!file.type.startsWith("video/")) {
-      alert("Vyber súbor s videom.");
+      toast.error("Vyber súbor s videom.");
       setActiveUploadIndex(null);
       return;
     }
@@ -446,7 +448,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
     // Enforce max upload limit of 30 MB (fallback raw limit)
     const maxLimit = 30 * 1024 * 1024;
     if (file.size > maxLimit) {
-      alert(`Súbor je príliš veľký (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximálny limit je 30 MB.`);
+      toast.error(`Súbor je príliš veľký (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximálny limit je 30 MB.`);
       setActiveUploadIndex(null);
       return;
     }
@@ -470,15 +472,22 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       haptic("success");
     } catch (err: any) {
       console.error("[dossier] handleFileChange upload failed:", err);
-      alert(`Nahrávanie zlyhalo: ${err.message || err}`);
+      toast.error(`Nahrávanie zlyhalo: ${err.message || err}`);
     } finally {
       setIsUploading(false);
       setActiveUploadIndex(null);
     }
   }
 
-  async function deleteSnippet(index: number) {
-    if (!confirm("Naozaj chcete odstrániť toto video?")) return;
+  function requestDeleteSnippet(index: number) {
+    haptic("tap");
+    setConfirmDeleteIndex(index);
+  }
+
+  async function confirmDeleteSnippet() {
+    if (confirmDeleteIndex === null) return;
+    const index = confirmDeleteIndex;
+    setConfirmDeleteIndex(null);
     haptic("warning");
 
     const userId = user.id || "00000000-0000-0000-0000-000000000001";
@@ -491,7 +500,7 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
 
       if (error) {
         console.error("[dossier] failed to delete snippet from database:", error);
-        alert("Video sa nepodarilo odstrániť z profilu.");
+        toast.error("Video sa nepodarilo odstrániť z profilu.");
         return;
       }
     }
@@ -507,24 +516,21 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
   // Algorithmic Age Bracket Calculations (Half-your-age-plus-seven reciprocity)
   const minBracketAge = Math.max(18, Math.floor(user.age / 2 + 7));
   const maxBracketAge = Math.floor((user.age - 7) * 2);
-  const calculatedBracket = `[${minBracketAge} - ${maxBracketAge < minBracketAge ? minBracketAge : maxBracketAge}]`;
+  const calculatedBracket = `${minBracketAge} – ${maxBracketAge < minBracketAge ? minBracketAge : maxBracketAge} rokov`;
 
   // Slovak attachment styles mapper
   const styleMap: Record<string, string> = {
-    Secure: "BEZPEČNÝ",
-    Anxious: "ÚZKOSTNÝ",
-    Avoidant: "VYHÝBAVÝ",
-    Fearful: "DEZORGANIZOVANÝ",
+    Secure: "Bezpečný",
+    Anxious: "Úzkostný",
+    Avoidant: "Vyhýbavý",
+    Fearful: "Dezorganizovaný",
   };
-  const attachmentStyleSlovak = styleMap[user.attachmentStyle || "Secure"] || "BEZPEČNÝ";
-
-  const primaryMarker = `[${attachmentStyleSlovak}]`;
-  const decisionLatency = `${(user.avgResponseTime || 2.45).toFixed(2)}s`;
-  const redemptionQuota = `${user.redemptionQuota ?? 0}`;
-  const cognitiveDepth = `${(user.cognitiveDepth || 0.55).toFixed(2)}`;
-  const conscientiousness = `${(user.conscientiousness || 0.5).toFixed(2)}`;
-  const extraversion = `${(user.extraversion || 0.5).toFixed(2)}`;
-  const hesitationFlag = user.hesitated ? "[ÁNO]" : "[NIE]";
+  const attachmentStyleSlovak = styleMap[user.attachmentStyle || "Secure"] || "Bezpečný";
+  const decisionLatencyValue = user.avgResponseTime || 2.45;
+  const decisionLatency = `${decisionLatencyValue.toFixed(2)} s (${decisionLatencyValue < 2.5 ? "rýchle" : "rozvážne"})`;
+  const cognitiveDepthPct = Math.round((user.cognitiveDepth ?? 0.55) * 100);
+  const conscientiousnessPct = Math.round((user.conscientiousness ?? 0.5) * 100);
+  const extraversionPct = Math.round((user.extraversion ?? 0.5) * 100);
 
   return (
     <>
@@ -551,7 +557,20 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
             <span className="moment-progress-label">{snippets.filter(Boolean).length} / 4 videá</span>
             <span className="moment-progress-track" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <span key={index} data-filled={!!snippets[index]} />)}</span>
           </div>
-          <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} />
+          <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={requestDeleteSnippet} />
+          {confirmDeleteIndex !== null && (
+            <div className="mt-3 rounded-xl border border-destructive/25 bg-destructive/10 p-3 text-sm" role="alertdialog" aria-label="Potvrdiť odstránenie videa">
+              <p className="font-semibold text-destructive">Odstrániť video {confirmDeleteIndex + 1}?</p>
+              <div className="mt-2.5 flex gap-2">
+                <button type="button" onClick={() => void confirmDeleteSnippet()} className="personal-action personal-danger flex-1">
+                  Odstrániť
+                </button>
+                <button type="button" onClick={() => setConfirmDeleteIndex(null)} className="personal-action flex-1">
+                  Zrušiť
+                </button>
+              </div>
+            </div>
+          )}
           <input type="file" ref={fileInputRef} accept="video/*" className="hidden" onChange={handleFileChange} />
         </section>
 
@@ -659,51 +678,60 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
           </div>
         </details>
 
-        <details className="personal-section group">
+        <details className="personal-section settings-disclosure group">
           <DisclosureSummary className="personal-summary">
-            <h2 className="personal-heading">Tvoja osobnosť</h2>
+            <span>
+              <h2 className="personal-heading">Tvoja osobnosť</h2>
+              <span className="summary-detail">Štýl väzby: {attachmentStyleSlovak}</span>
+            </span>
           </DisclosureSummary>
-          <div className="space-y-3 pt-3">
-            <div className="flex justify-between border-b border-foreground/5 pb-2">
-              <span className="text-foreground/70">Typ osobnosti</span>
-              <span className="font-bold text-cerebral">{primaryMarker}</span>
+          <div className="space-y-3.5 pt-3 pb-2 text-sm">
+            <div className="flex items-center justify-between border-b border-foreground/10 pb-2.5">
+              <span className="text-muted-foreground">Štýl väzby</span>
+              <span className="rounded-full bg-accent/15 px-2.5 py-0.5 font-semibold text-accent">
+                {attachmentStyleSlovak}
+              </span>
             </div>
-            <div className="flex justify-between border-b border-foreground/5 pb-2">
-              <span className="text-foreground/70">Rýchlosť odpovedí</span>
-              <span className="font-bold text-foreground">{decisionLatency}</span>
+            <div className="space-y-1.5 border-b border-foreground/10 pb-2.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Hĺbka uvažovania</span>
+                <span className="font-semibold tabular-nums">{cognitiveDepthPct} %</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                <div className="h-full rounded-full bg-accent" style={{ width: `${cognitiveDepthPct}%` }} />
+              </div>
             </div>
-            <div className="flex justify-between border-b border-foreground/5 pb-2">
-              <span className="text-foreground/70">Zostávajúce pokusy</span>
-              <span className="font-bold text-foreground">{redemptionQuota}</span>
+            <div className="space-y-1.5 border-b border-foreground/10 pb-2.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Svedomitosť</span>
+                <span className="font-semibold tabular-nums">{conscientiousnessPct} %</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                <div className="h-full rounded-full bg-accent" style={{ width: `${conscientiousnessPct}%` }} />
+              </div>
             </div>
-            <div className="flex justify-between border-b border-foreground/5 pb-2">
-              <span className="text-foreground/70">Hĺbka osobnosti</span>
-              <span className="font-bold text-cerebral">{cognitiveDepth}</span>
+            <div className="space-y-1.5 border-b border-foreground/10 pb-2.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Extraverzia</span>
+                <span className="font-semibold tabular-nums">{extraversionPct} %</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                <div className="h-full rounded-full bg-accent" style={{ width: `${extraversionPct}%` }} />
+              </div>
             </div>
-            <div className="flex justify-between border-b border-foreground/5 pb-2">
-              <span className="text-foreground/70">Svedomitosť</span>
-              <span className="font-bold text-foreground">{conscientiousness}</span>
+            <div className="flex justify-between border-b border-foreground/10 pb-2.5">
+              <span className="text-muted-foreground">Tempo rozhodovania</span>
+              <span className="font-semibold tabular-nums">{decisionLatency}</span>
             </div>
-            <div className="flex justify-between border-b border-foreground/5 pb-2">
-              <span className="text-foreground/70">Extraverzia</span>
-              <span className="font-bold text-foreground">{extraversion}</span>
+            <div className="flex justify-between border-b border-foreground/10 pb-2.5">
+              <span className="text-muted-foreground">Vekové rozpätie zhôd</span>
+              <span className="font-semibold tabular-nums">{calculatedBracket}</span>
             </div>
-            <div className="flex justify-between border-b border-foreground/5 pb-2">
-              <span className="text-foreground/70">Váhavosť pri teste</span>
-              <span className="font-bold text-foreground">{hesitationFlag}</span>
-            </div>
-
-            {/* HARDCODED ALGORITHMIC BRACKET */}
-            <div className="flex justify-between border-b border-foreground/5 pb-2 border-dashed">
-              <span className="text-cerebral font-bold">Hľadaný vek partnera</span>
-              <span className="font-black text-cerebral font-sans">{calculatedBracket}</span>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-foreground/70">Stav účtu</span>
-              <span className="font-bold text-cerebral uppercase flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-cerebral animate-pulse" />
-                Profil je pripravený
+            <div className="flex items-center justify-between pt-0.5">
+              <span className="text-muted-foreground">Stav profilu</span>
+              <span className="inline-flex items-center gap-1.5 font-semibold text-accent">
+                <span className="size-2 rounded-full bg-accent" aria-hidden="true" />
+                Aktívny a pripravený
               </span>
             </div>
           </div>
@@ -712,37 +740,37 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
 
       {/* Recording Overlay Modal */}
       {recordingIndex !== null && createPortal(
-        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex flex-col justify-center items-center p-4">
-          <div className="editorial-dock w-full max-w-xs p-4 relative">
+        <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-background/90 p-4 backdrop-blur-sm">
+          <div className="editorial-dock relative w-full max-w-xs p-4">
             <div className="mb-3 font-display text-lg font-bold">
               Nahrať moment
             </div>
 
-            <div className="relative mx-auto mb-3 aspect-[3/4] w-[min(100%,12rem,40dvh)] overflow-hidden bg-black">
+            <div className="relative mx-auto mb-3 aspect-[3/4] w-[min(100%,12rem,40dvh)] overflow-hidden rounded-xl border border-foreground/15 bg-black">
               <video
                 ref={videoRef}
                 playsInline
                 muted
-                className="size-full object-contain bg-black"
+                className="size-full bg-black object-contain"
                 style={{ transform: "scaleX(-1)" }}
               />
 
               {recordingState === "countdown" && (
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
-                  <span className="font-sans text-4xl text-white font-bold animate-ping">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55">
+                  <span className="font-display text-5xl font-bold text-white tabular-nums">
                     {countdown}
                   </span>
-                  <span className="font-sans text-xs text-white/50 tracking-wide uppercase mt-2">
-                    Príprava...
+                  <span className="mt-1.5 text-xs font-medium text-white/75">
+                    Priprav sa…
                   </span>
                 </div>
               )}
 
               {recordingState === "recording" && (
-                <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 px-2 py-0.5 border border-red-500">
-                  <span className="size-1.5 rounded-full bg-red-500 animate-ping" />
-                  <span className="font-sans text-xs text-white tracking-wide uppercase">
-                    Nahráva sa (3 s)
+                <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-destructive px-2.5 py-1">
+                  <span className="size-1.5 animate-pulse rounded-full bg-white" />
+                  <span className="text-xs font-semibold text-white">
+                    Nahráva sa · 3 s
                   </span>
                 </div>
               )}
@@ -750,8 +778,9 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
 
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={cancelRecording}
-                className="personal-action flex-1"
+                className="personal-action flex-1 rounded-xl"
               >
                 Zrušiť
               </button>
@@ -762,15 +791,14 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       )}
 
       {isUploading && createPortal(
-        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[200] flex flex-col justify-center items-center p-4">
-          <div className="w-full max-w-xs border border-foreground/20 bg-card p-6 rounded-none text-center space-y-4 animate-fade-up">
-            <Loader2 className="size-8 animate-spin text-foreground mx-auto animate-pulse" />
-            <h3 className="font-sans text-sm font-bold uppercase text-foreground">
-              Spracovanie videa...
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background/90 p-4 backdrop-blur-sm">
+          <div className="editorial-dock w-full max-w-xs space-y-3 p-6 text-center animate-fade-up">
+            <Loader2 className="mx-auto size-8 animate-spin text-accent" aria-hidden="true" />
+            <h3 className="font-display text-base font-bold text-foreground">
+              Spracúvam video…
             </h3>
-            <p className="text-xs text-foreground/60 font-sans max-w-xs leading-relaxed uppercase">
-              Komprimujem a nahrávam súbor <br />
-              (môže to trvať niekoľko sekúnd)
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Komprimujem a ukladám tvoj moment. Môže to trvať niekoľko sekúnd.
             </p>
           </div>
         </div>,
