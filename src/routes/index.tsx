@@ -2395,17 +2395,52 @@ function introductionFor(myPriority: string | undefined, partner: ConversationPa
 function MatchCard({
   match,
   myPriority,
+  position,
   busy,
   onSelect,
 }: {
   match: RankedMatch;
   myPriority?: string;
+  position?: number;
   busy: boolean;
   onSelect: () => void;
 }) {
   const shared = sharedPriority(myPriority, match.top_priority);
+  const card = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!position || !card.current || !("IntersectionObserver" in window)) return;
+    let visible = false;
+    let sent = false;
+    function recordView() {
+      if (!visible || sent || document.visibilityState !== "visible") return;
+      sent = true;
+      void supabase
+        .rpc("record_matching_pilot_exposure", {
+          p_candidate_id: match.id,
+          p_position: position,
+        })
+        .then(({ error }) => {
+          if (error) sent = false;
+        });
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting && entry.intersectionRatio >= 0.25;
+        recordView();
+      },
+      { threshold: 0.25 },
+    );
+    observer.observe(card.current);
+    document.addEventListener("visibilitychange", recordView);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", recordView);
+    };
+  }, [match.id, position]);
+
   return (
-    <article className="match-card">
+    <article ref={card} className="match-card">
       <MatchCardIdentity
         name={match.name}
         age={match.age}
@@ -2634,6 +2669,7 @@ function Dashboard({
             key={activeMatch.id}
             match={activeMatch}
             myPriority={profile.topPriority}
+            position={loading || failed ? undefined : activeIndex + 1}
             busy={openingMatch}
             onSelect={() => onSelectMatch(activeMatch)}
           />
