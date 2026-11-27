@@ -1,5 +1,5 @@
+import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { MatchCardIdentity } from "./MatchCardIdentity";
 import { fetchSharedProfileVideos } from "@/lib/conversations";
 import type { UserProfile } from "@/lib/resonance";
@@ -13,10 +13,9 @@ export function ProfileVisibilityPreview({
 
   return (
     <details className="personal-section settings-disclosure group">
-      <summary className="personal-summary">
+      <DisclosureSummary className="personal-summary">
         <h2 className="personal-heading">Takto ťa uvidia ostatní</h2>
-        <ChevronDown className="size-5 group-open:rotate-180" aria-hidden="true" />
-      </summary>
+      </DisclosureSummary>
       <div className="grid gap-3 pt-3">
         <div className="personal-segments" role="group" aria-label="Viditeľnosť profilu">
           <button
