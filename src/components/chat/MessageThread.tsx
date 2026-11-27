@@ -1,6 +1,6 @@
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Eye, Mic, Reply, Send, Sparkles, X } from "lucide-react";
+import { ArrowLeft, Eye, ImagePlus, Mic, Reply, Send, Sparkles, X } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/lib/resonance";
 import {
   fetchSharedProfileVideos,
@@ -11,24 +11,23 @@ import {
   type ConversationPartner,
   type ConversationStatus,
 } from "@/lib/conversations";
-import { fetchChatMessages, saveChatMessage, supabase } from "@/lib/supabase";
+import { fetchChatMessages, saveChatMessage, uploadChatImage, supabase } from "@/lib/supabase";
+import { CHAT_IMAGE_ACCEPT, getChatImageExtension } from "@/lib/chat-images";
 import { useHaptic } from "@/hooks/use-haptics";
 import { VoiceBubble } from "./VoiceBubble";
 import { markConversationRead } from "@/lib/conversation-inbox";
 import { ConversationFeedback } from "./ConversationFeedback";
 import { SharedConversationQuestion } from "./SharedConversationQuestion";
 import { readSharedQuestion, type SharedQuestion } from "@/lib/shared-question";
-import {
-  readMeetingInterest,
-  setMeetingInterest,
-  type MeetingInterest,
-} from "@/lib/meeting-interest";
 
 const GIFS = [
-  "https://media.tenor.com/x8v1oNUOmg4AAAAi/heart-love.gif",
-  "https://media.tenor.com/Mxv-AaTHraEAAAAi/wave-hello.gif",
-  "https://media.tenor.com/I6kN-6X2HgAAAAi/sparkle-stars.gif",
+  { label: "Srdce", url: "https://media.tenor.com/x8v1oNUOmg4AAAAi/heart-love.gif" },
+  { label: "Pozdrav", url: "https://media.tenor.com/Mxv-AaTHraEAAAAi/wave-hello.gif" },
+  { label: "Iskry", url: "https://media.tenor.com/I6kN-6X2HgAAAAi/sparkle-stars.gif" },
 ];
+
+type ImageDraft = { kind: "upload"; file: File; id: string };
+type MediaDraft = { kind: "gif"; url: string } | ImageDraft;
 
 export function MessageThread({
   conversation,
@@ -54,25 +53,23 @@ export function MessageThread({
   const [input, setInput] = useState("");
   const [selectedReply, setSelectedReply] = useState<string | null>(null);
   const [sharedQuestion, setSharedQuestion] = useState<SharedQuestion | null>(null);
-  const [meeting, setMeeting] = useState<MeetingInterest | null>(null);
-  const [savingMeeting, setSavingMeeting] = useState(false);
-  const [meetingError, setMeetingError] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
   const [error, setError] = useState("");
-  const [failedSend, setFailedSend] = useState<{ text: string; gif?: string } | null>(null);
+  const [failedSend, setFailedSend] = useState<{ text: string; media?: MediaDraft } | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [playing, setPlaying] = useState<string | null>(null);
   const [showGifs, setShowGifs] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<ImageDraft | null>(null);
   const [showVideos, setShowVideos] = useState(false);
   const [videos, setVideos] = useState<string[] | null>(null);
   const [videosFailed, setVideosFailed] = useState(false);
   const listEnd = useRef<HTMLDivElement>(null);
   const composerInput = useRef<HTMLTextAreaElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const draft = useRef<{ key: string; id: string } | null>(null);
   const sendLock = useRef(false);
   const choiceLock = useRef(false);
-  const meetingLock = useRef(false);
   const request = useRef(0);
   const lastReadId = useRef<string | null>(null);
   const latestIncoming = conversation.messages.reduce<ChatMessage | null>(
@@ -97,17 +94,6 @@ export function MessageThread({
       if (current !== request.current) return;
       setStatus(next);
       setLoadFailed(false);
-      if (
-        next.status === "active" &&
-        messages.some((message) => message.from === "me") &&
-        messages.some((message) => message.from === "them")
-      ) {
-        void readMeetingInterest(conversation.id)
-          .then((result) => {
-            if (current === request.current) setMeeting(result);
-          })
-          .catch(() => {});
-      }
       onUpdate((previous) => ({
         ...previous,
         status: next.status === "active" ? "active" : "closed",
@@ -224,24 +210,6 @@ export function MessageThread({
     }
   }
 
-  async function changeMeetingInterest(interested: boolean) {
-    if (meetingLock.current) return;
-    meetingLock.current = true;
-    setSavingMeeting(true);
-    setMeetingError(false);
-    try {
-      const result = await setMeetingInterest(conversation.id, interested);
-      void refresh();
-      setMeeting(result);
-      haptic("tap");
-    } catch {
-      setMeetingError(true);
-    } finally {
-      meetingLock.current = false;
-      setSavingMeeting(false);
-    }
-  }
-
   const hasMessages = conversation.messages.length > 0;
   const reflection = match.shared_reflection?.trim() ? match.shared_reflection : null;
   const hasReplyContext =
@@ -259,45 +227,57 @@ export function MessageThread({
     composerInput.current?.focus();
   }
 
-  async function send(gif?: string) {
-    const text = gif ? "" : input.trim();
-    if ((!text && !gif) || sendLock.current || status?.status !== "active") return;
+  async function send(mediaDraft?: MediaDraft) {
+    const text = mediaDraft ? "" : input.trim();
+    if ((!text && !mediaDraft) || sendLock.current || status?.status !== "active") return;
     sendLock.current = true;
     setFailedSend(null);
     setSending(true);
     setError("");
-    const key = gif ?? text;
+    const key = mediaDraft?.kind === "upload" ? mediaDraft.id : (mediaDraft?.url ?? text);
     if (draft.current?.key !== key) draft.current = { key, id: crypto.randomUUID() };
-    const media = gif ? { kind: "gif" as const, url: gif } : undefined;
+
     try {
-      const saved = await saveChatMessage(
-        conversation.id,
-        userId,
-        text,
-        media,
-        draft.current.id,
-        gif ? undefined : (replyContext ?? undefined),
-      );
+      const { message, media } =
+        mediaDraft?.kind === "upload"
+          ? await uploadChatImage(conversation.id, userId, mediaDraft.file, mediaDraft.id)
+          : {
+              message: await saveChatMessage(
+                conversation.id,
+                userId,
+                text,
+                mediaDraft,
+                draft.current.id,
+                mediaDraft ? undefined : (replyContext ?? undefined),
+              ),
+              media: mediaDraft,
+            };
       onUpdate((previous) => ({
         ...previous,
         messages: mergeMessages(previous.messages, [
           {
-            id: saved.id,
+            id: message.id,
             from: "me",
-            text,
-            replyContext: saved.reply_context ?? undefined,
-            ts: new Date(saved.created_at).getTime(),
+            text:
+              mediaDraft?.kind === "upload" && !media
+                ? "Obrázok sa načíta po obnovení rozhovoru."
+                : text,
+            replyContext: message.reply_context ?? undefined,
+            ts: new Date(message.created_at).getTime(),
             media,
           },
         ]),
       }));
-      setInput((current) => (gif || current.trim() !== text ? current : ""));
+      if (!mediaDraft) {
+        setInput((current) => (current.trim() !== text ? current : ""));
+        setSelectedReply(null);
+      }
+      if (mediaDraft?.kind === "upload") setSelectedImage(null);
       setShowGifs(false);
-      setSelectedReply(null);
       draft.current = null;
       haptic("send");
     } catch {
-      setFailedSend({ text, gif });
+      setFailedSend({ text, media: mediaDraft });
       setError("Správu sa nepodarilo odoslať.");
       void refresh();
     } finally {
@@ -306,10 +286,22 @@ export function MessageThread({
     }
   }
 
+  function selectChatImage(file?: File) {
+    if (!file) return;
+    setFailedSend(null);
+    if (!getChatImageExtension(file)) {
+      setSelectedImage(null);
+      setError("Vyber GIF, JPG, PNG alebo WebP do 8 MB.");
+      return;
+    }
+    setError("");
+    setSelectedImage({ kind: "upload", file, id: crypto.randomUUID() });
+  }
+
   const isOpen = status?.status === "active";
   const showPilotQuestion =
     isOpen && latestIncoming && conversation.messages.some((message) => message.from === "me");
-  const canRetrySend = failedSend && (failedSend.gif || failedSend.text === input.trim());
+  const canRetrySend = failedSend && (failedSend.media || failedSend.text === input.trim());
   return (
     <section className="conversation-screen" aria-label="Rozhovor">
       <header className="conversation-header flex shrink-0 items-center gap-3 px-3 py-3">
@@ -470,8 +462,9 @@ export function MessageThread({
                 {message.media && (
                   <img
                     src={message.media.url}
-                    alt="Animovaný obrázok"
-                    className="mb-2 max-w-full rounded-md"
+                    alt={message.media.kind === "gif" ? "Odoslaný GIF" : "Odoslaný obrázok"}
+                    loading="lazy"
+                    className="max-h-80 max-w-full rounded-md object-contain"
                   />
                 )}
                 {message.replyContext && (
@@ -486,11 +479,6 @@ export function MessageThread({
               </div>
             </div>
           ),
-        )}
-        {isOpen && meeting?.mutual && (
-          <p role="status" className="conversation-intro font-semibold">
-            Obaja sa chcete stretnúť.
-          </p>
         )}
         {showPilotQuestion && <ConversationFeedback matchId={conversation.id} userId={userId} />}
         <div ref={listEnd} />
@@ -524,7 +512,7 @@ export function MessageThread({
                 <button
                   type="button"
                   disabled={sending}
-                  onClick={() => void send(failedSend.gif)}
+                  onClick={() => void send(failedSend.media)}
                   className="personal-action"
                 >
                   Skúsiť znova
@@ -533,23 +521,73 @@ export function MessageThread({
             </div>
           )}
           {showGifs && (
-            <div className="flex flex-wrap gap-2 px-3 pt-2">
-              {GIFS.map((url, index) => (
+            <section
+              id="chat-media-picker"
+              className="grid gap-2 px-3 pt-2"
+              aria-label="GIFy a mémy"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                {GIFS.map(({ label, url }) => (
+                  <button
+                    type="button"
+                    key={url}
+                    disabled={sending}
+                    className="min-h-12 rounded-md"
+                    aria-label={"Odoslať GIF – " + label}
+                    onClick={() => void send({ kind: "gif", url })}
+                  >
+                    <img src={url} alt="" className="size-12 rounded-md object-cover" />
+                  </button>
+                ))}
                 <button
                   type="button"
-                  key={url}
+                  className="personal-action min-h-11"
                   disabled={sending}
-                  className="min-h-12"
-                  onClick={() => void send(url)}
+                  onClick={() => fileInput.current?.click()}
                 >
-                  <img
-                    src={url}
-                    alt={"Odoslať GIF " + (index + 1)}
-                    className="size-12 rounded-md object-cover"
-                  />
+                  <ImagePlus className="size-4" aria-hidden="true" />Z galérie
                 </button>
-              ))}
-            </div>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept={CHAT_IMAGE_ACCEPT}
+                  aria-label="Vybrať GIF alebo mém"
+                  className="hidden"
+                  onChange={(event) => {
+                    selectChatImage(event.currentTarget.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </div>
+              {selectedImage && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted p-2">
+                  <span className="min-w-0 flex-1 truncate text-sm">{selectedImage.file.name}</span>
+                  <button
+                    type="button"
+                    className="conversation-header-action"
+                    aria-label="Odstrániť prílohu"
+                    disabled={sending}
+                    onClick={() => {
+                      setSelectedImage(null);
+                      setFailedSend(null);
+                      setError("");
+                    }}
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </button>
+                  {failedSend?.media?.kind !== "upload" && (
+                    <button
+                      type="button"
+                      className="personal-action"
+                      disabled={sending}
+                      onClick={() => void send(selectedImage)}
+                    >
+                      {sending ? "Odosielam…" : "Odoslať obrázok"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </section>
           )}
           <form
             className="flex items-end gap-2 p-3"
@@ -567,17 +605,16 @@ export function MessageThread({
             >
               <Mic className="size-5" aria-hidden="true" />
             </button>
-            {hasMessages && (
-              <button
-                type="button"
-                className="conversation-header-action"
-                aria-label="GIFy"
-                aria-expanded={showGifs}
-                onClick={() => setShowGifs((open) => !open)}
-              >
-                <Sparkles className="size-5" aria-hidden="true" />
-              </button>
-            )}
+            <button
+              type="button"
+              className="conversation-header-action shrink-0"
+              aria-label="GIFy a mémy"
+              aria-expanded={showGifs}
+              aria-controls="chat-media-picker"
+              onClick={() => setShowGifs((open) => !open)}
+            >
+              <Sparkles className="size-5" aria-hidden="true" />
+            </button>
             <textarea
               ref={composerInput}
               className="conversation-input"
@@ -606,30 +643,6 @@ export function MessageThread({
           </form>
           <details className="px-3 pb-2 text-sm">
             <DisclosureSummary className="font-semibold">Možnosti rozhovoru</DisclosureSummary>
-            {meeting && (
-              <section className="mb-3 border-b border-foreground/15 pb-3" aria-label="Stretnutie">
-                <p className="mb-2 text-muted-foreground">
-                  {meeting.mutual
-                    ? "Záujem o stretnutie ste potvrdili obaja."
-                    : meeting.interested
-                      ? "Tvoj záujem je uložený. Druhý človek ho uvidí, len ak má záujem aj on."
-                      : "Tvoj záujem sa zobrazí, len ak ho vyjadríte obaja."}
-                </p>
-                <button
-                  type="button"
-                  className="personal-action"
-                  disabled={savingMeeting}
-                  onClick={() => void changeMeetingInterest(!meeting.interested)}
-                >
-                  {meeting.interested ? "Odvolať záujem" : "Chcem sa stretnúť"}
-                </button>
-                {meetingError && (
-                  <p role="alert" className="mt-2 text-destructive">
-                    Záujem sa nepodarilo uložiť. Skús to znova.
-                  </p>
-                )}
-              </section>
-            )}
             <p className="mb-2 text-muted-foreground">Rozhovor môžeš ukončiť kedykoľvek.</p>
             <div className="flex flex-wrap gap-2">
               <button
