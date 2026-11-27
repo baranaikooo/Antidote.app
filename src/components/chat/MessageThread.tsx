@@ -12,7 +12,7 @@ import {
   type ConversationStatus,
 } from "@/lib/conversations";
 import { fetchChatMessages, saveChatMessage, supabase } from "@/lib/supabase";
-import { CHAT_GIFS, chatGifUrl, readChatGif, type ChatGifId } from "@/lib/chat-reactions";
+import { FEATURED_GIFS, isKlipyGif, matchFeaturedGifs, type ChatGif } from "@/lib/chat-reactions";
 import { useHaptic } from "@/hooks/use-haptics";
 import { VoiceBubble } from "./VoiceBubble";
 import { markConversationRead } from "@/lib/conversation-inbox";
@@ -47,17 +47,23 @@ export function MessageThread({
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
   const [error, setError] = useState("");
-  const [failedSend, setFailedSend] = useState<{ text: string; reaction?: ChatGifId } | null>(null);
+  const [failedSend, setFailedSend] = useState<{ text: string; reaction?: ChatGif } | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [playing, setPlaying] = useState<string | null>(null);
   const [showGifs, setShowGifs] = useState(false);
+  const [gifQuery, setGifQuery] = useState("");
+  const [gifResults, setGifResults] = useState<{
+    query: string;
+    gifs: ChatGif[];
+    live: boolean;
+  } | null>(null);
   const [showVideos, setShowVideos] = useState(false);
   const [videos, setVideos] = useState<string[] | null>(null);
   const [videosFailed, setVideosFailed] = useState(false);
   const listEnd = useRef<HTMLDivElement>(null);
   const composerInput = useRef<HTMLTextAreaElement>(null);
   const reactionTrigger = useRef<HTMLButtonElement>(null);
-  const gifSource = useRef<HTMLAnchorElement>(null);
+  const gifSearchInput = useRef<HTMLInputElement>(null);
   const draft = useRef<{ key: string; id: string } | null>(null);
   const sendLock = useRef(false);
   const choiceLock = useRef(false);
@@ -70,8 +76,41 @@ export function MessageThread({
   const seenMessageId = latestIncoming?.id;
 
   useEffect(() => {
-    if (showGifs) gifSource.current?.focus({ preventScroll: true });
+    if (showGifs && window.matchMedia?.("(pointer: fine)").matches)
+      gifSearchInput.current?.focus({ preventScroll: true });
   }, [showGifs]);
+
+  const query = gifQuery.trim();
+  const search = query.length >= 2 && gifResults?.query === query ? gifResults : null;
+  const displayedGifs = query.length < 2 ? FEATURED_GIFS : (search?.gifs ?? []);
+
+  useEffect(() => {
+    if (!showGifs || query.length < 2) return;
+    let current = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("search-chat-gifs", {
+          body: { query },
+        });
+        if (!current) return;
+        if (error || data?.source !== "klipy" || !Array.isArray(data.gifs)) {
+          setGifResults({ query, gifs: matchFeaturedGifs(query), live: false });
+          return;
+        }
+        const gifs = (data.gifs as ChatGif[]).filter(
+          (gif) =>
+            isKlipyGif(gif?.url) && isKlipyGif(gif.previewUrl) && typeof gif.label === "string",
+        );
+        setGifResults({ query, gifs, live: true });
+      } catch {
+        if (current) setGifResults({ query, gifs: matchFeaturedGifs(query), live: false });
+      }
+    }, 450);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [query, showGifs]);
 
   // The lock only serializes saves. The server decides whether a conversation is open.
   const refresh = useCallback(async () => {
@@ -222,14 +261,14 @@ export function MessageThread({
     composerInput.current?.focus();
   }
 
-  async function send(reaction?: ChatGifId) {
+  async function send(reaction?: ChatGif) {
     const text = reaction ? "" : input.trim();
     if ((!text && !reaction) || sendLock.current || status?.status !== "active") return;
     sendLock.current = true;
     setFailedSend(null);
     setSending(true);
     setError("");
-    const key = reaction ? "reaction:" + reaction : "text:" + text;
+    const key = reaction ? "reaction:" + reaction.url : "text:" + text;
     if (draft.current?.key !== key) draft.current = { key, id: crypto.randomUUID() };
 
     try {
@@ -237,7 +276,7 @@ export function MessageThread({
         conversation.id,
         userId,
         text,
-        reaction,
+        reaction?.url,
         draft.current.id,
         reaction ? undefined : (replyContext ?? undefined),
       );
@@ -250,7 +289,7 @@ export function MessageThread({
             text,
             replyContext: message.reply_context ?? undefined,
             ts: new Date(message.created_at).getTime(),
-            media: reaction ? readChatGif(chatGifUrl(reaction)) : undefined,
+            media: reaction ? { kind: "gif", url: reaction.url, label: reaction.label } : undefined,
           },
         ]),
       }));
@@ -508,27 +547,45 @@ export function MessageThread({
                 reactionTrigger.current?.focus({ preventScroll: true });
               }}
             >
-              <a
-                ref={gifSource}
-                href="https://giphy.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="justify-self-start rounded px-1 text-sm text-muted-foreground underline underline-offset-2"
-              >
-                GIFy od GIPHY
-              </a>
+              <div className="grid gap-1">
+                <input
+                  ref={gifSearchInput}
+                  type="search"
+                  aria-label="Hľadať GIFy"
+                  placeholder="Search KLIPY"
+                  maxLength={80}
+                  value={gifQuery}
+                  onChange={(event) => setGifQuery(event.target.value)}
+                  className="conversation-input w-full"
+                />
+                {query.length < 2 || search?.live === false ? (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    {search?.live === false
+                      ? "Výsledky zo základného výberu GIPHY."
+                      : "Výber z GIPHY"}
+                  </p>
+                ) : search ? (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    {displayedGifs.length ? "Powered by KLIPY" : "Žiadne GIFy. Skús iné slovo."}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground" role="status">
+                    Hľadám GIFy…
+                  </p>
+                )}
+              </div>
               <div className="grid max-h-[min(16rem,34dvh)] grid-cols-3 gap-2 overflow-y-auto overscroll-contain px-0.5 py-0.5 sm:grid-cols-4">
-                {CHAT_GIFS.map((gif) => (
+                {displayedGifs.map((gif) => (
                   <button
                     type="button"
-                    key={gif.id}
+                    key={gif.url}
                     className="min-h-11 overflow-hidden rounded-lg border border-foreground/15 bg-muted"
                     disabled={sending}
                     aria-label={`Odoslať GIF – ${gif.label}`}
-                    onClick={() => void send(gif.id)}
+                    onClick={() => void send(gif)}
                   >
                     <img
-                      src={chatGifUrl(gif.id, true)}
+                      src={gif.previewUrl}
                       alt=""
                       loading="lazy"
                       referrerPolicy="no-referrer"

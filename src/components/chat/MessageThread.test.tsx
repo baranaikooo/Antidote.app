@@ -7,6 +7,7 @@ import { MessageThread } from "./MessageThread";
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   question: vi.fn(),
+  gifSearch: vi.fn(),
   choice: vi.fn(),
   videos: vi.fn(),
   messages: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("@/lib/supabase", () => ({
   saveChatMessage: mocks.send,
   supabase: {
     rpc: (name: string, args: unknown) => mocks.question(name, args),
+    functions: { invoke: mocks.gifSearch },
     channel: () => {
       const channel = { on: () => channel, subscribe: () => channel };
       return channel;
@@ -253,7 +255,7 @@ it("submits an optional answer and can withdraw it before the mutual reveal", as
   });
 });
 
-it("only offers approved GIPHY entries and sends a catalog ID from a fresh chat", async () => {
+it("only offers approved GIPHY entries and sends a canonical URL from a fresh chat", async () => {
   render(<Thread />);
   fireEvent.click(await screen.findByRole("button", { name: "GIFy" }));
   expect(screen.getAllByRole("button", { name: /^Odoslať GIF/ })).toHaveLength(24);
@@ -266,5 +268,51 @@ it("only offers approved GIPHY entries and sends a catalog ID from a fresh chat"
     "src",
     "https://media.giphy.com/media/Wj116ZszUZEwRIoz0j/200w.gif",
   );
-  expect(mocks.send.mock.calls[0].slice(0, 4)).toEqual(["match", "me", "", "Wj116ZszUZEwRIoz0j"]);
+  expect(mocks.send.mock.calls[0].slice(0, 4)).toEqual([
+    "match",
+    "me",
+    "",
+    "https://media.giphy.com/media/Wj116ZszUZEwRIoz0j/200w.gif",
+  ]);
+});
+
+it("searches the provider, excludes foreign media and sends a returned GIF", async () => {
+  const url = "https://static.klipy.com/ii/sample/hello.gif";
+  mocks.gifSearch.mockResolvedValue({
+    data: {
+      source: "klipy",
+      gifs: [
+        { url, previewUrl: url, label: "Mačka z katalógu" },
+        { url: "https://example.test/no.gif", previewUrl: url, label: "Cudzia príloha" },
+      ],
+    },
+    error: null,
+  });
+  mocks.send.mockResolvedValue({ id: "gif", created_at: "2026-11-27T10:00:00Z" });
+  render(<Thread />);
+  fireEvent.click(await screen.findByRole("button", { name: "GIFy" }));
+  fireEvent.change(screen.getByRole("searchbox", { name: "Hľadať GIFy" }), {
+    target: { value: "mačka" },
+  });
+  const item = await screen.findByRole("button", { name: "Odoslať GIF – Mačka z katalógu" });
+  expect(mocks.gifSearch).toHaveBeenCalledWith("search-chat-gifs", { body: { query: "mačka" } });
+  expect(
+    screen.queryByRole("button", { name: "Odoslať GIF – Cudzia príloha" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(item);
+  expect(await screen.findByRole("img", { name: "Mačka z katalógu" })).toHaveAttribute("src", url);
+  expect(mocks.send.mock.calls[0][3]).toBe(url);
+});
+
+it("searches the featured catalog without accents if the provider is not configured", async () => {
+  mocks.gifSearch.mockResolvedValue({ data: { source: "featured" }, error: null });
+  render(<Thread />);
+  fireEvent.click(await screen.findByRole("button", { name: "GIFy" }));
+  fireEvent.change(screen.getByRole("searchbox", { name: "Hľadať GIFy" }), {
+    target: { value: "kava" },
+  });
+  expect(
+    await screen.findByRole("button", { name: "Odoslať GIF – Káva a žmurknutie" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Odoslať GIF – Mávanie" })).not.toBeInTheDocument();
 });

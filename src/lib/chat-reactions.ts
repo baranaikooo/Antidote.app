@@ -25,20 +25,37 @@ export const CHAT_GIFS = [
   { id: "JRQeedL8rzLlSvimz9", label: "Mačacie trio" },
 ] as const;
 
-export type ChatGifId = (typeof CHAT_GIFS)[number]["id"];
+export type ChatGif = { url: string; previewUrl: string; label: string };
+const KLIPY_GIF = /^https:\/\/static[.]klipy[.]com\/ii\/[A-Za-z0-9/_-]+[.]gif$/;
 
-const GIPHY_MEDIA_ROOT = "https://media.giphy.com/media/";
-const GIPHY_GIF_FILE = "/200w.gif";
+export const FEATURED_GIFS: ChatGif[] = CHAT_GIFS.map(({ id, label }) => ({
+  url: `https://media.giphy.com/media/${id}/200w.gif`,
+  previewUrl: `https://media.giphy.com/media/${id}/200w_s.gif`,
+  label,
+}));
 
-export function chatGifUrl(id: ChatGifId, preview = false) {
-  return GIPHY_MEDIA_ROOT + id + (preview ? "/200w_s.gif" : GIPHY_GIF_FILE);
+const approvedGifs = new Map(FEATURED_GIFS.map((gif) => [gif.url, gif]));
+
+export function isKlipyGif(url: unknown): url is string {
+  return typeof url === "string" && url.length <= 512 && KLIPY_GIF.test(url);
 }
 
-const approvedGifs = new Map<string, (typeof CHAT_GIFS)[number]>(
-  CHAT_GIFS.map((gif) => [chatGifUrl(gif.id), gif]),
-);
-
 export function readChatGif(url?: string | null) {
-  const gif = url ? approvedGifs.get(url) : undefined;
-  return gif ? { kind: "gif" as const, url: chatGifUrl(gif.id), label: gif.label } : undefined;
+  if (!url) return undefined;
+  const gif = approvedGifs.get(url);
+  return gif || isKlipyGif(url)
+    ? { kind: "gif" as const, url, label: gif?.label ?? "GIF" }
+    : undefined;
+}
+
+export function matchFeaturedGifs(query: string) {
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .toLowerCase();
+  const words = normalize(query).split(/\s+/).filter(Boolean);
+  return FEATURED_GIFS.filter(({ label }) =>
+    words.every((word) => normalize(label).includes(word)),
+  );
 }

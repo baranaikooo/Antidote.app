@@ -187,3 +187,9 @@ For issues or questions, check the browser console for detailed error logs prefi
 - `[auth]` - Authentication issues
 - `[voice]` - Voice recording issues
 - `[liveness]` - Video recording issues
+
+## Vyhľadávanie GIFov v chate
+
+Živé vyhľadávanie používa Supabase Edge Function `search-chat-gifs`. Vygeneruj aplikačný kľúč v [KLIPY Partner Paneli](https://partner.klipy.com/api-keys) a ulož ho ako `KLIPY_APP_KEY` v [Supabase Edge Function Secrets](https://supabase.com/dashboard/project/ozjrvfzusojrajcoesed/functions/secrets). Kľúč patrí do Supabase secrets.
+
+Vyhľadaj v prihlásenom chate napríklad „mačka“. Výsledky živého vyhľadávania majú označenie **Powered by KLIPY**. Ak kľúč nie je nastavený alebo služba dočasne zlyhá, vyhľadávanie prehľadáva označený základný výber z GIPHY.

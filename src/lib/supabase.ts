@@ -5,7 +5,7 @@ import { Browser } from "@capacitor/browser";
 import { ChatMessage } from "./resonance";
 import { readPriorityDistribution } from "./priority-distribution";
 import { readSituationScores } from "./situation-scores";
-import { chatGifUrl, readChatGif, type ChatGifId } from "./chat-reactions";
+import { readChatGif } from "./chat-reactions";
 
 const sanitize = (val: string) => {
   return (val || "").trim().replace(/[^\x20-\x7E]/g, "");
@@ -461,7 +461,7 @@ export async function saveChatMessage(
   matchId: string,
   senderId: string,
   text: string,
-  reaction?: ChatGifId,
+  gifUrl?: string,
   messageId: string = crypto.randomUUID(),
   replyContext?: string,
 ): Promise<any> {
@@ -473,7 +473,7 @@ export async function saveChatMessage(
       sender_id: senderId,
       message_text: text,
       reply_context: replyContext,
-      media_url: reaction ? chatGifUrl(reaction) : null,
+      media_url: gifUrl ?? null,
       duration: null,
     })
     .select()
