@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { UserProfile, ThemeMode } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
-import { supabase } from "@/lib/supabase";
+import { removeOwnChatImages, supabase } from "@/lib/supabase";
 import { BackgroundGeoEngine } from "@/lib/geo";
 
 interface SystemConfigProps {
@@ -253,6 +253,14 @@ export function SystemConfig({
 
   async function executeDataWipe() {
     if (user.id && user.id !== "00000000-0000-0000-0000-000000000001") {
+      try {
+        await removeOwnChatImages(user.id);
+      } catch (error) {
+        console.error("[settings] failed to delete chat images:", error);
+        setFreezeMessage("Obrázky z rozhovorov sa nepodarilo zmazať. Skús to znova.");
+        setShowWipeConfirm(false);
+        return;
+      }
       const { error } = await supabase.rpc("delete_own_user");
 
       if (error) {

@@ -106,7 +106,6 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
     h: "3. Účely spracúvania",
     p: [
       "Poskytovanie služby — párovanie, komunikácia, bezpečnosť účtu.",
-      "Dobrovoľný záujem o stretnutie uložíme pri rozhovore. Druhý účastník ho uvidí, len ak tiež prejaví záujem. Svoj záujem môžeš kedykoľvek odvolať.",
       "Zlepšovanie kvality (v agregovanej, anonymizovanej forme).",
       "Plnenie zákonných povinností.",
     ],
@@ -116,7 +115,7 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
     p: [
       "Profilové údaje: po dobu existencie účtu.",
       "Overovacie video: maximálne 30 dní, alebo do úspešného overenia.",
-      "Správy a odpovede na spoločné otázky ukladáme v Supabase. Ukončenie rozhovoru zruší prístup účastníkov cez aplikáciu. Odpoveď na spoločnú otázku môžeš stiahnuť pred jej sprístupnením druhému účastníkovi.",
+      "Správy, obrázky a odpovede na spoločné otázky ukladáme v Supabase. Ukončenie rozhovoru zruší prístup účastníkov cez aplikáciu. Odpoveď na spoločnú otázku môžeš stiahnuť pred jej sprístupnením druhému účastníkovi.",
     ],
   },
   {

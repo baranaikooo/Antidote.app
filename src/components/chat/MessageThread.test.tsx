@@ -7,7 +7,7 @@ import { MessageThread } from "./MessageThread";
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   question: vi.fn(),
-  meeting: vi.fn(),
+  uploadImage: vi.fn(),
   choice: vi.fn(),
   videos: vi.fn(),
   messages: vi.fn(),
@@ -26,9 +26,9 @@ vi.mock("@/lib/conversations", () => ({
 vi.mock("@/lib/supabase", () => ({
   fetchChatMessages: mocks.messages,
   saveChatMessage: mocks.send,
+  uploadChatImage: mocks.uploadImage,
   supabase: {
-    rpc: (name: string, args: unknown) =>
-      name.endsWith("meeting_interest") ? mocks.meeting(name, args) : mocks.question(name, args),
+    rpc: (name: string, args: unknown) => mocks.question(name, args),
     channel: () => {
       const channel = { on: () => channel, subscribe: () => channel };
       return channel;
@@ -79,7 +79,6 @@ function Thread({ onClose = () => {} }: { onClose?: () => void }) {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.read.mockResolvedValue(open);
-  mocks.meeting.mockResolvedValue({ data: null, error: null });
   mocks.question.mockResolvedValue({ data: null, error: null });
   mocks.messages.mockResolvedValue([]);
   mocks.markRead.mockResolvedValue(undefined);
@@ -256,27 +255,24 @@ it("submits an optional answer and can withdraw it before the mutual reveal", as
   });
 });
 
-it("keeps a single meeting choice private in the chat and shows the result after mutual interest", async () => {
-  mocks.messages.mockResolvedValue([
-    { id: "one", from: "me", text: "Ahoj", ts: 1 },
-    { id: "two", from: "them", text: "Ahoj", ts: 2 },
-  ]);
-  mocks.meeting.mockResolvedValue({ data: { interested: false, mutual: false }, error: null });
+it("offers GIFs and meme uploads in a fresh chat without offering a meeting", async () => {
   render(<Thread />);
-  fireEvent.click(await screen.findByText("Možnosti rozhovoru"));
-  const control = await screen.findByRole("button", { name: "Chcem sa stretnúť" });
+  fireEvent.click(await screen.findByRole("button", { name: "GIFy a mémy" }));
+  expect(screen.getByRole("button", { name: "Odoslať GIF – Pozdrav" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Chcem sa stretnúť" })).not.toBeInTheDocument();
 
-  mocks.meeting.mockResolvedValue({ data: { interested: true, mutual: false }, error: null });
-  fireEvent.click(control);
-  await screen.findByRole("button", { name: "Odvolať záujem" });
-  expect(screen.queryByText("Obaja sa chcete stretnúť.")).not.toBeInTheDocument();
-  expect(mocks.meeting).toHaveBeenCalledWith("set_meeting_interest", {
-    p_match_id: "match",
-    p_interested: true,
+  const file = new File(["fixture"], "mem.gif", { type: "image/gif" });
+  fireEvent.change(screen.getByLabelText("Vybrať GIF alebo mém"), { target: { files: [file] } });
+  expect(await screen.findByText("mem.gif")).toBeInTheDocument();
+  expect(mocks.uploadImage).not.toHaveBeenCalled();
+  mocks.uploadImage.mockResolvedValue({
+    message: { id: "image", created_at: "2026-11-27T10:00:00Z" },
+    media: { kind: "gif", url: "https://fixture.test/signed.gif" },
   });
-  expect(mocks.send).not.toHaveBeenCalled();
-
-  mocks.meeting.mockResolvedValue({ data: { interested: true, mutual: true }, error: null });
-  fireEvent(window, new Event("online"));
-  expect(await screen.findByText("Obaja sa chcete stretnúť.")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Odoslať obrázok" }));
+  expect(await screen.findByRole("img", { name: "Odoslaný GIF" })).toHaveAttribute(
+    "src",
+    "https://fixture.test/signed.gif",
+  );
+  expect(mocks.uploadImage.mock.calls[0].slice(0, 3)).toEqual(["match", "me", file]);
 });
