@@ -82,7 +82,7 @@ export function RecordButton({
               <span className="tabular-nums">{formatClock(draft.duration)}</span>
             </div>
 
-            <div className="flex items-center gap-3 border border-foreground/25 bg-card px-3.5 py-2.5">
+            <div className="flex items-center gap-3 rounded-xl border border-foreground/15 bg-background px-3.5 py-2.5">
               <button
                 type="button"
                 onClick={togglePreview}
@@ -152,7 +152,7 @@ export function RecordButton({
                   previewAudioRef.current?.pause();
                   onDiscardDraft?.();
                 }}
-                className="flex items-center justify-center gap-2 border border-foreground/25 bg-transparent px-4 py-3.5 text-sm font-medium text-foreground/80 transition-colors hover:border-foreground/50 hover:text-foreground disabled:opacity-40 cursor-pointer"
+                className="flex items-center justify-center gap-2 rounded-xl border border-foreground/20 bg-transparent px-4 py-3.5 text-sm font-semibold text-foreground/85 transition-colors hover:border-foreground/45 hover:bg-muted disabled:opacity-40 cursor-pointer"
               >
                 <RotateCcw className="size-4" />
                 <span>Nahrať znova</span>
@@ -176,18 +176,25 @@ export function RecordButton({
         ) : recording ? (
           <div className="space-y-3 animate-fade-up">
             <div className="flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-2 font-medium text-cerebral">
-                <span className="size-2 animate-pulse rounded-full bg-cerebral" />
+              <span className="inline-flex items-center gap-2 font-semibold text-accent">
+                <span className="size-2 animate-pulse rounded-full bg-accent" />
                 Nahrávaš odpoveď
               </span>
-              <span className="text-foreground/75">
+              <span className="font-semibold tabular-nums text-foreground/80">
                 {formatClock(Math.min(recLen, maxSeconds))}{" "}
-                <span className="text-foreground/35">/ {formatClock(maxSeconds)}</span>
+                <span className="text-foreground/45">/ {formatClock(maxSeconds)}</span>
               </span>
             </div>
 
+            <div className="h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+              <div
+                className="h-full rounded-full bg-accent transition-[width] duration-200 ease-linear"
+                style={{ width: `${Math.min(100, (recLen / maxSeconds) * 100)}%` }}
+              />
+            </div>
+
             <div
-              className="flex h-8 items-center gap-1 border border-foreground/15 bg-card px-3"
+              className="flex h-9 items-center gap-1 rounded-xl border border-foreground/15 bg-background px-3"
               aria-hidden
             >
               {Array.from({ length: 20 }).map((_, idx) => {
@@ -199,7 +206,7 @@ export function RecordButton({
                 return (
                   <span
                     key={idx}
-                    className="flex-1 rounded-full bg-cerebral transition-all duration-100"
+                    className="flex-1 rounded-full bg-accent transition-all duration-100"
                     style={{ height: `${barHeight}%` }}
                   />
                 );
@@ -214,7 +221,7 @@ export function RecordButton({
                   onCancel();
                 }}
                 aria-label="Zahodiť nahrávanie"
-                className="flex items-center gap-2 border border-foreground/25 px-4 py-3.5 text-sm text-foreground/75 transition-colors hover:border-foreground/50 hover:text-foreground cursor-pointer"
+                className="flex items-center gap-2 rounded-xl border border-foreground/20 px-4 py-3.5 text-sm font-medium text-foreground/80 transition-colors hover:border-foreground/45 hover:bg-muted cursor-pointer"
               >
                 <Trash2 className="size-4" />
                 <span>Zahodiť</span>
@@ -226,7 +233,7 @@ export function RecordButton({
                   haptic("medium");
                   onCommit();
                 }}
-                className="tactile-button flex items-center justify-center gap-2 bg-foreground px-5 py-3.5 font-display text-sm font-bold text-background cursor-pointer"
+                className="tactile-button flex items-center justify-center gap-2 bg-accent px-5 py-3.5 font-display text-sm font-bold text-accent-foreground cursor-pointer"
               >
                 <Square className="size-3.5 fill-current" />
                 <span>Hotovo · vypočuť si</span>

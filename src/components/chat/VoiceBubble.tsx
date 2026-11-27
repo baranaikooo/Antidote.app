@@ -159,8 +159,10 @@ export function VoiceBubble({
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
       <div
-        className={`w-full max-w-[88%] border px-4 py-3 transition-colors ${
-          mine ? "border-foreground/30 bg-foreground/[0.08]" : "border-foreground/20 bg-card"
+        className={`w-full max-w-[85%] rounded-2xl border px-4 py-3 transition-colors ${
+          mine
+            ? "border-accent/25 bg-accent/12 text-foreground"
+            : "border-foreground/15 bg-card text-foreground"
         }`}
       >
         <div className="flex items-center gap-3">
@@ -170,11 +172,9 @@ export function VoiceBubble({
             disabled={!canPlay}
             aria-label={playing ? "Pozastaviť hlasovku" : "Prehrať hlasovku"}
             className={`grid size-10 shrink-0 place-items-center rounded-full border transition-transform active:scale-95 disabled:opacity-40 cursor-pointer ${
-              playing
-                ? "border-cerebral bg-cerebral text-background"
-                : mine
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-foreground/35 bg-transparent text-foreground hover:border-foreground"
+              playing || mine
+                ? "border-accent bg-accent text-accent-foreground"
+                : "border-foreground/25 bg-muted text-foreground hover:border-accent"
             }`}
           >
             {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-[1px]" />}
@@ -233,7 +233,7 @@ export function VoiceBubble({
             type="button"
             onClick={toggleSpeed}
             aria-label="Rýchlosť prehrávania"
-            className="shrink-0 border border-foreground/20 px-2 py-1 text-xs text-foreground/65 transition-colors hover:border-foreground/45 hover:text-foreground cursor-pointer"
+            className="shrink-0 rounded-lg border border-foreground/20 bg-background/60 px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground/75 transition-colors hover:border-accent hover:text-foreground cursor-pointer"
           >
             {speed}×
           </button>

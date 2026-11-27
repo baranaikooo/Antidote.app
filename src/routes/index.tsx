@@ -7,50 +7,25 @@ import {
 } from "@/lib/priority-distribution";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Mic,
-  Send,
-  Phone,
   Compass,
   Heart,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
-  Play,
-  Pause,
   Check,
-  X,
   Camera,
   MessageCircle,
   MapPin,
-  ArrowLeft,
   Home,
   RefreshCw,
   Radar,
-  Trash2,
   Settings as SettingsIcon,
-  Sun,
-  Moon,
-  Shield,
-  FileText,
-  Cookie,
-  Mail,
-  Trash,
-  Paperclip,
-  Image as ImageIcon,
   User,
-  MoreVertical,
-  AlertTriangle,
 } from "lucide-react";
 import {
   pickScenarios,
-  calcResonance,
-  resonanceBreakdown,
-  catalystFor,
   orbSeedFor,
   toRankedMatch,
   type RecommendationRow,
-  partnerContinueDecision,
-  mockReply,
   archetypeOf,
   type Scenario,
   type Answer,
@@ -61,7 +36,6 @@ import {
   type Orientation,
   type RankedMatch,
   type Conversation,
-  type ChatMessage,
   type Archetype,
   haversineKm,
 } from "@/lib/resonance";
@@ -70,17 +44,10 @@ import { GoogleSignInButton, type GoogleProfile } from "@/components/GoogleSignI
 import { useHaptic } from "@/hooks/use-haptics";
 import {
   attachStreamToVideo,
-  cameraErrorMessage,
   createMediaRecorder,
-  micErrorMessage,
   openCamera,
-  openMic,
-  pickAudioMime,
   pickVideoMime,
-  recordStreamForMs,
   stopStream,
-  makeMockToneWavUrl,
-  blobToPlayableAudioUrl,
 } from "@/lib/media";
 import {
   getCurrentUser,
@@ -93,7 +60,6 @@ import {
   getOrCreateMatch,
 } from "@/lib/supabase";
 import { ChoiceSelect } from "@/components/ui/choice-select";
-import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { BirthDateFields } from "@/components/BirthDateFields";
 import { SemanticMirror } from "@/components/SemanticMirror";
 import { recommendationReason } from "@/lib/recommendation-reason";
@@ -106,8 +72,6 @@ import {
   inboxMessageLabel,
   type InboxConversation,
 } from "@/lib/conversation-inbox";
-import { IcebreakerDilemma } from "@/components/IcebreakerDilemma";
-import { VoiceBubble, VoiceMsg } from "@/components/chat/VoiceBubble";
 import { Chamber } from "@/components/chat/VoiceChamber";
 import { MessageThread } from "@/components/chat/MessageThread";
 import {
@@ -119,6 +83,7 @@ import {
 } from "@/components/settings/LegalAndSettings";
 import { AssetDossier } from "@/components/AssetDossier";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
+import { NebulaOrb } from "@/components/NebulaOrb";
 import { SystemConfig } from "@/components/SystemConfig";
 import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
 import { MatchCardIdentity } from "@/components/MatchCardIdentity";
@@ -145,41 +110,6 @@ export const Route = createFileRoute("/")({
 });
 
 // ============ Shared UI ============
-function Wave({ size = 280, intense = false }: { size?: number; intense?: boolean }) {
-  return (
-    <div
-      className="relative grid place-items-center animate-fade-in"
-      style={{ width: size, height: size }}
-    >
-      {[0, 0.6, 1.2].map((d, i) => (
-        <span
-          key={i}
-          className="absolute rounded-full border animate-wave"
-          style={{
-            width: size * 0.5,
-            height: size * 0.5,
-            borderColor: "var(--cerebral-border, currentColor)",
-            borderWidth: 1,
-            animationDelay: `${d}s`,
-            opacity: intense ? 0.7 : 0.35,
-          }}
-        />
-      ))}
-      <span
-        className="absolute rounded-full animate-resonance"
-        style={{
-          width: size * 0.32,
-          height: size * 0.32,
-          background: "radial-gradient(circle, var(--cerebral-glow), transparent 70%)",
-        }}
-      />
-      <span
-        className="absolute rounded-full bg-foreground shadow-[0_0_6px_var(--cerebral)]"
-        style={{ width: 12, height: 12 }}
-      />
-    </div>
-  );
-}
 
 function Shell({
   children,
@@ -1493,8 +1423,8 @@ function AntidoteApp() {
                         `[Onboarding] ${failedUploads.length} video snippet uploads failed.`,
                       );
                       const firstErr = failedUploads[0].error || "Neznáma chyba";
-                      alert(
-                        `Niektoré videá sa nepodarilo nahrať. Budete ich môcť pridať neskôr vo vašom profile. Detail chyby: ${firstErr}`,
+                      toast.error(
+                        `Niektoré videá sa nepodarilo nahrať. Môžeš ich pridať neskôr v profile (${firstErr}).`,
                       );
                     }
 
@@ -1805,34 +1735,6 @@ function BottomNav({
         ))}
       </div>
     </nav>
-  );
-}
-
-function Logo() {
-  return <AntidoteLogo markClassName="h-9" />;
-}
-
-function PrimaryButton({
-  children,
-  onClick,
-  disabled,
-  className,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  className?: string;
-}) {
-  return (
-    <button
-      disabled={disabled}
-      onClick={onClick}
-      className={`cta-gradient cta-gradient-hover py-4 text-xs tracking-wide font-bold active:scale-[0.97] hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed ${className ?? ""}`}
-    >
-      <span className="relative z-10 inline-flex items-center justify-center gap-2">
-        {children}
-      </span>
-    </button>
   );
 }
 
@@ -2192,7 +2094,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
       </p>
 
       <div className="relative my-4 grid place-items-center">
-        <div className="relative w-40 max-w-full aspect-[3/4] overflow-hidden rounded-[0.875rem] border border-foreground/25 bg-background">
+        <div className="relative w-44 max-w-full aspect-[3/4] overflow-hidden rounded-2xl border border-foreground/15 bg-background">
           {phase !== "ready" && stream && (
             <div className="relative w-full h-full">
               <video
@@ -2204,7 +2106,7 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
               />
               {/* Dashed guide oval */}
               <div className="absolute inset-0 flex flex-col justify-center items-center pointer-events-none">
-                <svg className="w-[85%] h-[80%] text-foreground/40" viewBox="0 0 100 100">
+                <svg className="w-[85%] h-[80%] text-white/45" viewBox="0 0 100 100">
                   <ellipse
                     cx="50"
                     cy="50"
@@ -2216,34 +2118,34 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
                     strokeDasharray="4 3"
                     className={`transition-colors duration-300 ${
                       challengeStep === "center"
-                        ? "text-green-500 animate-pulse"
-                        : "text-foreground/40"
+                        ? "text-emerald-400"
+                        : "text-white/45"
                     }`}
                   />
                 </svg>
               </div>
 
               {/* Active Step Indicator Overlay */}
-              <div className="absolute inset-x-1 bottom-1.5 bg-black/85 border border-foreground/15 px-1.5 py-1 text-center text-xs leading-tight">
-                <div className="mb-0.5 font-semibold text-white">Pohyb hlavy</div>
+              <div className="absolute inset-x-1.5 bottom-1.5 rounded-xl border border-white/15 bg-black/75 px-2.5 py-1.5 text-center text-xs leading-tight backdrop-blur-sm">
+                <div className="mb-1 font-semibold text-white">Pohyb hlavy</div>
                 <div className="flex flex-col gap-0.5 text-left text-white">
                   <div
                     className={
-                      challengeStep === "center" ? "text-green-400 font-bold" : "text-white/75"
+                      challengeStep === "center" ? "font-semibold text-emerald-300" : "text-white/75"
                     }
                   >
                     {challengeStep === "center" ? "● " : "○ "}1. Pozri do kamery
                   </div>
                   <div
                     className={
-                      challengeStep === "turn_right" ? "text-green-400 font-bold" : "text-white/75"
+                      challengeStep === "turn_right" ? "font-semibold text-emerald-300" : "text-white/75"
                     }
                   >
                     {challengeStep === "turn_right" ? "● " : "○ "}2. Otoč hlavu doprava
                   </div>
                   <div
                     className={
-                      challengeStep === "turn_left" ? "text-green-400 font-bold" : "text-white/75"
+                      challengeStep === "turn_left" ? "font-semibold text-emerald-300" : "text-white/75"
                     }
                   >
                     {challengeStep === "turn_left" ? "● " : "○ "}3. Otoč hlavu doľava
@@ -2253,11 +2155,11 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
             </div>
           )}
           {phase !== "ready" && !stream && (
-            <div className="absolute inset-0 grid place-items-center bg-foreground/5 text-foreground/20">
+            <div className="absolute inset-0 grid place-items-center bg-muted text-muted-foreground">
               {modelLoading ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="size-5 animate-spin border border-foreground border-t-transparent" />
-                  <span className="text-xs tracking-wider text-foreground/80 uppercase">
+                <div className="flex flex-col items-center gap-3 px-3">
+                  <div className="size-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                  <span className="text-xs font-medium text-muted-foreground">
                     Pripravujem overenie…
                   </span>
                 </div>
@@ -2274,23 +2176,24 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
               loop
               muted
               playsInline
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain bg-black"
               style={{ transform: "scaleX(-1)" }}
             />
           )}
           {phase === "countdown" && (
-            <div className="absolute inset-0 grid place-items-center bg-foreground/10 backdrop-blur-sm">
-              <span className="text-3xl text-foreground font-black tabular-nums">{countdown}</span>
+            <div className="absolute inset-0 grid place-items-center bg-background/50 backdrop-blur-sm">
+              <span className="font-display text-4xl font-bold text-foreground tabular-nums">{countdown}</span>
             </div>
           )}
           {phase === "recording" && challengeStep === "done" && (
-            <div className="absolute inset-x-0 top-3 mx-auto w-fit bg-red-600 px-2 py-0.5 text-xs tracking-widest text-white uppercase font-bold">
+            <div className="absolute inset-x-0 top-2.5 mx-auto flex w-fit items-center gap-1.5 rounded-full bg-destructive px-2.5 py-1 text-xs font-semibold text-white">
+              <span className="size-1.5 animate-pulse rounded-full bg-white" />
               Nahráva sa
             </div>
           )}
           {phase === "verifying" && (
-            <div className="absolute inset-0 bg-foreground/10 pointer-events-none grid place-items-center">
-              <span className="text-xs tracking-widest text-foreground animate-pulse font-bold">
+            <div className="pointer-events-none absolute inset-0 grid place-items-center bg-background/55 backdrop-blur-sm">
+              <span className="rounded-full bg-card px-3 py-1 text-xs font-semibold text-foreground">
                 Overujem…
               </span>
             </div>
@@ -2314,14 +2217,15 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
       <div className="w-full space-y-2">
         {(phase === "idle" || phase === "error") && (
           <button
+            type="button"
             disabled={modelLoading}
             onClick={() => {
               if (phase === "error") retake();
               void runScan();
             }}
-            className="w-full bg-foreground text-background font-bold text-sm tracking-wide py-4 hover:bg-foreground/90 disabled:opacity-20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="priority-primary cursor-pointer"
           >
-            <Camera className="size-4" />
+            <Camera className="size-4" aria-hidden="true" />
             {modelLoading
               ? "Pripravujem overenie…"
               : phase === "error"
@@ -2332,16 +2236,18 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
         {phase === "ready" && (
           <>
             <button
+              type="button"
               onClick={() => onDone(recordedUrl)}
-              className="w-full bg-foreground text-background font-bold text-sm tracking-wide py-4 hover:bg-foreground/90 transition-all cursor-pointer"
+              className="priority-primary cursor-pointer"
             >
               Pokračovať
             </button>
             <button
+              type="button"
               onClick={retake}
-              className="w-full border border-foreground/20 py-3 text-sm tracking-widest text-foreground/60 hover:bg-foreground/5 font-bold uppercase cursor-pointer"
+              className="personal-action w-full rounded-xl cursor-pointer"
             >
-              Zrušiť
+              Nahrať znova
             </button>
           </>
         )}
@@ -2428,6 +2334,10 @@ function MatchCard({
   onSelect: () => void;
 }) {
   const reason = recommendationReason(myPriority, match.top_priority, radiusKm, match.distanceKm);
+  const priorityLabel = match.top_priority
+    ? PRIORITY_CATEGORIES.find((category) => category.id === match.top_priority)?.label
+    : undefined;
+  const reflection = match.shared_reflection?.trim();
   const card = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -2469,11 +2379,22 @@ function MatchCard({
         city={match.city}
         distanceKm={match.distanceKm}
       />
+      {priorityLabel && (
+        <div className="match-card-meta">
+          <span className="match-card-pill">Priorita: {priorityLabel}</span>
+        </div>
+      )}
       {reason && (
-        <details className="match-card-details">
-          <DisclosureSummary>Prečo toto odporúčanie?</DisclosureSummary>
-          <p className="match-card-facts">{reason}</p>
-        </details>
+        <p className="match-card-reason">
+          <Compass className="size-4" aria-hidden="true" />
+          <span>{reason}</span>
+        </p>
+      )}
+      {reflection && (
+        <div className="match-card-reflection">
+          <p className="match-card-reflection-label">Myšlienka z profilu</p>
+          <blockquote>„{reflection}“</blockquote>
+        </div>
       )}
       <button type="button" onClick={onSelect} disabled={busy} className="match-card-action">
         {busy ? "Otváram rozhovor…" : "Osloviť"}
@@ -2579,25 +2500,16 @@ function Dashboard({
             <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
           </button>
         </div>
-        <h1 className="personal-title">Spojenia</h1>
-      </header>
-
-      <section className="discover-radius" aria-label="Dosah odporúčaní">
-        <div className="discover-radius-summary">
-          <p className="discover-search-range">
-            <MapPin className="size-4 shrink-0" aria-hidden="true" />
-            <span>
-              <span className="sr-only">Aktuálny dosah odporúčaní je </span>
-              {searchRange}
-            </span>
-          </p>
+        <div className="discover-title-row">
+          <h1 className="personal-title">Spojenia</h1>
           <button
             ref={radiusButton}
             type="button"
-            className="personal-action"
+            className="discover-radius-chip"
             aria-expanded={editingRadius}
             aria-controls="discover-radius-editor"
             aria-disabled={savingRadius}
+            aria-label={`Upraviť dosah odporúčaní, aktuálne ${searchRange}`}
             onClick={() => {
               if (savingRadius) return;
               if (editingRadius) {
@@ -2609,10 +2521,11 @@ function Dashboard({
               }
             }}
           >
-            {savingRadius ? "Ukladám dosah…" : "Upraviť dosah"}
+            <MapPin className="size-4 shrink-0" aria-hidden="true" />
+            <span>{savingRadius ? "Ukladám…" : searchRange}</span>
           </button>
         </div>
-        <div id="discover-radius-editor" hidden={!editingRadius}>
+        <div id="discover-radius-editor" className="discover-radius-editor" hidden={!editingRadius}>
           {editingRadius && (
             <form
               className="discover-radius-form"
@@ -2662,7 +2575,7 @@ function Dashboard({
             </form>
           )}
         </div>
-      </section>
+      </header>
 
       {recentReply && (
         <section className="discover-reply editorial-panel" aria-labelledby="discover-reply-title">
@@ -2693,7 +2606,7 @@ function Dashboard({
             onSelect={() => onSelectMatch(activeMatch)}
           />
           {openError && (
-            <p role="alert" className="text-destructive">
+            <p role="alert" className="mt-2 text-destructive">
               Rozhovor sa nepodarilo otvoriť. Skús to znova.
             </p>
           )}
@@ -2706,26 +2619,18 @@ function Dashboard({
                 onClick={() => selectProfile(activeIndex - 1)}
               >
                 <ChevronLeft aria-hidden="true" className="size-5" />
+                <span>Predošlý</span>
               </button>
-              <div className="match-deck-steps">
-                {availableMatches.map(({ id, name }, index) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-label={`Profil ${index + 1} z ${availableMatches.length}, ${name}`}
-                    aria-current={index === activeIndex || undefined}
-                    onClick={() => selectProfile(index)}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
+              <span className="match-deck-counter">
+                {activeIndex + 1} / {availableMatches.length}
+              </span>
               <button
                 type="button"
                 aria-label="Ďalší profil"
                 disabled={activeIndex === availableMatches.length - 1}
                 onClick={() => selectProfile(activeIndex + 1)}
               >
+                <span>Ďalší</span>
                 <ChevronRight aria-hidden="true" className="size-5" />
               </button>
             </div>
@@ -2876,44 +2781,42 @@ function Test({ onComplete }: { onComplete: (a: FullAnswers) => void }) {
         {scenarios.map((_, step) => (
           <span
             key={step}
-            className={`h-2 flex-1 transition-colors ${step <= idx ? "bg-cerebral" : "bg-foreground/10"}`}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${step <= idx ? "bg-accent" : "bg-muted"}`}
           />
         ))}
       </div>
 
-      <div className="mb-6 h-1 w-full overflow-hidden bg-foreground/10">
+      <div className="mb-6 h-1 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className={`h-full transition-all duration-1000 ease-linear ${danger ? "bg-cerebral" : "bg-accent"}`}
+          className={`h-full rounded-full transition-all duration-1000 ease-linear ${danger ? "bg-destructive" : "bg-accent"}`}
           style={{ width: `${pct * 100}%` }}
         />
       </div>
 
-      <div className="min-h-52 border-y-2 border-foreground py-8">
-        <p className="font-display text-[clamp(1.8rem,8vw,2.8rem)] font-bold leading-[1.02] tracking-[-0.04em] text-foreground">
+      <div className="onboarding-panel min-h-48 py-7">
+        <p className="font-display text-[clamp(1.65rem,7.5vw,2.5rem)] font-bold leading-[1.06] tracking-[-0.035em] text-foreground">
           {s.text}
         </p>
       </div>
 
       {phase === "read" ? (
-        <div className="mt-6 flex items-center gap-3 text-foreground/50">
-          <span className="size-2 animate-pulse rounded-full bg-cerebral" />
+        <div className="mt-6 flex items-center gap-3 text-muted-foreground">
+          <span className="size-2 animate-pulse rounded-full bg-accent" />
           <p className="text-sm">Nechaj prvú reakciu prejsť. Možnosti sa objavia o {timeLeft}s.</p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 animate-fade-up">
+        <div className="mt-6 grid gap-3 animate-fade-up">
           {(["a", "b"] as const).map((k) => (
             <button
               key={k}
               onClick={() => pick(k.toUpperCase() as Answer)}
-              className={`tactile-button group p-5 text-left cursor-pointer ${
-                k === "a"
-                  ? "bg-card text-foreground hover:bg-cerebral hover:text-background"
-                  : "bg-card text-foreground hover:bg-accent hover:text-accent-foreground"
-              }`}
+              className="tactile-button group bg-card p-4 text-left text-foreground hover:border-accent hover:bg-accent hover:text-accent-foreground cursor-pointer"
             >
               <span className="flex min-h-14 items-center justify-between gap-4">
-                <span className="font-display text-xl font-bold leading-tight">{s[k]}</span>
-                <span className="shrink-0 text-sm">{k.toUpperCase()}</span>
+                <span className="font-display text-lg font-bold leading-snug">{s[k]}</span>
+                <span className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-xs font-semibold">
+                  {k.toUpperCase()}
+                </span>
               </span>
             </button>
           ))}
@@ -2933,34 +2836,36 @@ function Processing({
   archetype: Archetype;
   onDone: () => void;
 }) {
-  void seed;
   useEffect(() => {
-    const t = setTimeout(onDone, 3600);
+    const t = setTimeout(onDone, 4200);
     return () => clearTimeout(t);
   }, [onDone]);
 
   return (
-    <div className="onboarding-panel mx-auto max-w-md">
-      <p className="editorial-kicker text-cerebral">Tvoj profil je hotový</p>
-      <h2 className="mt-4 max-w-lg font-display text-5xl font-extrabold leading-[0.92] tracking-[-0.04em] sm:text-6xl">
-        Tvoj štýl rozhovoru
+    <div className="onboarding-panel mx-auto max-w-md text-center animate-fade-up">
+      <p className="editorial-kicker text-accent">Tvoj profil je hotový</p>
+      <h2 className="mt-2 font-display text-[clamp(2rem,8vw,2.85rem)] font-extrabold leading-[1.02] tracking-[-0.04em]">
+        {archetype.label}
       </h2>
-      <div className="mt-10 border-y border-foreground/30 py-5">
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-sm text-foreground/55">Výsledok</span>
-          <span className="font-display text-xl font-bold text-right">{archetype.label}</span>
-        </div>
+      <div className="my-6 grid place-items-center">
+        <NebulaOrb seed={seed} size={168} />
       </div>
-      <div className="mt-8 flex gap-2" aria-label="Pripravujem tvoje spojenia">
+      <div className="mx-auto flex max-w-44 gap-1.5" aria-label="Pripravujem tvoje spojenia">
         {[0, 1, 2, 3, 4].map((step) => (
           <span
             key={step}
-            className="h-3 flex-1 animate-pulse bg-cerebral"
+            className="h-1.5 flex-1 animate-pulse rounded-full bg-accent"
             style={{ animationDelay: `${step * 140}ms` }}
           />
         ))}
       </div>
-      <p className="mt-4 text-sm text-foreground/50">Hľadáme spojenia podľa tvojich odpovedí.</p>
+      <p className="mt-4 text-sm text-muted-foreground">
+        Hľadáme spojenia podľa tvojich odpovedí.
+      </p>
+      <button type="button" onClick={onDone} className="priority-primary mt-5">
+        Pokračovať do Spojení
+        <ChevronRight className="size-4" aria-hidden="true" />
+      </button>
     </div>
   );
 }
@@ -2990,8 +2895,8 @@ function ProfileForm({
   });
 
   const [name, setName] = useState(() => {
-    if (typeof window === "undefined") return initialName.toUpperCase();
-    return localStorage.getItem("reson:profile_name") || initialName.toUpperCase();
+    if (typeof window === "undefined") return initialName;
+    return localStorage.getItem("reson:profile_name") || initialName;
   });
   const [birthDate, setBirthDate] = useState<string>(() => {
     if (typeof window === "undefined") return "";
@@ -3037,8 +2942,7 @@ function ProfileForm({
     localStorage.setItem("reson:profile_targetMarket", targetMarket);
   }, [targetMarket]);
 
-  // Error flash state
-  const [errorFlash, setErrorFlash] = useState(false);
+  // Error feedback state
   const [errorMessage, setErrorMessage] = useState("");
 
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -3076,8 +2980,6 @@ function ProfileForm({
   function triggerError(msg: string) {
     haptic("warning");
     setErrorMessage(msg);
-    setErrorFlash(true);
-    setTimeout(() => setErrorFlash(false), 200);
   }
 
   const nameTrim = name.trim();
@@ -3094,11 +2996,7 @@ function ProfileForm({
   }[step];
 
   return (
-    <div
-      className={`personal-screen transition-colors duration-100 ${
-        errorFlash ? "bg-red-500/5" : ""
-      }`}
-    >
+    <div className="personal-screen">
       <p className="personal-eyebrow mb-3" role="status">
         Krok {stepNumber} zo 4
       </p>
@@ -3132,27 +3030,24 @@ function ProfileForm({
               ref={nameInputRef}
               value={name}
               onChange={(e) => {
-                setName(e.target.value.toUpperCase().slice(0, 30));
+                setName(e.target.value.slice(0, 30));
                 if (errorMessage) setErrorMessage("");
               }}
               placeholder="Meno alebo prezývka"
-              className="w-full border border-foreground/30 bg-card p-3 text-base text-foreground focus:bg-foreground/5"
+              className="w-full rounded-xl border border-foreground/20 bg-background px-3.5 py-3 text-base text-foreground focus:border-accent"
             />
           </div>
 
           {errorMessage && (
             <div
               role="alert"
-              className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive"
+              className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm font-medium text-destructive"
             >
               {errorMessage}
             </div>
           )}
 
-          <button
-            type="submit"
-            className="mt-6 w-full bg-foreground py-3.5 font-semibold text-background hover:bg-foreground/90"
-          >
+          <button type="submit" className="priority-primary mt-6">
             Pokračovať
           </button>
         </form>
@@ -3187,7 +3082,7 @@ function ProfileForm({
           {errorMessage && (
             <div
               role="alert"
-              className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive"
+              className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm font-medium text-destructive"
             >
               {errorMessage}
             </div>
@@ -3207,7 +3102,7 @@ function ProfileForm({
             </button>
             <button
               type="submit"
-              className="w-2/3 bg-foreground py-3.5 font-semibold text-background hover:bg-foreground/90"
+              className="priority-primary mt-0 w-2/3"
             >
               Ďalej
             </button>
@@ -3236,7 +3131,7 @@ function ProfileForm({
           </p>
 
           <div className="text-left space-y-4">
-            <div className="border-y border-foreground/20 bg-foreground/5 p-4">
+            <div className="rounded-xl border border-foreground/15 bg-muted p-4">
               <p className="font-semibold">Tvoj vek: {age ?? "?"}</p>
             </div>
           </div>
@@ -3244,7 +3139,7 @@ function ProfileForm({
           {errorMessage && (
             <div
               role="alert"
-              className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive"
+              className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm font-medium text-destructive"
             >
               {errorMessage}
             </div>
@@ -3264,7 +3159,7 @@ function ProfileForm({
             </button>
             <button
               type="submit"
-              className="w-2/3 bg-foreground py-3.5 font-semibold text-background hover:bg-foreground/90"
+              className="priority-primary mt-0 w-2/3"
             >
               Potvrdiť vek
             </button>
@@ -3314,7 +3209,7 @@ function ProfileForm({
           <div className="text-left space-y-4">
             <div>
               <p className="mb-2 font-semibold">Ja som</p>
-              <div className="personal-segments" role="group" aria-label="Ja som">
+              <div className="personal-segments rounded-xl p-1 gap-1" role="group" aria-label="Ja som">
                 {(
                   [
                     { value: "male", label: "Muž" },
@@ -3331,7 +3226,7 @@ function ProfileForm({
                       if (errorMessage) setErrorMessage("");
                     }}
                     aria-pressed={gender === g.value}
-                    className="personal-segment"
+                    className="personal-segment rounded-lg"
                   >
                     {g.label}
                   </button>
@@ -3341,7 +3236,7 @@ function ProfileForm({
 
             <div>
               <p className="mb-2 font-semibold">Hľadám</p>
-              <div className="personal-segments" role="group" aria-label="Hľadám">
+              <div className="personal-segments rounded-xl p-1 gap-1" role="group" aria-label="Hľadám">
                 {(
                   [
                     { value: "male", label: "Mužov" },
@@ -3358,7 +3253,7 @@ function ProfileForm({
                       if (errorMessage) setErrorMessage("");
                     }}
                     aria-pressed={targetMarket === t.value}
-                    className="personal-segment"
+                    className="personal-segment rounded-lg"
                   >
                     {t.label}
                   </button>
@@ -3370,7 +3265,7 @@ function ProfileForm({
           {errorMessage && (
             <div
               role="alert"
-              className="mt-3 border-l-2 border-destructive bg-destructive/10 p-3 font-medium text-destructive"
+              className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm font-medium text-destructive"
             >
               {errorMessage}
             </div>
@@ -3390,7 +3285,7 @@ function ProfileForm({
             </button>
             <button
               type="submit"
-              className="w-2/3 bg-foreground py-3.5 font-semibold text-background hover:bg-foreground/90"
+              className="priority-primary mt-0 w-2/3"
             >
               Dokončiť profil
             </button>
@@ -3400,43 +3295,6 @@ function ProfileForm({
     </div>
   );
 }
-
-// ============ NoOne ============
-function NoOne({ onMessages }: { onMessages: (() => void) | null }) {
-  return (
-    <div className="flex min-h-[80vh] flex-col px-1 py-3 animate-fade-up">
-      <header>
-        <Logo />
-      </header>
-      <main className="my-auto py-10">
-        <p className="editorial-kicker text-foreground/50">Tvoje spojenia</p>
-        <h1 className="mt-5 max-w-sm font-display text-[clamp(2.35rem,10vw,4.6rem)] font-extrabold leading-[0.96] tracking-[-0.04em]">
-          Žiadne nové spojenia
-        </h1>
-        <div className="mt-8 border-t border-foreground/30 pt-6">
-          <p className="max-w-sm text-sm leading-relaxed text-foreground/60">
-            Momentálne sme nenašli ďalšie vhodné spojenie. Skús sa vrátiť neskôr.
-          </p>
-          {onMessages && (
-            <button
-              type="button"
-              onClick={onMessages}
-              className="tactile-button mt-8 flex min-h-20 w-full items-center justify-between bg-foreground p-5 text-left text-background"
-            >
-              <span className="font-display text-xl font-bold">Otvoriť správy</span>
-              <ChevronRight className="size-5" aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-// ============ Chamber (voice 5 min → ContinueGate) ============
-const BLUR_START = 24;
-const BLUR_STEP = 3;
-const MAX_REC_SECONDS = 60;
 
 // ============ Messages list ============
 function MessagesList({
@@ -3534,16 +3392,5 @@ function MessagesList({
     </div>
   );
 }
-
-// Mock GIF search results — small, loopable preview GIFs hosted on a CDN.
-const MOCK_GIFS: string[] = [
-  "https://media.tenor.com/x8v1oNUOmg4AAAAi/heart-love.gif",
-  "https://media.tenor.com/Mxv-AaTHraEAAAAi/wave-hello.gif",
-  "https://media.tenor.com/I6kN-6X2HgAAAAAi/sparkle-stars.gif",
-  "https://media.tenor.com/CzZjqUyVx8gAAAAi/cat-laptop.gif",
-  "https://media.tenor.com/sj7y9LDsQ_kAAAAi/dance-party.gif",
-  "https://media.tenor.com/L4Yh1c6jw7AAAAAi/cool-sunglasses.gif",
-];
-const REPLY_TYPING_MS = 1400;
 
 // ============ Settings + Legal ============

@@ -2,6 +2,7 @@ import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import { AndroidUpdateSettings } from "@/components/UpdateNotice";
 import MessageNotificationSettings from "@/components/MessageNotificationSettings";
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   LogOut,
   Trash2,
@@ -179,7 +180,7 @@ export function SystemConfig({
     setIsGpsLoading(true);
 
     if (!navigator.geolocation) {
-      alert("Tento prehliadač nevie zistiť tvoju polohu.");
+      toast.error("Tento prehliadač nevie zistiť tvoju polohu.");
       setIsGpsLoading(false);
       return;
     }
@@ -192,13 +193,11 @@ export function SystemConfig({
         saveFilterChange("coords", newCoords);
         setIsGpsLoading(false);
         haptic("success");
-        alert(
-          `Súradnice aktualizované: [Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}]`,
-        );
+        toast.success("Poloha bola aktualizovaná.");
       },
       (err) => {
         console.error("[config] GPS refresh error:", err);
-        alert("Polohu sa nepodarilo zistiť. Zapni polohu v zariadení a povoľ k nej prístup.");
+        toast.error("Polohu sa nepodarilo zistiť. Zapni polohu v zariadení a povoľ k nej prístup.");
         setIsGpsLoading(false);
       },
       {
@@ -362,13 +361,13 @@ export function SystemConfig({
         </DisclosureSummary>
         {freezeMessage && <p role="status" className="mb-3 text-foreground/75">{freezeMessage}</p>}
         {showWipeConfirm ? (
-          <div className="bg-red-500/10 p-4">
-            <p className="font-semibold text-red-500">Naozaj chceš vymazať účet?</p>
-            <p className="mt-2 leading-relaxed text-foreground/75">Všetky informácie, výsledky testov a správy budú natrvalo vymazané. Táto akcia je nevratná.</p>
+          <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4">
+            <p className="font-semibold text-destructive">Naozaj chceš vymazať účet?</p>
+            <p className="mt-2 leading-relaxed text-foreground/80">Všetky informácie, výsledky testov a správy budú natrvalo vymazané. Táto akcia je nevratná.</p>
             <div className="mt-4 flex gap-2"><button type="button" onClick={executeDataWipe} className="personal-action personal-danger flex-1">Vymazať účet</button><button type="button" onClick={() => { haptic("tap"); setShowWipeConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
           </div>
         ) : showLogoutConfirm ? (
-          <div className="bg-foreground/5 p-4">
+          <div className="rounded-xl border border-foreground/12 bg-muted p-4">
             <p className="font-semibold">Naozaj sa chceš odhlásiť?</p>
             <div className="mt-4 flex gap-2"><button type="button" onClick={executeLogout} className="personal-action flex-1">Odhlásiť sa</button><button type="button" onClick={() => { haptic("tap"); setShowLogoutConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
           </div>
@@ -379,7 +378,7 @@ export function SystemConfig({
               <span className="personal-status" aria-hidden="true">{isFrozen ? "Zapnuté" : "Vypnuté"}</span>
             </button>
             <button type="button" onClick={() => { haptic("warning"); setShowLogoutConfirm(true); }} className="personal-link"><span><LogOut className="size-5" />Odhlásiť sa</span><ChevronRight className="size-5" /></button>
-            <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="personal-link text-red-500"><span><Trash2 className="size-5" />Vymazať účet</span><ChevronRight className="size-5" /></button>
+            <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="personal-link text-destructive"><span><Trash2 className="size-5" />Vymazať účet</span><ChevronRight className="size-5" /></button>
           </>
         )}
       </details>

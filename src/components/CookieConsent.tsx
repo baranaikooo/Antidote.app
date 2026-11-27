@@ -60,8 +60,8 @@ export function CookieConsent() {
     locked?: boolean;
     onChange?: (v: boolean) => void;
   }) => (
-    <div className="flex items-start gap-3 border-t border-foreground/15 py-2.5">
-      <div className="grid size-8 shrink-0 place-items-center bg-primary/10 text-primary">
+    <div className="flex items-start gap-3 border-t border-foreground/12 py-2.5">
+      <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent/12 text-accent">
         <Icon className="size-3.5" />
       </div>
       <div className="min-w-0 flex-1">
@@ -92,7 +92,7 @@ export function CookieConsent() {
     <div className="fixed inset-x-3 bottom-3 z-[60] md:inset-x-auto md:right-4 md:bottom-4 md:max-w-md animate-fade-up">
       <div className="editorial-dock max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <div className="flex items-start gap-3 p-3.5 sm:p-4">
-          <div className="grid size-9 shrink-0 place-items-center bg-foreground/10 text-foreground">
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent">
             <Cookie className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
@@ -144,13 +144,13 @@ export function CookieConsent() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => (expanded ? save("custom", prefs) : save("rejected"))}
-              className="personal-action px-2.5 text-sm"
+              className="personal-action rounded-xl px-3.5 text-sm"
             >
               {expanded ? "Uložiť" : "Odmietnuť"}
             </button>
             <button
               onClick={() => save("accepted")}
-              className="min-h-11 bg-foreground px-2.5 text-sm font-semibold text-background"
+              className="min-h-11 rounded-xl bg-accent px-3.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90"
             >
               <span className="relative z-10">Prijať všetko</span>
             </button>

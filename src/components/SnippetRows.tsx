@@ -24,7 +24,7 @@ export function SnippetRows({
         return (
           <li key={idx} className="personal-row py-2">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="personal-thumbnail" aria-hidden="true">
+              <div className="personal-thumbnail rounded-lg" aria-hidden="true">
                 {url ? (
                   <video
                     src={url}
@@ -44,17 +44,17 @@ export function SnippetRows({
                 <p className="personal-status">{url ? "Pridané" : "Prázdne"}</p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center">
+            <div className="flex shrink-0 items-center gap-1">
               {url ? (
-                <button type="button" onClick={() => onRemove(idx)} aria-label={`Odstrániť video ${idx + 1}`} className="personal-icon-button">
+                <button type="button" onClick={() => onRemove(idx)} aria-label={`Odstrániť video ${idx + 1}`} className="personal-icon-button rounded-lg">
                   <X className="size-5" />
                 </button>
               ) : (
                 <>
-                  <button type="button" onClick={() => onRecord(idx)} aria-label={`Nahrať video ${idx + 1} kamerou`} className="personal-icon-button">
+                  <button type="button" onClick={() => onRecord(idx)} aria-label={`Nahrať video ${idx + 1} kamerou`} className="personal-icon-button rounded-lg">
                     <Camera className="size-5" />
                   </button>
-                  <button type="button" onClick={() => onUpload(idx)} aria-label={`Nahrať video ${idx + 1} z galérie`} className="personal-icon-button">
+                  <button type="button" onClick={() => onUpload(idx)} aria-label={`Nahrať video ${idx + 1} z galérie`} className="personal-icon-button rounded-lg">
                     <Upload className="size-5" />
                   </button>
                 </>

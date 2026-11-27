@@ -1,6 +1,7 @@
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { toast } from "sonner";
 import { PROFILE_SLOTS, SnippetRows } from "@/components/SnippetRows";
 import { useHaptic } from "@/hooks/use-haptics";
 import { openCamera, recordStreamForMs, stopStream, attachStreamToVideo } from "@/lib/media";
@@ -114,7 +115,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       setCameraStream(stream);
     } catch (err) {
       console.error("[onboarding-snippets] openCamera failed:", err);
-      alert("Kamera sa nespustila. Skontroluj, či má Antidote prístup ku kamere.");
+      toast.error("Kamera sa nespustila. Skontroluj, či má Antidote prístup ku kamere.");
       cancelRecording();
       return;
     }
@@ -157,7 +158,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       haptic("success");
     } catch (err) {
       console.error("[onboarding-snippets] recordStreamForMs failed:", err);
-      alert("Nahrávanie zlyhalo.");
+      toast.error("Nahrávanie zlyhalo. Skús to znova.");
     } finally {
       stopStream(stream);
       setCameraStream(null);
@@ -200,7 +201,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       /\.(mp4|mov|webm|mkv|3gp|m4v|avi)$/i.test(file.name);
 
     if (!isVideo) {
-      alert("Vyber súbor s videom, napríklad MP4, MOV alebo WebM.");
+      toast.error("Vyber súbor s videom, napríklad MP4, MOV alebo WebM.");
       setActiveUploadIndex(null);
       return;
     }
@@ -235,9 +236,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
       resolved = true;
       clearTimeout(fallbackTimer);
       if (tempVideo.duration > 3.5) {
-        alert(
-          "Video je dlhšie ako 3 sekundy. Bude automaticky orezané a zacyklené na prvých 3 sekundách.",
-        );
+        toast.info("Video je dlhšie ako 3 sekundy — automaticky použijeme prvé 3 sekundy.");
       }
       applyVideo();
     };
@@ -318,7 +317,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
             const activeSnippets = snippets.filter(Boolean);
             if (activeSnippets.length === 0) {
               haptic("error");
-              alert("Na vytvorenie účtu pridaj aspoň jedno video z kamery alebo galérie.");
+              toast.error("Na vytvorenie účtu pridaj aspoň jedno video z kamery alebo galérie.");
               return;
             }
             setIsSubmitting(true);
@@ -331,11 +330,7 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
               setIsSubmitting(false);
             }
           }}
-          className={`w-full rounded-[0.625rem] border border-foreground py-3.5 text-base font-bold transition-colors ${
-            videoCount === 0 || isSubmitting
-              ? "opacity-40 cursor-not-allowed bg-foreground/20 text-muted-foreground border-foreground/20"
-              : "text-background bg-foreground hover:bg-foreground/90 cursor-pointer"
-          }`}
+          className="priority-primary"
         >
           {isSubmitting
             ? "Ukladám video…"
@@ -348,13 +343,13 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
 
       {/* Recording Overlay Modal */}
       {recordingIndex !== null && createPortal(
-        <div className="fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex flex-col justify-center items-center p-4">
-          <div className="editorial-dock w-full max-w-xs p-4 relative">
+        <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-background/90 p-4 backdrop-blur-sm">
+          <div className="editorial-dock relative w-full max-w-xs p-4">
             <div className="mb-3 font-display text-lg font-bold">
               Nahrávanie videa
             </div>
 
-            <div className="relative mx-auto mb-3 aspect-[3/4] w-[min(100%,12rem,40dvh)] overflow-hidden bg-black">
+            <div className="relative mx-auto mb-3 aspect-[3/4] w-[min(100%,12rem,40dvh)] overflow-hidden rounded-xl border border-foreground/15 bg-black">
               <video
                 ref={videoRef}
                 playsInline
@@ -364,26 +359,27 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
               />
 
               {recordingState === "countdown" && (
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
-                  <span className="text-4xl text-white font-bold animate-ping">{countdown}</span>
-                  <span className="text-xs text-white/50 tracking-widest uppercase mt-2">
-                    Príprava...
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55">
+                  <span className="font-display text-5xl font-bold text-white tabular-nums">{countdown}</span>
+                  <span className="mt-1.5 text-xs font-medium text-white/75">
+                    Priprav sa…
                   </span>
                 </div>
               )}
 
               {recordingState === "recording" && (
-                <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/70 px-2 py-0.5 border border-red-500">
-                  <span className="size-1.5 rounded-full bg-red-500 animate-ping" />
-                  <span className="text-xs text-white tracking-widest uppercase">Nahráva sa (3 s)</span>
+                <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-destructive px-2.5 py-1">
+                  <span className="size-1.5 animate-pulse rounded-full bg-white" />
+                  <span className="text-xs font-semibold text-white">Nahráva sa · 3 s</span>
                 </div>
               )}
             </div>
 
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={cancelRecording}
-                className="personal-action flex-1"
+                className="personal-action flex-1 rounded-xl"
               >
                 Zrušiť
               </button>

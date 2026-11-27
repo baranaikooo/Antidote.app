@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Reply } from "lucide-react";
+import { Mic, Pause, Play, Reply } from "lucide-react";
 import {
   respondToSharedQuestion,
   signQuestionVoice,
@@ -86,13 +86,26 @@ export function SharedVoiceQuestion({
   );
 }
 
+function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0:00";
+  const safe = Math.round(seconds);
+  return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
+}
+
 function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
   const [url, setUrl] = useState<string>();
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     let active = true;
+    setPlaying(false);
+    setDuration(0);
+    setCurrentTime(0);
     signQuestionVoice(path)
       .then((signedUrl) => {
         if (active) setUrl(signedUrl);
@@ -105,8 +118,25 @@ function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
     };
   }, [path, attempt]);
 
+  function togglePlayback() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+    } else {
+      if (audio.ended) audio.currentTime = 0;
+      void audio
+        .play()
+        .then(() => setPlaying(true))
+        .catch(() => setPlaying(false));
+    }
+  }
+
+  const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+
   return (
-    <div className="min-w-0 rounded-lg bg-muted p-3">
+    <div className="min-w-0 rounded-xl bg-muted p-3">
       <dt className="break-words text-sm font-semibold">{label}</dt>
       <dd className="mt-2">
         {failed ? (
@@ -122,14 +152,53 @@ function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
             Načítať nahrávku znova
           </button>
         ) : url ? (
-          <audio
-            className="w-full"
-            aria-label={label}
-            controls
-            preload="none"
-            src={url}
-            onError={() => setFailed(true)}
-          />
+          <div className="flex items-center gap-3 rounded-xl border border-foreground/10 bg-card px-3 py-2">
+            <button
+              type="button"
+              onClick={togglePlayback}
+              aria-label={playing ? `Pozastaviť odpoveď: ${label}` : `Prehrať odpoveď: ${label}`}
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground transition-transform active:scale-95 cursor-pointer"
+            >
+              {playing ? (
+                <Pause className="size-4" aria-hidden="true" />
+              ) : (
+                <Play className="size-4 translate-x-[1px]" aria-hidden="true" />
+              )}
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-accent transition-[width] duration-150"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+            <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+              {playing || currentTime > 0 ? formatDuration(currentTime) : formatDuration(duration)}
+            </span>
+            <audio
+              ref={audioRef}
+              aria-label={label}
+              preload="none"
+              playsInline
+              src={url}
+              onLoadedMetadata={(event) => {
+                const dur = event.currentTarget.duration;
+                if (Number.isFinite(dur)) setDuration(dur);
+              }}
+              onTimeUpdate={(event) => {
+                setCurrentTime(event.currentTarget.currentTime);
+              }}
+              onEnded={() => {
+                setPlaying(false);
+                setCurrentTime(0);
+              }}
+              onError={() => {
+                setPlaying(false);
+                setFailed(true);
+              }}
+            />
+          </div>
         ) : (
           <p role="status" className="text-sm text-muted-foreground">
             Načítavam nahrávku…
