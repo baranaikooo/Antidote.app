@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   choice: vi.fn(),
   videos: vi.fn(),
   messages: vi.fn(),
+  signVoice: vi.fn(),
+  uploadVoice: vi.fn(),
   send: vi.fn(),
   markRead: vi.fn(),
   readFeedback: vi.fn(),
@@ -29,6 +31,7 @@ vi.mock("@/lib/supabase", () => ({
   supabase: {
     rpc: (name: string, args: unknown) => mocks.question(name, args),
     functions: { invoke: mocks.gifSearch },
+    storage: { from: () => ({ createSignedUrl: mocks.signVoice, upload: mocks.uploadVoice }) },
     channel: () => {
       const channel = { on: () => channel, subscribe: () => channel };
       return channel;
@@ -86,7 +89,11 @@ beforeEach(() => {
   mocks.saveFeedback.mockResolvedValue(undefined);
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it("retries a first reply with the same id, preserving the draft and real reply context", async () => {
   mocks.send.mockRejectedValueOnce(new Error("Offline")).mockResolvedValue({
@@ -352,4 +359,107 @@ it("only allows answering the required question until both people have responded
   expect(await screen.findByRole("textbox", { name: "Správa" })).toBeEnabled();
   expect(screen.getByText("Káva s priateľmi.")).toBeVisible();
   expect(screen.queryByRole("button", { name: /Nadviazať/ })).not.toBeInTheDocument();
+});
+
+it("requires a voice answer only for the first question and opens chat after both answer", async () => {
+  const pending = {
+    question: "Ako vyzerá tvoj dobrý víkend?",
+    own_answer: null,
+    partner_answer: null,
+    required: true,
+    voice_required: true,
+    skipped: false,
+  };
+  mocks.question.mockResolvedValue({ data: pending, error: null });
+  mocks.signVoice.mockImplementation(async (path: string) => ({
+    data: { signedUrl: `https://storage.example.test/${path}` },
+    error: null,
+  }));
+  const stopTrack = vi.fn();
+  vi.stubGlobal("navigator", {
+    userAgent: navigator.userAgent,
+    mediaDevices: {
+      getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop: stopTrack }] }),
+    },
+  });
+  vi.stubGlobal(
+    "MediaRecorder",
+    class {
+      static isTypeSupported = () => true;
+      mimeType = "audio/webm;codecs=opus";
+      state = "inactive";
+      ondataavailable?: (event: { data: Blob }) => void;
+      onstop?: () => void;
+      start() {
+        this.state = "recording";
+      }
+      stop() {
+        this.state = "inactive";
+        this.ondataavailable?.({ data: new Blob(["test recording"]) });
+        this.onstop?.();
+      }
+    },
+  );
+  vi.stubGlobal(
+    "URL",
+    class extends URL {
+      static createObjectURL() {
+        return "blob:question-voice";
+      }
+      static revokeObjectURL() {}
+    },
+  );
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  const now = vi.spyOn(performance, "now").mockReturnValue(0);
+  mocks.uploadVoice.mockResolvedValue({ error: null });
+  render(<Thread />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "Nahrať odpoveď" }));
+  expect(screen.getByRole("heading", { name: "Hlasová odpoveď" })).toBeVisible();
+  expect(screen.getByText(/Máš najviac 20 sekúnd/)).toBeVisible();
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Späť na rozhovor" }));
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "GIFy" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Preskočiť" })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Nahrať odpoveď" }));
+  fireEvent.click(screen.getByRole("button", { name: "Nahrať hlasovú odpoveď" }));
+  const finish = await screen.findByRole("button", { name: /Hotovo/ });
+  now.mockReturnValue(2000);
+  fireEvent.click(finish);
+  expect(screen.getByRole("button", { name: "Prehrať ukážku" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Nahrať znova" })).toBeEnabled();
+  expect(stopTrack).toHaveBeenCalledOnce();
+  expect(mocks.uploadVoice).not.toHaveBeenCalled();
+  let ownPath = "";
+  mocks.question.mockImplementation(async (name, args) => {
+    if (name === "respond_shared_conversation_question") ownPath = args.p_answer;
+    return { data: { ...pending, own_voice_path: ownPath }, error: null };
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Odoslať" }));
+  await screen.findByText(/Chat sa otvorí/);
+  expect(ownPath).toMatch(/^me\/match_[0-9a-f-]{36}$/);
+  expect(mocks.uploadVoice).toHaveBeenCalledExactlyOnceWith(ownPath, expect.any(Blob), {
+    contentType: "audio/webm",
+    upsert: false,
+  });
+  expect(mocks.send).not.toHaveBeenCalled();
+  expect(mocks.signVoice).toHaveBeenCalledExactlyOnceWith(ownPath, 600);
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Jana")).not.toBeInTheDocument();
+
+  mocks.question.mockResolvedValue({
+    data: { ...pending, own_voice_path: ownPath, partner_voice_path: "partner" },
+    error: null,
+  });
+  fireEvent(window, new Event("online"));
+  expect(await screen.findByRole("textbox", { name: "Správa" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "GIFy" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Nahrať hlasovú správu" })).toBeEnabled();
+  expect(await screen.findByLabelText("Jana")).toHaveAttribute(
+    "src",
+    "https://storage.example.test/partner",
+  );
+  expect(screen.queryByRole("button", { name: "Stiahnuť odpoveď" })).not.toBeInTheDocument();
 });

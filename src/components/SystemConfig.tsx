@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { UserProfile, ThemeMode } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
-import { removeOwnChatImages, supabase } from "@/lib/supabase";
+import { removeOwnChatAttachments, supabase } from "@/lib/supabase";
+import { QUESTION_VOICE_BUCKET } from "@/lib/shared-question";
 import { BackgroundGeoEngine } from "@/lib/geo";
 
 interface SystemConfigProps {
@@ -254,10 +255,11 @@ export function SystemConfig({
   async function executeDataWipe() {
     if (user.id && user.id !== "00000000-0000-0000-0000-000000000001") {
       try {
-        await removeOwnChatImages(user.id);
+        await removeOwnChatAttachments(user.id, "chat-images");
+        await removeOwnChatAttachments(user.id, QUESTION_VOICE_BUCKET);
       } catch (error) {
-        console.error("[settings] failed to delete chat images:", error);
-        setFreezeMessage("Obrázky z rozhovorov sa nepodarilo zmazať. Skús to znova.");
+        console.error("[settings] failed to delete chat attachments:", error);
+        setFreezeMessage("Prílohy z rozhovorov sa nepodarilo zmazať. Skús to znova.");
         setShowWipeConfirm(false);
         return;
       }

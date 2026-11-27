@@ -1,6 +1,144 @@
 import { useEffect, useRef, useState } from "react";
-import { Reply } from "lucide-react";
-import { respondToSharedQuestion, type SharedQuestion } from "@/lib/shared-question";
+import { Mic, Reply } from "lucide-react";
+import {
+  respondToSharedQuestion,
+  signQuestionVoice,
+  withdrawQuestionVoice,
+  type SharedQuestion,
+} from "@/lib/shared-question";
+
+export function SharedVoiceQuestion({
+  matchId,
+  name,
+  question,
+  onRecord,
+  onChange,
+}: {
+  matchId: string;
+  name: string;
+  question: SharedQuestion;
+  onRecord: () => void;
+  onChange: (question: SharedQuestion) => void;
+}) {
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [error, setError] = useState(false);
+  const own = question.own_voice_path;
+  const partner = question.partner_voice_path;
+
+  async function withdraw() {
+    if (!own || withdrawing) return;
+    setWithdrawing(true);
+    setError(false);
+    try {
+      onChange(await withdrawQuestionVoice(matchId, own));
+    } catch {
+      setError(true);
+    } finally {
+      setWithdrawing(false);
+    }
+  }
+
+  return (
+    <section className="conversation-intro" aria-labelledby="shared-question-heading">
+      <h2 id="shared-question-heading" className="font-semibold">
+        Spoločná otázka
+      </h2>
+      <p className="mt-2 font-medium">{question.question}</p>
+      {own ? (
+        <>
+          <dl className="mt-3 grid gap-2">
+            <QuestionVoicePlayer key={own} label="Tvoja odpoveď" path={own} />
+            {partner && <QuestionVoicePlayer key={partner} label={name} path={partner} />}
+          </dl>
+          {!partner && (
+            <>
+              <p role="status" className="mt-3 text-sm text-muted-foreground">
+                Odpoveď je uložená. Chat sa otvorí, keď odpovie aj druhý človek.
+              </p>
+              <button
+                type="button"
+                className="personal-action mt-3"
+                disabled={withdrawing}
+                onClick={() => void withdraw()}
+              >
+                Stiahnuť odpoveď
+              </button>
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Odpovede si vypočujete, keď odpoviete obaja.
+          </p>
+          <button type="button" className="personal-action mt-3" onClick={onRecord}>
+            <Mic className="size-4" aria-hidden="true" />
+            Nahrať odpoveď
+          </button>
+        </>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-destructive">
+          Odpoveď sa nepodarilo stiahnuť. Skús to znova.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
+  const [url, setUrl] = useState<string>();
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    signQuestionVoice(path)
+      .then((signedUrl) => {
+        if (active) setUrl(signedUrl);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [path, attempt]);
+
+  return (
+    <div className="min-w-0 rounded-lg bg-muted p-3">
+      <dt className="break-words text-sm font-semibold">{label}</dt>
+      <dd className="mt-2">
+        {failed ? (
+          <button
+            type="button"
+            className="personal-action"
+            onClick={() => {
+              setFailed(false);
+              setUrl(undefined);
+              setAttempt((previous) => previous + 1);
+            }}
+          >
+            Načítať nahrávku znova
+          </button>
+        ) : url ? (
+          <audio
+            className="w-full"
+            aria-label={label}
+            controls
+            preload="none"
+            src={url}
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <p role="status" className="text-sm text-muted-foreground">
+            Načítavam nahrávku…
+          </p>
+        )}
+      </dd>
+    </div>
+  );
+}
 
 export function SharedConversationQuestion({
   matchId,
