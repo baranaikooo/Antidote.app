@@ -106,6 +106,7 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
     h: "3. Účely spracúvania",
     p: [
       "Poskytovanie služby — párovanie, komunikácia, bezpečnosť účtu.",
+      "Dobrovoľný záujem o stretnutie uložíme pri rozhovore. Druhý účastník ho uvidí, len ak tiež prejaví záujem. Svoj záujem môžeš kedykoľvek odvolať.",
       "Zlepšovanie kvality (v agregovanej, anonymizovanej forme).",
       "Plnenie zákonných povinností.",
     ],

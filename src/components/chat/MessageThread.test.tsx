@@ -7,6 +7,7 @@ import { MessageThread } from "./MessageThread";
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   question: vi.fn(),
+  meeting: vi.fn(),
   choice: vi.fn(),
   videos: vi.fn(),
   messages: vi.fn(),
@@ -26,7 +27,8 @@ vi.mock("@/lib/supabase", () => ({
   fetchChatMessages: mocks.messages,
   saveChatMessage: mocks.send,
   supabase: {
-    rpc: (name: string, args: unknown) => mocks.question(name, args),
+    rpc: (name: string, args: unknown) =>
+      name.endsWith("meeting_interest") ? mocks.meeting(name, args) : mocks.question(name, args),
     channel: () => {
       const channel = { on: () => channel, subscribe: () => channel };
       return channel;
@@ -77,6 +79,7 @@ function Thread({ onClose = () => {} }: { onClose?: () => void }) {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.read.mockResolvedValue(open);
+  mocks.meeting.mockResolvedValue({ data: null, error: null });
   mocks.question.mockResolvedValue({ data: null, error: null });
   mocks.messages.mockResolvedValue([]);
   mocks.markRead.mockResolvedValue(undefined);
@@ -251,4 +254,29 @@ it("submits an optional answer and can withdraw it before the mutual reveal", as
     p_match_id: "match",
     p_answer: null,
   });
+});
+
+it("keeps a single meeting choice private in the chat and shows the result after mutual interest", async () => {
+  mocks.messages.mockResolvedValue([
+    { id: "one", from: "me", text: "Ahoj", ts: 1 },
+    { id: "two", from: "them", text: "Ahoj", ts: 2 },
+  ]);
+  mocks.meeting.mockResolvedValue({ data: { interested: false, mutual: false }, error: null });
+  render(<Thread />);
+  fireEvent.click(await screen.findByText("Možnosti rozhovoru"));
+  const control = await screen.findByRole("button", { name: "Chcem sa stretnúť" });
+
+  mocks.meeting.mockResolvedValue({ data: { interested: true, mutual: false }, error: null });
+  fireEvent.click(control);
+  await screen.findByRole("button", { name: "Odvolať záujem" });
+  expect(screen.queryByText("Obaja sa chcete stretnúť.")).not.toBeInTheDocument();
+  expect(mocks.meeting).toHaveBeenCalledWith("set_meeting_interest", {
+    p_match_id: "match",
+    p_interested: true,
+  });
+  expect(mocks.send).not.toHaveBeenCalled();
+
+  mocks.meeting.mockResolvedValue({ data: { interested: true, mutual: true }, error: null });
+  fireEvent(window, new Event("online"));
+  expect(await screen.findByText("Obaja sa chcete stretnúť.")).toBeVisible();
 });
