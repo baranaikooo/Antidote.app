@@ -7,7 +7,6 @@ import { MessageThread } from "./MessageThread";
 const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   question: vi.fn(),
-  uploadImage: vi.fn(),
   choice: vi.fn(),
   videos: vi.fn(),
   messages: vi.fn(),
@@ -26,7 +25,6 @@ vi.mock("@/lib/conversations", () => ({
 vi.mock("@/lib/supabase", () => ({
   fetchChatMessages: mocks.messages,
   saveChatMessage: mocks.send,
-  uploadChatImage: mocks.uploadImage,
   supabase: {
     rpc: (name: string, args: unknown) => mocks.question(name, args),
     channel: () => {
@@ -255,24 +253,18 @@ it("submits an optional answer and can withdraw it before the mutual reveal", as
   });
 });
 
-it("offers GIFs and meme uploads in a fresh chat without offering a meeting", async () => {
+it("only offers approved GIPHY entries and sends a catalog ID from a fresh chat", async () => {
   render(<Thread />);
-  fireEvent.click(await screen.findByRole("button", { name: "GIFy a mémy" }));
-  expect(screen.getByRole("button", { name: "Odoslať GIF – Pozdrav" })).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Chcem sa stretnúť" })).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole("button", { name: "GIFy" }));
+  expect(screen.getAllByRole("button", { name: /^Odoslať GIF/ })).toHaveLength(24);
+  expect(document.querySelector('input[type="file"]')).toBeNull();
+  expect(screen.queryByRole("button", { name: "Mémy" })).not.toBeInTheDocument();
 
-  const file = new File(["fixture"], "mem.gif", { type: "image/gif" });
-  fireEvent.change(screen.getByLabelText("Vybrať GIF alebo mém"), { target: { files: [file] } });
-  expect(await screen.findByText("mem.gif")).toBeInTheDocument();
-  expect(mocks.uploadImage).not.toHaveBeenCalled();
-  mocks.uploadImage.mockResolvedValue({
-    message: { id: "image", created_at: "2026-11-27T10:00:00Z" },
-    media: { kind: "gif", url: "https://fixture.test/signed.gif" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Odoslať obrázok" }));
-  expect(await screen.findByRole("img", { name: "Odoslaný GIF" })).toHaveAttribute(
+  mocks.send.mockResolvedValue({ id: "reaction", created_at: "2026-11-27T10:00:00Z" });
+  fireEvent.click(screen.getByRole("button", { name: "Odoslať GIF – Mávanie" }));
+  expect(await screen.findByRole("img", { name: "Mávanie" })).toHaveAttribute(
     "src",
-    "https://fixture.test/signed.gif",
+    "https://media.giphy.com/media/Wj116ZszUZEwRIoz0j/200w.gif",
   );
-  expect(mocks.uploadImage.mock.calls[0].slice(0, 3)).toEqual(["match", "me", file]);
+  expect(mocks.send.mock.calls[0].slice(0, 4)).toEqual(["match", "me", "", "Wj116ZszUZEwRIoz0j"]);
 });

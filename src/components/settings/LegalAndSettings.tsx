@@ -115,7 +115,7 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
     p: [
       "Profilové údaje: po dobu existencie účtu.",
       "Overovacie video: maximálne 30 dní, alebo do úspešného overenia.",
-      "Správy, obrázky a odpovede na spoločné otázky ukladáme v Supabase. Ukončenie rozhovoru zruší prístup účastníkov cez aplikáciu. Odpoveď na spoločnú otázku môžeš stiahnuť pred jej sprístupnením druhému účastníkovi.",
+      "Správy, vybrané GIFy a odpovede na spoločné otázky ukladáme v Supabase. Pri zobrazení sa GIF načíta zo služby GIPHY. Ukončenie rozhovoru zruší prístup účastníkov cez aplikáciu. Odpoveď na spoločnú otázku môžeš stiahnuť pred jej sprístupnením druhému účastníkovi.",
     ],
   },
   {
