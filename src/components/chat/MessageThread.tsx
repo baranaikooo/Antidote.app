@@ -1,4 +1,5 @@
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Eye, Mic, MoreVertical, Reply, Send, Sparkles, X } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/lib/resonance";
@@ -433,7 +434,13 @@ export function MessageThread({
             </button>
           </div>
         )}
-        {!status && !loadFailed && <p role="status">Načítavam rozhovor…</p>}
+        {!status && !loadFailed && (
+          <div className="space-y-3 py-2" role="status" aria-label="Načítavam rozhovor">
+            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-12 w-3/4 rounded-2xl" />
+            <Skeleton className="ml-auto h-12 w-2/3 rounded-2xl" />
+          </div>
+        )}
         {status?.status === "deleted" && (
           <p role="status" className="editorial-panel p-4">
             Rozhovor je ukončený.
@@ -454,7 +461,11 @@ export function MessageThread({
                 </button>
               </>
             ) : (
-              <p role="status">Načítavam spoločnú otázku…</p>
+              <div className="space-y-2.5" role="status" aria-label="Načítavam spoločnú otázku">
+                <Skeleton className="h-4 w-36 rounded-md" />
+                <Skeleton className="h-5 w-full rounded-md" />
+                <Skeleton className="h-10 w-44 rounded-lg" />
+              </div>
             )}
           </div>
         )}
@@ -524,7 +535,10 @@ export function MessageThread({
                   (videosFailed ? (
                     <p role="alert">Videá sa nepodarilo načítať. Skry ich a otvor znova.</p>
                   ) : videos === null ? (
-                    <p role="status">Načítavam videá…</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2" role="status" aria-label="Načítavam videá">
+                      <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+                      <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+                    </div>
                   ) : videos.length === 0 ? (
                     <p>Profil nemá dostupné videá.</p>
                   ) : (

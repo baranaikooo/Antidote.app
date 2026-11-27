@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Cookie, Shield, BarChart3, Sparkles, ChevronDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 const KEY = "reson-cookie-consent-v1";
 
@@ -67,21 +68,12 @@ export function CookieConsent() {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-foreground">{title}</p>
-          <button
-            onClick={() => !locked && onChange?.(!checked)}
+          <Switch
+            checked={checked}
             disabled={locked}
-            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-              checked ? "bg-primary" : "bg-muted-foreground/30"
-            } ${locked ? "opacity-60" : ""}`}
+            onCheckedChange={(v) => !locked && onChange?.(v)}
             aria-label={title}
-            aria-pressed={checked}
-          >
-            <span
-              className={`absolute top-0.5 size-4 rounded-full bg-background shadow transition-all ${
-                checked ? "left-[18px]" : "left-0.5"
-              }`}
-            />
-          </button>
+          />
         </div>
         <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{desc}</p>
       </div>
