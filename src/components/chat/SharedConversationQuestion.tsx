@@ -50,6 +50,7 @@ export function SharedConversationQuestion({
 
   if (question.skipped) return null;
   const partnerAnswer = question.partner_answer;
+  const showEditor = question.required || editing;
   return (
     <section className="conversation-intro" aria-labelledby="shared-question-heading">
       <h2 id="shared-question-heading" className="font-semibold">
@@ -72,7 +73,7 @@ export function SharedConversationQuestion({
               </div>
             )}
           </dl>
-          {partnerAnswer ? (
+          {partnerAnswer && !question.required && (
             <button
               type="button"
               className="personal-action conversation-follow-up"
@@ -83,25 +84,30 @@ export function SharedConversationQuestion({
               <Reply className="size-4" aria-hidden="true" />
               Nadviazať na odpoveď
             </button>
-          ) : (
+          )}
+          {!partnerAnswer && (
             <p role="status" className="mt-3 text-sm text-muted-foreground">
-              Odpoveď je uložená. Obaja ich uvidíte, keď odpovie aj druhý človek.
+              {question.required
+                ? "Odpoveď je uložená. Chat sa otvorí, keď odpovie aj druhý človek."
+                : "Odpoveď je uložená. Obaja ich uvidíte, keď odpovie aj druhý človek."}
             </p>
           )}
         </>
       ) : (
         <p id="shared-question-privacy" className="mt-2 text-sm text-muted-foreground">
-          Odpovede sa zobrazia, keď odpoviete obaja.
+          {question.required
+            ? "Keď odpoviete obaja, uvidíte svoje odpovede a otvorí sa chat."
+            : "Odpovede sa zobrazia, keď odpoviete obaja."}
         </p>
       )}
       {!partnerAnswer && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (editing && answer.trim()) void respond(answer.trim());
+            if (showEditor && answer.trim()) void respond(answer.trim());
           }}
         >
-          {editing && !question.own_answer && (
+          {showEditor && !question.own_answer && (
             <label className="mt-3 grid gap-1 text-sm font-semibold">
               Tvoja odpoveď
               <textarea
@@ -118,7 +124,7 @@ export function SharedConversationQuestion({
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {!question.own_answer &&
-              (editing ? (
+              (showEditor ? (
                 <button
                   type="submit"
                   className="personal-action"
@@ -136,14 +142,16 @@ export function SharedConversationQuestion({
                   Odpovedať
                 </button>
               ))}
-            <button
-              type="button"
-              className="personal-action"
-              disabled={saving}
-              onClick={() => void respond(null)}
-            >
-              {question.own_answer ? "Stiahnuť odpoveď" : "Preskočiť"}
-            </button>
+            {(!question.required || question.own_answer) && (
+              <button
+                type="button"
+                className="personal-action"
+                disabled={saving}
+                onClick={() => void respond(null)}
+              >
+                {question.own_answer ? "Stiahnuť odpoveď" : "Preskočiť"}
+              </button>
+            )}
           </div>
         </form>
       )}

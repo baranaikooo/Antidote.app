@@ -5,6 +5,7 @@ export type SharedQuestion = {
   own_answer: string | null;
   partner_answer: string | null;
   skipped: boolean;
+  required?: boolean;
 };
 
 export async function readSharedQuestion(matchId: string): Promise<SharedQuestion | null> {

@@ -43,7 +43,8 @@ export function MessageThread({
   const [status, setStatus] = useState<ConversationStatus | null>(null);
   const [input, setInput] = useState("");
   const [selectedReply, setSelectedReply] = useState<string | null>(null);
-  const [sharedQuestion, setSharedQuestion] = useState<SharedQuestion | null>(null);
+  const [sharedQuestion, setSharedQuestion] = useState<SharedQuestion | null>();
+  const [questionLoadFailed, setQuestionLoadFailed] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
   const [error, setError] = useState("");
@@ -117,9 +118,13 @@ export function MessageThread({
     const current = ++request.current;
     void readSharedQuestion(conversation.id)
       .then((question) => {
-        if (current === request.current) setSharedQuestion(question);
+        if (current !== request.current) return;
+        setSharedQuestion(question);
+        setQuestionLoadFailed(false);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (current === request.current) setQuestionLoadFailed(true);
+      });
     try {
       const [next, messages] = await Promise.all([
         readConversationStatus(conversation.id, userId),
@@ -263,7 +268,7 @@ export function MessageThread({
 
   async function send(reaction?: ChatGif) {
     const text = reaction ? "" : input.trim();
-    if ((!text && !reaction) || sendLock.current || status?.status !== "active") return;
+    if ((!text && !reaction) || sendLock.current || !canSend) return;
     sendLock.current = true;
     setFailedSend(null);
     setSending(true);
@@ -314,6 +319,12 @@ export function MessageThread({
   }
 
   const isOpen = status?.status === "active";
+  const canSend =
+    isOpen &&
+    (hasMessages ||
+      (sharedQuestion !== undefined &&
+        (!sharedQuestion?.required ||
+          Boolean(sharedQuestion.own_answer && sharedQuestion.partner_answer))));
   const showPilotQuestion =
     isOpen && latestIncoming && conversation.messages.some((message) => message.from === "me");
   const canRetrySend = failedSend && (failedSend.reaction || failedSend.text === input.trim());
@@ -347,6 +358,24 @@ export function MessageThread({
           </p>
         )}
 
+        {isOpen && !hasMessages && sharedQuestion === undefined && (
+          <div className="conversation-intro">
+            {questionLoadFailed ? (
+              <>
+                <p role="alert">Spoločnú otázku sa nepodarilo načítať.</p>
+                <button
+                  type="button"
+                  className="personal-action mt-2"
+                  onClick={() => void refresh()}
+                >
+                  Skúsiť znova
+                </button>
+              </>
+            ) : (
+              <p role="status">Načítavam spoločnú otázku…</p>
+            )}
+          </div>
+        )}
         {isOpen && sharedQuestion && (
           <SharedConversationQuestion
             matchId={conversation.id}
@@ -361,7 +390,7 @@ export function MessageThread({
             onReply={selectReply}
           />
         )}
-        {isOpen && !hasMessages && (reflection || !sharedQuestion) && (
+        {canSend && !hasMessages && (!sharedQuestion || sharedQuestion.skipped) && (
           <section className="conversation-intro" aria-labelledby="conversation-intro">
             <h2 id="conversation-intro" className="font-semibold">
               {reflection ? "Zdieľaná odpoveď" : "Otázka na úvod"}
@@ -502,153 +531,161 @@ export function MessageThread({
 
       {isOpen && (
         <div className="conversation-composer shrink-0">
-          {replyContext && (
-            <div className="conversation-reply-draft">
-              <div id="conversation-reply-context" className="min-w-0">
-                <p className="text-sm font-semibold">Reaguješ na zdieľanú odpoveď</p>
-                <p className="truncate text-sm text-muted-foreground">{replyContext}</p>
-              </div>
-              <button
-                type="button"
-                className="conversation-header-action shrink-0"
-                aria-label="Odstrániť zdieľanú odpoveď zo správy"
-                disabled={sending}
-                onClick={() => selectReply(null)}
-              >
-                <X className="size-4" aria-hidden="true" />
-              </button>
-            </div>
-          )}
-          {error && (
-            <div className="flex flex-wrap items-center gap-2 px-3 pt-2">
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-              {canRetrySend && (
-                <button
-                  type="button"
-                  disabled={sending}
-                  onClick={() => void send(failedSend.reaction)}
-                  className="personal-action"
-                >
-                  Skúsiť znova
-                </button>
-              )}
-            </div>
-          )}
-          {showGifs && (
-            <section
-              id="chat-media-picker"
-              className="grid gap-2 px-3 pt-2"
-              aria-label="Katalóg GIFov"
-              onKeyDown={(event) => {
-                if (event.key !== "Escape") return;
-                setShowGifs(false);
-                reactionTrigger.current?.focus({ preventScroll: true });
-              }}
-            >
-              <div className="grid gap-1">
-                <input
-                  ref={gifSearchInput}
-                  type="search"
-                  aria-label="Hľadať GIFy"
-                  placeholder="Search KLIPY"
-                  maxLength={80}
-                  value={gifQuery}
-                  onChange={(event) => setGifQuery(event.target.value)}
-                  className="conversation-input w-full"
-                />
-                {query.length < 2 || search?.live === false ? (
-                  <p className="text-xs text-muted-foreground" role="status">
-                    {search?.live === false
-                      ? "Výsledky zo základného výberu GIPHY."
-                      : "Výber z GIPHY"}
-                  </p>
-                ) : search ? (
-                  <p className="text-xs text-muted-foreground" role="status">
-                    {displayedGifs.length ? "Powered by KLIPY" : "Žiadne GIFy. Skús iné slovo."}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground" role="status">
-                    Hľadám GIFy…
-                  </p>
-                )}
-              </div>
-              <div className="grid max-h-[min(16rem,34dvh)] grid-cols-3 gap-2 overflow-y-auto overscroll-contain px-0.5 py-0.5 sm:grid-cols-4">
-                {displayedGifs.map((gif) => (
+          {canSend && (
+            <>
+              {replyContext && (
+                <div className="conversation-reply-draft">
+                  <div id="conversation-reply-context" className="min-w-0">
+                    <p className="text-sm font-semibold">Reaguješ na zdieľanú odpoveď</p>
+                    <p className="truncate text-sm text-muted-foreground">{replyContext}</p>
+                  </div>
                   <button
                     type="button"
-                    key={gif.url}
-                    className="min-h-11 overflow-hidden rounded-lg border border-foreground/15 bg-muted"
+                    className="conversation-header-action shrink-0"
+                    aria-label="Odstrániť zdieľanú odpoveď zo správy"
                     disabled={sending}
-                    aria-label={`Odoslať GIF – ${gif.label}`}
-                    onClick={() => void send(gif)}
+                    onClick={() => selectReply(null)}
                   >
-                    <img
-                      src={gif.previewUrl}
-                      alt=""
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      className="aspect-[3/2] w-full object-cover"
-                    />
+                    <X className="size-4" aria-hidden="true" />
                   </button>
-                ))}
-              </div>
-            </section>
-          )}
-          <form
-            className="flex items-end gap-2 p-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void send();
-            }}
-          >
-            <button
-              type="button"
-              className="conversation-header-action"
-              aria-label="Nahrať hlasovú správu"
-              onClick={onVoice}
-              disabled={sending}
-            >
-              <Mic className="size-5" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="conversation-header-action shrink-0"
-              ref={reactionTrigger}
-              aria-label="GIFy"
-              aria-expanded={showGifs}
-              aria-controls="chat-media-picker"
-              onClick={() => setShowGifs((open) => !open)}
-            >
-              <Sparkles className="size-5" aria-hidden="true" />
-            </button>
-            <textarea
-              ref={composerInput}
-              className="conversation-input"
-              aria-label="Správa"
-              aria-describedby={replyContext ? "conversation-reply-context" : undefined}
-              rows={1}
-              maxLength={2000}
-              value={input}
-              placeholder={replyContext ? "Napíš, čo ťa zaujalo…" : "Napíš správu…"}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                </div>
+              )}
+              {error && (
+                <div className="flex flex-wrap items-center gap-2 px-3 pt-2">
+                  <p role="alert" className="text-sm text-destructive">
+                    {error}
+                  </p>
+                  {canRetrySend && (
+                    <button
+                      type="button"
+                      disabled={sending}
+                      onClick={() => void send(failedSend.reaction)}
+                      className="personal-action"
+                    >
+                      Skúsiť znova
+                    </button>
+                  )}
+                </div>
+              )}
+              {showGifs && (
+                <section
+                  id="chat-media-picker"
+                  className="grid gap-2 px-3 pt-2"
+                  aria-label="Katalóg GIFov"
+                  onKeyDown={(event) => {
+                    if (event.key !== "Escape") return;
+                    setShowGifs(false);
+                    reactionTrigger.current?.focus({ preventScroll: true });
+                  }}
+                >
+                  <div className="grid gap-1">
+                    <input
+                      ref={gifSearchInput}
+                      type="search"
+                      aria-label="Hľadať GIFy"
+                      placeholder="Search KLIPY"
+                      maxLength={80}
+                      value={gifQuery}
+                      onChange={(event) => setGifQuery(event.target.value)}
+                      className="conversation-input w-full"
+                    />
+                    {query.length < 2 || search?.live === false ? (
+                      <p className="text-xs text-muted-foreground" role="status">
+                        {search?.live === false
+                          ? "Výsledky zo základného výberu GIPHY."
+                          : "Výber z GIPHY"}
+                      </p>
+                    ) : search ? (
+                      <p className="text-xs text-muted-foreground" role="status">
+                        {displayedGifs.length ? "Powered by KLIPY" : "Žiadne GIFy. Skús iné slovo."}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground" role="status">
+                        Hľadám GIFy…
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid max-h-[min(16rem,34dvh)] grid-cols-3 gap-2 overflow-y-auto overscroll-contain px-0.5 py-0.5 sm:grid-cols-4">
+                    {displayedGifs.map((gif) => (
+                      <button
+                        type="button"
+                        key={gif.url}
+                        className="min-h-11 overflow-hidden rounded-lg border border-foreground/15 bg-muted"
+                        disabled={sending}
+                        aria-label={`Odoslať GIF – ${gif.label}`}
+                        onClick={() => void send(gif)}
+                      >
+                        <img
+                          src={gif.previewUrl}
+                          alt=""
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          className="aspect-[3/2] w-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+              <form
+                className="flex items-end gap-2 p-3"
+                onSubmit={(event) => {
                   event.preventDefault();
                   void send();
-                }
-              }}
-            />
-            <button
-              type="submit"
-              aria-label="Odoslať správu"
-              className="conversation-send"
-              disabled={sending || !input.trim()}
-            >
-              <Send className="size-4" aria-hidden="true" />
-            </button>
-          </form>
+                }}
+              >
+                <button
+                  type="button"
+                  className="conversation-header-action"
+                  aria-label="Nahrať hlasovú správu"
+                  onClick={onVoice}
+                  disabled={sending}
+                >
+                  <Mic className="size-5" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="conversation-header-action shrink-0"
+                  ref={reactionTrigger}
+                  aria-label="GIFy"
+                  aria-expanded={showGifs}
+                  aria-controls="chat-media-picker"
+                  onClick={() => setShowGifs((open) => !open)}
+                >
+                  <Sparkles className="size-5" aria-hidden="true" />
+                </button>
+                <textarea
+                  ref={composerInput}
+                  className="conversation-input"
+                  aria-label="Správa"
+                  aria-describedby={replyContext ? "conversation-reply-context" : undefined}
+                  rows={1}
+                  maxLength={2000}
+                  value={input}
+                  placeholder={replyContext ? "Napíš, čo ťa zaujalo…" : "Napíš správu…"}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === "Enter" &&
+                      !event.shiftKey &&
+                      !event.nativeEvent.isComposing
+                    ) {
+                      event.preventDefault();
+                      void send();
+                    }
+                  }}
+                />
+                <button
+                  type="submit"
+                  aria-label="Odoslať správu"
+                  className="conversation-send"
+                  disabled={sending || !input.trim()}
+                >
+                  <Send className="size-4" aria-hidden="true" />
+                </button>
+              </form>
+            </>
+          )}
           <details className="px-3 pb-2 text-sm">
             <DisclosureSummary className="font-semibold">Možnosti rozhovoru</DisclosureSummary>
             <p className="mb-2 text-muted-foreground">Rozhovor môžeš ukončiť kedykoľvek.</p>
