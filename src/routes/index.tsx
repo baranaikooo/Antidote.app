@@ -31,6 +31,7 @@ import {
 
 import { Landing } from "@/features/onboarding/LandingScreen";
 import type { GoogleProfile } from "@/components/GoogleSignInButton";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useHaptic } from "@/hooks/use-haptics";
 import {
   attachStreamToVideo,
@@ -134,6 +135,7 @@ export const Route = createFileRoute("/")({
 function Shell({
   children,
   landing = false,
+  mobileLanding = false,
   main = false,
   thread = false,
   onboardingScreen,
@@ -141,6 +143,7 @@ function Shell({
 }: {
   children: React.ReactNode;
   landing?: boolean;
+  mobileLanding?: boolean;
   main?: boolean;
   thread?: boolean;
   onboardingScreen?: Screen;
@@ -151,9 +154,9 @@ function Shell({
   const onboardingStep = onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen];
   return (
     <div
-      className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
+      className={`antidote-shell relative h-full w-full overflow-hidden ${main ? "app-main" : mobileLanding ? "app-mobile-welcome" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
     >
-      {landing && (
+      {landing && !mobileLanding && (
         <picture>
           <source srcSet="/antidote-fold.webp" type="image/webp" />
           <img
@@ -169,7 +172,7 @@ function Shell({
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
       <div
-        className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}
+        className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${mobileLanding ? "mobile-welcome-viewport" : landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}
       >
         {onboarding && (
           <header className="onboarding-header">
@@ -372,7 +375,9 @@ function AntidoteApp() {
   const [screen, setScreen] = useState<Screen>("landing");
   const onboardingStage = getOnboardingStage(screen);
   const [resumedOnboarding, setResumedOnboarding] = useState<Screen | null>(null);
-  const [theme, setTheme] = useTheme(screen === "landing");
+  const isNarrowScreen = useIsMobile();
+  const mobileLayout = isNarrowScreen || Capacitor.getPlatform() === "android";
+  const [theme, setTheme] = useTheme(screen === "landing" && !mobileLayout);
   const themeLoadedRef = useRef(false);
   const themeRef = useRef(theme);
 
@@ -1246,6 +1251,7 @@ function AntidoteApp() {
   return (
     <Shell
       landing={screen === "landing"}
+      mobileLanding={screen === "landing" && mobileLayout}
       main={showNav}
       thread={screen === "thread" || screen === "chamber"}
       onboardingScreen={onboardingStage >= 0 ? screen : undefined}
@@ -1258,6 +1264,7 @@ function AntidoteApp() {
         <Suspense fallback={<AppSplash />}>
         {screen === "landing" && (
           <Landing
+            mobile={mobileLayout}
             onGoogle={(profile) => {
               haptic("success");
               setGoogleProfile(profile);

@@ -81,7 +81,7 @@ export function CookieConsent() {
   );
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[60] md:inset-x-auto md:right-4 md:bottom-4 md:max-w-md animate-fade-up">
+    <div className="cookie-placement">
       <div className="editorial-dock cookie-dock max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <div className="flex items-start gap-3 p-3.5 sm:p-4">
           <div className="grid size-9 shrink-0 place-items-center rounded-2xl bg-accent/12 text-accent">
@@ -92,7 +92,7 @@ export function CookieConsent() {
               Nastavenia cookies
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-pretty text-muted-foreground">
-              Nevyhnutné cookies potrebujeme na fungovanie aplikácie. Analytiku a personalizáciu môžeš povoliť alebo{"\u00A0"}odmietnuť.
+              Analytiku a personalizáciu môžeš povoliť alebo odmietnuť.
             </p>
           </div>
         </div>
@@ -123,9 +123,10 @@ export function CookieConsent() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 pb-3.5 sm:px-4">
+        <div className="cookie-actions flex flex-wrap items-center justify-between gap-2 px-3.5 pb-3.5 sm:px-4">
           <button
             onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
             className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground"
           >
             {expanded ? "Skryť detaily" : "Prispôsobiť"}
@@ -133,16 +134,16 @@ export function CookieConsent() {
               className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`}
             />
           </button>
-          <div className="flex flex-wrap gap-2">
+          <div className="cookie-decisions flex flex-wrap gap-2">
             <button
               onClick={() => (expanded ? save("custom", prefs) : save("rejected"))}
-              className="personal-action min-h-12 rounded-full px-4 text-sm"
+              className="cookie-choice personal-action rounded-full px-4 text-sm"
             >
               {expanded ? "Uložiť" : "Odmietnuť"}
             </button>
             <button
               onClick={() => save("accepted")}
-              className="min-h-12 rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90"
+              className="cookie-choice personal-action rounded-full px-4 text-sm"
             >
               <span className="relative z-10">Prijať všetko</span>
             </button>
