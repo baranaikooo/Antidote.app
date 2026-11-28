@@ -29,6 +29,7 @@ import {
 import { UserProfile, ThemeMode } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
 import { removeOwnChatAttachments, supabase } from "@/lib/supabase";
+import { clearVoiceDrafts } from "@/lib/voice-drafts";
 import { QUESTION_VOICE_BUCKET } from "@/lib/shared-question";
 import { BackgroundGeoEngine } from "@/lib/geo";
 
@@ -254,12 +255,17 @@ export function SystemConfig({
 
   // Account Management
   async function executeLogout() {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Odhlásenie sa nepodarilo. Skús to znova.");
+      return;
+    }
+    await clearVoiceDrafts().catch(() => {});
     try {
       localStorage.clear();
     } catch {
       /* ignore */
     }
-    await supabase.auth.signOut();
     location.reload();
   }
 
@@ -284,13 +290,7 @@ export function SystemConfig({
       }
     }
 
-    try {
-      localStorage.clear();
-    } catch {
-      /* ignore */
-    }
-    await supabase.auth.signOut();
-    location.reload();
+    await executeLogout();
   }
 
   return (

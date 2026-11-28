@@ -10,10 +10,21 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.JSObject;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 @CapacitorPlugin(name = "AppChrome")
 public class AppChromePlugin extends Plugin {
+    @PluginMethod
+    public void hasFirebaseMessaging(PluginCall call) {
+        int id = getContext().getResources().getIdentifier(
+            "google_app_id", "string", getContext().getPackageName()
+        );
+        call.resolve(new JSObject()
+            .put("available", id != 0)
+            .put("supportsChannels", Build.VERSION.SDK_INT >= Build.VERSION_CODES.O));
+    }
+
     @Override
     public void load() {
         int nightMode = getContext().getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;

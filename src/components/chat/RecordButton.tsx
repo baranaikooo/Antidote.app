@@ -143,7 +143,7 @@ export function RecordButton({
                 className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/80 disabled:opacity-40 cursor-pointer"
               >
                 <RotateCcw className="size-4" />
-                <span>Nahrať znova</span>
+                <span>Zahodiť</span>
               </button>
 
               <button

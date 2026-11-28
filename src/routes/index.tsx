@@ -68,6 +68,8 @@ import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { shouldShowMessageAlert } from "@/lib/message-notifications";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
+import { clearVoiceDrafts, readVoiceDraft } from "@/lib/voice-drafts";
+import { refreshVoiceAlerts, clearDeliveredVoiceAlerts } from "@/lib/android-voice-alerts";
 import { introductionFor, toConversationPartner } from "@/lib/match-intro";
 
 const SemanticMirror = lazy(() =>
@@ -78,9 +80,6 @@ const ValueBankroll = lazy(() =>
 );
 const ReflectionEditor = lazy(() =>
   import("@/components/ReflectionEditor").then((m) => ({ default: m.ReflectionEditor })),
-);
-const Chamber = lazy(() =>
-  import("@/components/chat/VoiceChamber").then((m) => ({ default: m.Chamber })),
 );
 const MessageThread = lazy(() =>
   import("@/components/chat/MessageThread").then((m) => ({ default: m.MessageThread })),
@@ -418,6 +417,7 @@ function AntidoteApp() {
   const [inboxRevision, setInboxRevision] = useState(0);
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const resumeVoiceThread = useRef<{ userId: string; matchId: string } | null>(null);
 
   // Psychometric EV variables
   const [cognitiveDepth, setCognitiveDepth] = useState<number>(() => {
@@ -453,8 +453,10 @@ function AntidoteApp() {
   useEffect(() => {
     if (!authUserId || isAuthenticating || screen === "landing") return;
     localStorage.setItem("reson:active_screen", screen);
+    if (screen === "thread" && activeConversationId)
+      localStorage.setItem(`antidote:last-thread:${authUserId}`, activeConversationId);
     if (onboardingStage >= 0) localStorage.setItem("reson:onboarding_user_id", authUserId);
-  }, [authUserId, isAuthenticating, onboardingStage, screen]);
+  }, [activeConversationId, authUserId, isAuthenticating, onboardingStage, screen]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -565,10 +567,11 @@ function AntidoteApp() {
         if (existingProfile?.topPriority) {
           setProfile(existingProfile);
           const validMainScreens: Screen[] = ["noOne", "messages", "settings", "profile-dossier"];
-          if (savedScreen === "thread") {
+          if (savedScreen === "thread" || savedScreen === "chamber") {
+            const lastThread = localStorage.getItem(`antidote:last-thread:${user.id}`);
+            if (lastThread && Capacitor.getPlatform() === "android")
+              resumeVoiceThread.current = { userId: user.id, matchId: lastThread };
             setScreen("messages");
-          } else if (savedScreen === "chamber") {
-            setScreen("noOne");
           } else {
             setScreen(validMainScreens.includes(savedScreen) ? savedScreen : "noOne");
           }
@@ -623,6 +626,10 @@ function AntidoteApp() {
       data: { subscription },
     } = onAuthStateChange((event, session) => {
       if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN" && event !== "SIGNED_OUT") return;
+      if (!session) {
+        void clearVoiceDrafts().catch(() => {});
+        clearDeliveredVoiceAlerts();
+      }
 
       // Profile requests must run after Supabase releases its auth lock.
       window.setTimeout(() => {
@@ -649,6 +656,7 @@ function AntidoteApp() {
           setConversationPartners([]);
           setExcluded(new Set());
           setActiveConversationId(null);
+          resumeVoiceThread.current = null;
           setScreen("landing");
           setProfileLoadFailed(false);
           setIsAuthenticating(false);
@@ -663,6 +671,20 @@ function AntidoteApp() {
       subscription.unsubscribe();
     };
   }, [haptic, profileLoadAttempt, setTheme]);
+
+  useEffect(() => {
+    if (!authUserId) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") refreshVoiceAlerts(authUserId);
+    };
+    refresh();
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("online", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("online", refresh);
+    };
+  }, [authUserId]);
 
   // Synchronize theme changes to Supabase user metadata when selected by user
   useEffect(() => {
@@ -939,7 +961,24 @@ function AntidoteApp() {
         const partners = await fetchConversationPartners(
           inbox.conversations.map((conversation) => conversation.matchId),
         );
+        const resume = resumeVoiceThread.current;
+        const draftConversation =
+          resume?.userId === account
+            ? inbox.conversations.find(
+                (conversation) =>
+                  conversation.id === resume.matchId &&
+                  conversation.status === "active" &&
+                  partners.some((partner) => partner.id === conversation.matchId),
+              )
+            : undefined;
+        const hasDraft = draftConversation
+          ? await Promise.all([
+              readVoiceDraft([account, draftConversation.id, "answer"]),
+              readVoiceDraft([account, draftConversation.id, "message"]),
+            ]).then((drafts) => drafts.some(Boolean), () => false)
+          : false;
         if (!active || current !== request || openingRef.current) return;
+        if (resume?.userId === account) resumeVoiceThread.current = null;
         setExcluded(inbox.excluded);
         setConversationPartners(partners);
         setConversations((previous) => {
@@ -950,6 +989,10 @@ function AntidoteApp() {
           }));
         });
         setInboxFailed(false);
+        if (hasDraft && draftConversation) {
+          setActiveConversationId(draftConversation.id);
+          setScreen((current) => current === "messages" ? "thread" : current);
+        }
       } catch {
         if (active && current === request) setInboxFailed(true);
       } finally {
@@ -1120,7 +1163,7 @@ function AntidoteApp() {
   }
 
   const hasAnswers = Boolean(profile?.topPriority);
-  const focusScreens: Screen[] = ["test", "chamber", "thread"];
+  const focusScreens: Screen[] = ["test", "thread"];
   const showNav =
     profile !== null &&
     screen !== "landing" &&
@@ -1186,8 +1229,7 @@ function AntidoteApp() {
         return;
       }
 
-      if (screen === "chamber") setScreen("thread");
-      else if (screen === "thread") setScreen("messages");
+      if (screen === "thread") setScreen("messages");
       else if (screen === "profile-dossier") setScreen("noOne");
       else if (
         screen === "legal-terms" ||
@@ -1258,7 +1300,7 @@ function AntidoteApp() {
       landing={screen === "landing"}
       mobileLanding={screen === "landing" && mobileLayout}
       main={showNav}
-      thread={screen === "thread" || screen === "chamber"}
+      thread={screen === "thread"}
       onboardingScreen={onboardingStage >= 0 ? screen : undefined}
       resumedOnboarding={resumedOnboarding === screen}
     >
@@ -1568,19 +1610,6 @@ function AntidoteApp() {
             }}
           />
         )}
-        {screen === "chamber" &&
-          activeConversation &&
-          activeConversationMatch &&
-          authUserId &&
-          activePrompt && (
-            <Chamber
-              userId={authUserId}
-              matchId={activeConversation.id}
-              name={activeConversationMatch.name}
-              prompt={activePrompt.text}
-              onBack={() => setScreen("thread")}
-            />
-          )}
         {screen === "noOne" && profile && (
           <div className="animate-kinetic-fade">
             <Dashboard
@@ -1630,13 +1659,12 @@ function AntidoteApp() {
           authUserId &&
           activePrompt && (
             <MessageThread
-              key={activeConversation.id}
+              key={authUserId + ":" + activeConversation.id}
               conversation={activeConversation}
               match={activeConversationMatch}
               userId={authUserId}
               prompt={activePrompt.text}
               onBack={() => setScreen("messages")}
-              onVoice={() => setScreen("chamber")}
               onClose={closeActiveConversation}
               onUpdate={updateActiveConversation}
             />

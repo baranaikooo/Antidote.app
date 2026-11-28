@@ -29,6 +29,8 @@ import { markConversationRead } from "@/lib/conversation-inbox";
 import { ConversationFeedback } from "./ConversationFeedback";
 import { SharedConversationQuestion, SharedVoiceQuestion } from "./SharedConversationQuestion";
 import { Chamber } from "./VoiceChamber";
+import { deleteVoiceDraft, readVoiceDraft, type VoiceDraftKind } from "@/lib/voice-drafts";
+import { enableVoiceAlerts, saveVoiceAlertChoice, shouldOfferVoiceAlerts } from "@/lib/android-voice-alerts";
 import {
   QUESTION_VOICE_MAX_SECONDS,
   readSharedQuestion,
@@ -44,7 +46,6 @@ export function MessageThread({
   onUpdate,
   onClose,
   onBack,
-  onVoice,
 }: {
   conversation: Conversation;
   match: ConversationPartner;
@@ -53,14 +54,14 @@ export function MessageThread({
   onUpdate: (patch: (previous: Conversation) => Conversation) => void;
   onClose: () => void;
   onBack: () => void;
-  onVoice: () => void;
 }) {
   const haptic = useHaptic();
   const [status, setStatus] = useState<ConversationStatus | null>(null);
   const [input, setInput] = useState("");
   const [selectedReply, setSelectedReply] = useState<string | null>(null);
   const [sharedQuestion, setSharedQuestion] = useState<SharedQuestion | null>();
-  const [recordingAnswer, setRecordingAnswer] = useState(false);
+  const [recorder, setRecorder] = useState<VoiceDraftKind | false | null>(null);
+  const [voiceAlertOffer, setVoiceAlertOffer] = useState<"offered" | "enabling" | "failed" | null>(null);
   const [questionLoadFailed, setQuestionLoadFailed] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
@@ -350,6 +351,29 @@ export function MessageThread({
           ))));
   const needsVoiceAnswer =
     isOpen && !canSend && sharedQuestion?.voice_required && !sharedQuestion.own_voice_path;
+  const canRecord = needsVoiceAnswer ? "answer" : canSend ? "message" : null;
+
+  useEffect(() => {
+    if (!canRecord || recorder !== null) return;
+    let active = true;
+    void readVoiceDraft([userId, conversation.id, canRecord])
+      .then((saved) => {
+        if (active && saved) setRecorder((current) => current ?? canRecord);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [canRecord, conversation.id, recorder, userId]);
+
+  const savedVoicePath = sharedQuestion?.own_voice_path;
+  useEffect(() => {
+    // Reconcile a save that completed just before the app was closed.
+    if (savedVoicePath && recorder !== "answer") {
+      void deleteVoiceDraft([userId, conversation.id, "answer"]).catch(() => {});
+    }
+  }, [conversation.id, recorder, savedVoicePath, userId]);
+
   const showPilotQuestion =
     isOpen && latestIncoming && conversation.messages.some((message) => message.from === "me");
   const canRetrySend = failedSend && (failedSend.reaction || failedSend.text === input.trim());
@@ -358,16 +382,41 @@ export function MessageThread({
     void refresh();
   }
 
-  if (isOpen && recordingAnswer && sharedQuestion?.voice_required) {
+  if (isOpen && recorder === "answer" && sharedQuestion?.voice_required) {
     return (
       <Chamber
+        key="answer"
         userId={userId}
         matchId={conversation.id}
         name={match.name}
         prompt={sharedQuestion.question}
-        onBack={() => setRecordingAnswer(false)}
+        onBack={() => setRecorder(false)}
         onAnswer={async (blob, id) => {
-          updateSharedQuestion(await submitQuestionVoice(conversation.id, userId, id, blob));
+          const answer = await submitQuestionVoice(conversation.id, userId, id, blob);
+          updateSharedQuestion(answer);
+          if (answer.own_voice_path) {
+            void shouldOfferVoiceAlerts(userId)
+              .then((offer) => {
+                if (offer) setVoiceAlertOffer("offered");
+              })
+              .catch(() => {});
+          }
+        }}
+      />
+    );
+  }
+
+  if (recorder === "message" && canSend) {
+    return (
+      <Chamber
+        key="message"
+        userId={userId}
+        matchId={conversation.id}
+        name={match.name}
+        prompt={prompt}
+        onBack={() => {
+          setRecorder(false);
+          void refresh();
         }}
       />
     );
@@ -553,6 +602,48 @@ export function MessageThread({
             onChange={updateSharedQuestion}
           />
         )}
+        {isOpen && voiceAlertOffer && (
+          <section className="conversation-intro" aria-labelledby="voice-alert-heading">
+            <h2 id="voice-alert-heading">Chceš vedieť, keď príde hlasová odpoveď?</h2>
+            <p className="mt-2 text-sm">
+              Na zamknutej obrazovke sa zobrazí len „Máš novú odpoveď“.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="personal-action"
+                disabled={voiceAlertOffer === "enabling"}
+                onClick={async () => {
+                  setVoiceAlertOffer("enabling");
+                  try {
+                    await enableVoiceAlerts(userId);
+                    setVoiceAlertOffer(null);
+                  } catch {
+                    setVoiceAlertOffer("failed");
+                  }
+                }}
+              >
+                {voiceAlertOffer === "enabling" ? "Zapínam…" : "Povoliť upozornenia"}
+              </button>
+              <button
+                type="button"
+                className="personal-action"
+                disabled={voiceAlertOffer === "enabling"}
+                onClick={() => {
+                  setVoiceAlertOffer(null);
+                  saveVoiceAlertChoice(userId, "dismissed");
+                }}
+              >
+                Teraz nie
+              </button>
+            </div>
+            {voiceAlertOffer === "failed" && (
+              <p role="alert" className="mt-2 text-sm text-destructive">
+                Upozornenia sa nepodarilo zapnúť. Skús to znova.
+              </p>
+            )}
+          </section>
+        )}
         {isOpen && sharedQuestion && !sharedQuestion.voice_required && (
           <SharedConversationQuestion
             matchId={conversation.id}
@@ -718,7 +809,7 @@ export function MessageThread({
           <button
             type="button"
             className="match-card-action"
-            onClick={() => setRecordingAnswer(true)}
+            onClick={() => setRecorder("answer")}
           >
             Nahrať odpoveď
             <Mic size={22} aria-hidden="true" />
@@ -835,7 +926,7 @@ export function MessageThread({
                   type="button"
                   className="conversation-header-action"
                   aria-label="Nahrať hlasovú správu"
-                  onClick={onVoice}
+                  onClick={() => setRecorder("message")}
                   disabled={sending}
                 >
                   <Mic className="size-5" aria-hidden="true" />

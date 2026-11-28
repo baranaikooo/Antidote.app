@@ -167,14 +167,22 @@ export function Dashboard({
   const displayedRadius = pendingRadius ?? savedRadius;
   const nearby = displayedRadius < 500;
   const searchRange = nearby ? `Do ${displayedRadius} km` : "Celý svet";
-  const radiusButton = useRef<HTMLButtonElement>(null);
+  const radiusTrigger = useRef<HTMLButtonElement | null>(null);
   const swipeStart = useRef<{ x: number; y: number; axis: "x" | "y" | null } | null>(null);
   const swipeTicked = useRef(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
 
   function closeRadiusEditor() {
     setEditingRadius(false);
-    requestAnimationFrame(() => radiusButton.current?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => radiusTrigger.current?.focus({ preventScroll: true }));
+  }
+
+  function openRadiusEditor(trigger: HTMLButtonElement) {
+    if (savingRadius) return;
+    radiusTrigger.current = trigger;
+    setRadiusChoice(savedRadius);
+    setRadiusFailed(false);
+    setEditingRadius(true);
   }
 
   async function saveSearchRadius() {
@@ -214,23 +222,13 @@ export function Dashboard({
         <div className="discover-title-row">
           <h1 className="personal-title">Spojenia</h1>
           <button
-            ref={radiusButton}
             type="button"
             className="discover-radius-chip"
             aria-expanded={editingRadius}
             aria-controls="discover-radius-editor"
             aria-disabled={savingRadius}
             aria-label={`Upraviť dosah odporúčaní, aktuálne ${searchRange}`}
-            onClick={() => {
-              if (savingRadius) return;
-              if (editingRadius) {
-                closeRadiusEditor();
-              } else {
-                setRadiusChoice(savedRadius);
-                setRadiusFailed(false);
-                setEditingRadius(true);
-              }
-            }}
+            onClick={(event) => openRadiusEditor(event.currentTarget)}
           >
             <MapPin className="size-4 shrink-0" aria-hidden="true" />
             <span>{savingRadius ? "Ukladám…" : searchRange}</span>
@@ -242,7 +240,10 @@ export function Dashboard({
             if (!open && !savingRadius) closeRadiusEditor();
           }}
         >
-          <DrawerContent className="mx-auto max-w-md border-border bg-card text-foreground">
+          <DrawerContent
+            id="discover-radius-editor"
+            className="mx-auto max-w-md border-border bg-card text-foreground"
+          >
             <DrawerHeader>
               <DrawerTitle className="font-display text-xl">Nový dosah odporúčaní</DrawerTitle>
             </DrawerHeader>
@@ -438,18 +439,31 @@ export function Dashboard({
             </p>
           </div>
 
-          <button
-            type="button"
-            className="discover-refresh"
-            disabled={loading || savingRadius}
-            onClick={() => {
-              haptic("tap");
-              onRefresh();
-            }}
-          >
-            <RefreshCw className="size-4 shrink-0" aria-hidden="true" />
-            Hľadať znova
-          </button>
+          {!loading && !savingRadius && failed && (
+            <button
+              type="button"
+              className="discover-refresh"
+              onClick={() => {
+                haptic("tap");
+                onRefresh();
+              }}
+            >
+              <RefreshCw className="size-4 shrink-0" aria-hidden="true" />
+              Skúsiť znova
+            </button>
+          )}
+          {!loading && !savingRadius && !failed && nearby && (
+            <button
+              type="button"
+              className="discover-refresh"
+              aria-expanded={editingRadius}
+              aria-controls="discover-radius-editor"
+              onClick={(event) => openRadiusEditor(event.currentTarget)}
+            >
+              <MapPin className="size-4 shrink-0" aria-hidden="true" />
+              Upraviť dosah
+            </button>
+          )}
         </section>
       )}
     </div>

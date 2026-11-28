@@ -21,6 +21,28 @@ select * from public.conversation_pilot_metrics;
 
 Podiel obojstranných výmen počítaj zo všetkých začatých rozhovorov. Podiel odpovedí „áno“ uvádzaj spolu s počtom ľudí, ktorí sa rozhodli odpovedať. Údaje z testovacích účtov oddeľ od výsledkov pilotu.
 
+## Upozornenia na hlasové odpovede
+
+GitHub Actions načíta konfiguráciu Firebase pre Android z tajomstva
+`FIREBASE_ANDROID_CONFIG` v prostredí `android-release`. Hodnota je súbor
+`google-services.json` v Base64. Lokálny build načíta súbor priamo z
+`android/app/google-services.json`.
+
+Aplikuj migrácie pre doručovanie hlasových upozornení a nasaď Edge Function
+`send-voice-reply` s vypnutým overovaním JWT na bráne. Funkcia sama overuje
+podpis webhooku a spracuje každý doručovací lístok najviac raz. Do nastavení funkcie pridaj `FIREBASE_SERVICE_ACCOUNT`
+(JSON účtu s oprávnením odosielať cez Firebase Cloud Messaging) a
+`VOICE_REPLY_WEBHOOK_SECRET` (náhodné tajomstvo). Do Supabase Vault pridaj
+rovnaké tajomstvo pod názvom `voice_reply_webhook_secret` a úplnú URL funkcie
+pod názvom `voice_reply_webhook_url`. Až potom sa v aplikácii zobrazí ponuka
+na zapnutie upozornení.
+
+Zavri aplikáciu po dokončení nahrávky. Po otvorení over prehratie, odoslanie
+a zahodenie návrhu. Pri ďalšom pokuse odošli prvú odpoveď, povoľ upozornenia
+a zamkni telefón. Keď odpovie druhý účet, over text „Máš novú odpoveď“ a
+dostupnosť prehrávača aj textového chatu po návrate. Zopakuj scenár s
+odhlásením prvého účtu pred druhou odpoveďou a over, že upozornenie nepríde.
+
 ## Porovnanie odporúčaní
 
 Po súhlase pridaj účastníkov s uloženými žetónmi cez Supabase SQL Editor. Novým účastníkom sa náhodne pridelí verzia `baseline` alebo `full_priorities`. Obe používajú rovnaký výber kandidátov a vzdialenosť rozhoduje pri zhode skóre. Prvá verzia porovnáva najvyššiu prioritu. Druhá porovnáva všetkých päť hodnôt a mení poradie iba na miestach, kde sú údaje oboch ľudí dostupné. Profily bez žetónov zostávajú na pôvodných miestach. Záznamy v pôvodnej skupine `current` zostávajú v reporte, ak existujú.
