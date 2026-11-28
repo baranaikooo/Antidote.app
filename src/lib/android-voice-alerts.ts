@@ -8,12 +8,19 @@ const AppChrome = registerPlugin<{
     supportsChannels: boolean;
     supportsPrivatePreview?: boolean;
   }>;
+  addListener(
+    event: "startupNotificationGrant",
+    listener: () => void,
+  ): Promise<PluginListenerHandle>;
+  readStartupNotificationGrant(): Promise<{ pending: boolean }>;
+  consumeStartupNotificationGrant(): Promise<void>;
   prepareNotificationPreview(options: { userId: string }): Promise<{ audience: string }>;
   clearNotificationPreview(): Promise<void>;
 }>("AppChrome");
 const choiceKey = (userId: string) => `antidote:voice-alerts:${userId}`;
 const channelId = "voice-replies";
 let registration: Promise<void> | undefined;
+let refreshing: { userId: string; promise: Promise<void> } | undefined;
 
 export type AndroidAlertOptions = {
   voice_replies: boolean;
@@ -63,7 +70,7 @@ export async function saveAndroidAlertOptions(
   return true;
 }
 
-export function saveVoiceAlertChoice(userId: string, choice: "enabled" | "dismissed") {
+function saveVoiceAlertChoice(userId: string, choice: "enabled" | "dismissed") {
   try {
     localStorage.setItem(choiceKey(userId), choice);
   } catch {
@@ -77,18 +84,6 @@ export function clearDeliveredVoiceAlerts() {
   void PushNotifications.removeAllDeliveredNotifications().catch(() => {});
 }
 
-export async function shouldOfferVoiceAlerts(userId: string) {
-  if (!hasAndroidPush()) return false;
-  if (localStorage.getItem(choiceKey(userId))) return false;
-  const { available } = await AppChrome.hasFirebaseMessaging();
-  if (!available) return false;
-  const [{ data }, permission] = await Promise.all([
-    supabase.rpc("voice_reply_push_available"),
-    PushNotifications.checkPermissions(),
-  ]);
-  return data === true && permission.receive !== "denied";
-}
-
 async function requestAndroidAlertPermission() {
   const current = await PushNotifications.checkPermissions();
   const permission = current.receive.startsWith("prompt")
@@ -97,23 +92,44 @@ async function requestAndroidAlertPermission() {
   return permission.receive === "granted";
 }
 
-export async function enableVoiceAlerts(userId: string) {
-  if (!(await requestAndroidAlertPermission())) {
-    saveVoiceAlertChoice(userId, "dismissed");
-    return;
-  }
-  await registerVoiceAlerts(userId);
-  saveVoiceAlertChoice(userId, "enabled");
+export function onStartupNotificationGrant(listener: () => void) {
+  return hasAndroidPush() ? AppChrome.addListener("startupNotificationGrant", listener) : undefined;
 }
 
 export function refreshVoiceAlerts(userId: string) {
   if (!hasAndroidPush()) return;
-  if (localStorage.getItem(choiceKey(userId)) !== "enabled") return;
-  void PushNotifications.checkPermissions()
-    .then(({ receive }) => {
-      if (receive === "granted") return registerVoiceAlerts(userId);
-    })
-    .catch(() => {});
+  if (refreshing?.userId === userId) return refreshing.promise;
+  const promise = refreshRegistration(userId)
+    .catch(() => {})
+    .finally(() => {
+      if (refreshing?.promise === promise) refreshing = undefined;
+    });
+  refreshing = { userId, promise };
+  return promise;
+}
+
+async function refreshRegistration(userId: string) {
+  const { pending } = await AppChrome.readStartupNotificationGrant().catch(() => ({
+    pending: false,
+  }));
+  const choice = localStorage.getItem(choiceKey(userId));
+  if (!pending && choice !== "enabled") return;
+  if ((await PushNotifications.checkPermissions()).receive !== "granted") return;
+
+  if (pending && !choice) {
+    const { data, error } = await supabase.rpc("android_notification_options");
+    if (error) throw error;
+    await registerVoiceAlerts(
+      userId,
+      data ? undefined : { voice_replies: true, chat_messages: true },
+    );
+    const enabled = !data || data.voice_replies || data.chat_messages;
+    saveVoiceAlertChoice(userId, enabled ? "enabled" : "dismissed");
+  } else if (choice === "enabled") {
+    await registerVoiceAlerts(userId);
+  }
+
+  if (pending) await AppChrome.consumeStartupNotificationGrant();
 }
 
 function registerVoiceAlerts(userId: string, options?: AndroidAlertOptions) {

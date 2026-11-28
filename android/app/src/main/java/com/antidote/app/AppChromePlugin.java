@@ -1,5 +1,6 @@
 package com.antidote.app;
 
+import android.content.Context;
 import android.content.res.Configuration;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -19,16 +20,37 @@ import java.util.UUID;
 public class AppChromePlugin extends Plugin {
     static final String PREVIEW_PREFERENCES = "antidote_notification_previews";
     static final String PREVIEW_AUDIENCE = "audience";
+    static final String STARTUP_NOTIFICATION_PREFERENCES = "antidote_startup_notifications";
+    static final String STARTUP_NOTIFICATION_PENDING = "grant_pending";
+
+    static boolean hasFirebaseConfiguration(Context context) {
+        return context.getResources().getIdentifier("google_app_id", "string", context.getPackageName()) != 0;
+    }
 
     @PluginMethod
     public void hasFirebaseMessaging(PluginCall call) {
-        int id = getContext().getResources().getIdentifier(
-            "google_app_id", "string", getContext().getPackageName()
-        );
         call.resolve(new JSObject()
-            .put("available", id != 0)
+            .put("available", hasFirebaseConfiguration(getContext()))
             .put("supportsPrivatePreview", true)
             .put("supportsChannels", Build.VERSION.SDK_INT >= Build.VERSION_CODES.O));
+    }
+
+    @PluginMethod
+    public void readStartupNotificationGrant(PluginCall call) {
+        boolean pending = getContext().getSharedPreferences(STARTUP_NOTIFICATION_PREFERENCES, Context.MODE_PRIVATE)
+            .getBoolean(STARTUP_NOTIFICATION_PENDING, false);
+        call.resolve(new JSObject().put("pending", pending));
+    }
+
+    @PluginMethod
+    public void consumeStartupNotificationGrant(PluginCall call) {
+        getContext().getSharedPreferences(STARTUP_NOTIFICATION_PREFERENCES, Context.MODE_PRIVATE)
+            .edit().remove(STARTUP_NOTIFICATION_PENDING).apply();
+        call.resolve();
+    }
+
+    void notifyStartupNotificationGrant() {
+        notifyListeners("startupNotificationGrant", new JSObject(), true);
     }
 
     @PluginMethod
