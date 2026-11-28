@@ -8,7 +8,7 @@ vi.mock("@/components/GoogleSignInButton", () => ({
 }));
 
 describe("Landing", () => {
-  it("shows the question first and reveals sign-in only after selecting an answer", () => {
+  it("shows the question first and reveals sign-in after selecting an answer", () => {
     render(<Landing mobile onGoogle={vi.fn()} />);
 
     expect(
@@ -23,5 +23,15 @@ describe("Landing", () => {
       "true",
     );
     expect(screen.getByRole("button", { name: "Pokračovať cez Google" })).toBeVisible();
+  });
+
+  it("lets returning users sign in directly on mobile without choosing an answer", () => {
+    render(<Landing mobile onGoogle={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Už mám účet · Prihlásiť sa" }));
+    expect(screen.getByRole("button", { name: "Pokračovať cez Google" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Možnosť cestovať" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });

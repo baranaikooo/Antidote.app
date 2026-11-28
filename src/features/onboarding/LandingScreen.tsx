@@ -50,6 +50,18 @@ export function Landing({
       ))}
     </div>
   );
+  const returningLoginButton = (
+    <button
+      type="button"
+      className="landing-returning-toggle"
+      onClick={() => {
+        haptic("tap");
+        setShowReturningLogin(true);
+      }}
+    >
+      Už mám účet · Prihlásiť sa
+    </button>
+  );
 
   if (mobile) {
     return (
@@ -68,13 +80,19 @@ export function Landing({
           <div role="status" className="sr-only">
             {choice && "Odpoveď vybraná. Môžeš pokračovať cez Google."}
           </div>
-          {choice && (
+          {choice || showReturningLogin ? (
             <div
               className="mobile-welcome-sign-in"
-              ref={(element) => element?.scrollIntoView?.({ block: "nearest" })}
+              ref={(element) => {
+                element?.scrollIntoView?.({ block: "nearest" });
+                if (showReturningLogin)
+                  element?.querySelector("button")?.focus({ preventScroll: true });
+              }}
             >
               <GoogleSignInButton onSuccess={onGoogle} />
             </div>
+          ) : (
+            returningLoginButton
           )}
         </div>
       </main>
@@ -115,16 +133,7 @@ export function Landing({
                 </div>
               </div>
             ) : (
-              <button
-                type="button"
-                className="landing-returning-toggle"
-                onClick={() => {
-                  haptic("tap");
-                  setShowReturningLogin(true);
-                }}
-              >
-                Už mám účet · Prihlásiť sa
-              </button>
+              returningLoginButton
             )}
           </div>
         )}
