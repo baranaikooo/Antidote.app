@@ -7,6 +7,8 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    static volatile boolean visible;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(AppChromePlugin.class);
@@ -18,6 +20,18 @@ public class MainActivity extends BridgeActivity {
     public void onResume() {
         super.onResume();
         updateSystemBars();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        visible = true;
+    }
+
+    @Override
+    public void onStop() {
+        visible = false;
+        super.onStop();
     }
 
     @Override

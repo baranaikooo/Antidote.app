@@ -606,7 +606,7 @@ export function MessageThread({
           <section className="conversation-intro" aria-labelledby="voice-alert-heading">
             <h2 id="voice-alert-heading">Chceš vedieť, keď príde hlasová odpoveď?</h2>
             <p className="mt-2 text-sm">
-              Na zamknutej obrazovke sa zobrazí len „Máš novú odpoveď“.
+              Ak Android skrýva citlivý obsah, na zamknutej obrazovke uvidíš len „Máš novú odpoveď“.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button

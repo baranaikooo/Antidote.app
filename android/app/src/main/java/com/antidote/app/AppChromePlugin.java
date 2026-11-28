@@ -1,6 +1,7 @@
 package com.antidote.app;
 
 import android.content.res.Configuration;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.view.View;
@@ -12,9 +13,13 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.util.UUID;
 
 @CapacitorPlugin(name = "AppChrome")
 public class AppChromePlugin extends Plugin {
+    static final String PREVIEW_PREFERENCES = "antidote_notification_previews";
+    static final String PREVIEW_AUDIENCE = "audience";
+
     @PluginMethod
     public void hasFirebaseMessaging(PluginCall call) {
         int id = getContext().getResources().getIdentifier(
@@ -22,7 +27,30 @@ public class AppChromePlugin extends Plugin {
         );
         call.resolve(new JSObject()
             .put("available", id != 0)
+            .put("supportsPrivatePreview", true)
             .put("supportsChannels", Build.VERSION.SDK_INT >= Build.VERSION_CODES.O));
+    }
+
+    @PluginMethod
+    public void prepareNotificationPreview(PluginCall call) {
+        String owner = call.getString("userId");
+        if (owner == null) {
+            call.reject("Account required");
+            return;
+        }
+        SharedPreferences preferences = getContext().getSharedPreferences(PREVIEW_PREFERENCES, 0);
+        String audience = preferences.getString(PREVIEW_AUDIENCE, null);
+        if (!owner.equals(preferences.getString("owner", null)) || audience == null) {
+            audience = UUID.randomUUID().toString();
+            preferences.edit().putString("owner", owner).putString(PREVIEW_AUDIENCE, audience).apply();
+        }
+        call.resolve(new JSObject().put("audience", audience));
+    }
+
+    @PluginMethod
+    public void clearNotificationPreview(PluginCall call) {
+        getContext().getSharedPreferences(PREVIEW_PREFERENCES, 0).edit().clear().apply();
+        call.resolve();
     }
 
     @Override

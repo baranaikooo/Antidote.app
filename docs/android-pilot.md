@@ -43,9 +43,10 @@ a zamkni telefón. Keď odpovie druhý účet, over text „Máš novú odpoveď
 dostupnosť prehrávača aj textového chatu po návrate. Zopakuj scenár s
 odhlásením prvého účtu pred druhou odpoveďou a over, že upozornenie nepríde.
 
-V nastaveniach Android upozornení zapni iba nové správy. Over všeobecný
-text „Máš novú správu“, potom zapni zobrazenie mena a pošli ďalšiu správu.
-Na zamknutej obrazovke môže Android zobraziť meno podľa nastavení telefónu.
+V nastaveniach Android upozornení zapni iba nové správy. Na odomknutom
+telefóne nechaj Antidote na pozadí a over, že upozornenie obsahuje meno
+odosielateľa. Zopakuj test so zamknutým displejom a skrytým citlivým obsahom
+v nastaveniach Androidu. Zobrazí sa všeobecný text „Máš novú správu“.
 
 ## Porovnanie odporúčaní
 
