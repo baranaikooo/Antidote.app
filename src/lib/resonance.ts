@@ -948,6 +948,7 @@ export type ChatMessage = {
   text: string;
   replyContext?: string;
   ts: number;
+  createdAt?: string;
   media?: { kind: "image" | "gif" | "audio"; url: string; duration?: number; label?: string };
 };
 

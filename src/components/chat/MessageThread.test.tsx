@@ -3,7 +3,8 @@ import "fake-indexeddb/auto";
 import { Blob as NodeBlob } from "node:buffer";
 import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import type { Conversation } from "@/lib/resonance";
+import type { ChatMessage, Conversation } from "@/lib/resonance";
+import type { ChatMessageCursor } from "@/lib/supabase";
 import { clearVoiceDrafts, readVoiceDraft } from "@/lib/voice-drafts";
 import { MessageThread } from "./MessageThread";
 
@@ -51,6 +52,10 @@ vi.mock("@/hooks/use-haptics", () => ({ useHaptic: () => () => {} }));
 
 const reply = "Záleží mi na čase pre ľudí.";
 const open = { status: "active", is_unlocked: false, consent_pending: false };
+const page = (messages: ChatMessage[] = [], olderCursor: ChatMessageCursor | null = null) => ({
+  messages,
+  olderCursor,
+});
 
 function Thread({ onClose = () => {} }: { onClose?: () => void }) {
   const [conversation, setConversation] = useState<Conversation>({
@@ -86,7 +91,7 @@ beforeEach(async () => {
   vi.resetAllMocks();
   mocks.read.mockResolvedValue(open);
   mocks.question.mockResolvedValue({ data: null, error: null });
-  mocks.messages.mockResolvedValue([]);
+  mocks.messages.mockResolvedValue(page());
   mocks.markRead.mockResolvedValue(undefined);
   mocks.readFeedback.mockResolvedValue(false);
   mocks.saveFeedback.mockResolvedValue(undefined);
@@ -96,6 +101,66 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+it("loads older messages on demand and keeps the reading position when a new message arrives", async () => {
+  const recent: ChatMessage = { id: "recent", from: "them", text: "Nedávna správa", ts: 2 };
+  const older: ChatMessage = { id: "older", from: "them", text: "Staršia správa", ts: 1 };
+  const newest: ChatMessage = { id: "new", from: "them", text: "Práve doručená", ts: 3 };
+  const cursor = { id: recent.id, createdAt: "2026-11-28T13:00:00Z" };
+  mocks.messages.mockImplementation((_match, _user, before) =>
+    Promise.resolve(before ? page([older]) : page([recent], cursor)),
+  );
+  render(<Thread />);
+  const visibleMessage = await screen.findByText(recent.text);
+  expect(screen.queryByText(older.text)).not.toBeInTheDocument();
+
+  const viewport = screen.getByRole("region", { name: "História správ" });
+  Object.defineProperties(viewport, {
+    scrollHeight: { value: 900, configurable: true },
+    clientHeight: { value: 300, configurable: true },
+  });
+  viewport.scrollTop = 120;
+  fireEvent.scroll(viewport);
+  const anchor = visibleMessage.closest("[data-chat-message]")!;
+  vi.spyOn(anchor, "getBoundingClientRect").mockImplementation(
+    () =>
+      ({
+        ...new DOMRect(0, screen.queryByText(older.text) ? 200 : 40, 200, 45),
+        top: screen.queryByText(older.text) ? 200 : 40,
+        bottom: screen.queryByText(older.text) ? 245 : 85,
+      }) as DOMRect,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Načítať staršie správy" }));
+  expect(await screen.findByText(older.text)).toBeVisible();
+  expect(mocks.messages).toHaveBeenCalledWith("match", "me", cursor);
+  expect(viewport.scrollTop).toBe(280);
+
+  mocks.markRead.mockClear();
+  mocks.messages.mockResolvedValue(page([recent, newest]));
+  fireEvent(window, new Event("online"));
+  expect(await screen.findByText(newest.text)).toBeVisible();
+  expect(viewport.scrollTop).toBe(280);
+  expect(mocks.markRead).not.toHaveBeenCalled();
+});
+
+it("fills a gap of new messages after reconnecting before the loaded endpoint", async () => {
+  const existing: ChatMessage = { id: "known", from: "them", text: "Pred výpadkom", ts: 1 };
+  const middle: ChatMessage = { id: "middle", from: "them", text: "Počas výpadku", ts: 2 };
+  const latest: ChatMessage = { id: "latest", from: "them", text: "Po výpadku", ts: 3 };
+  const cursor = { id: latest.id, createdAt: "2026-11-28T13:00:00Z" };
+  mocks.messages.mockResolvedValue(page([existing]));
+  render(<Thread />);
+  await screen.findByText(existing.text);
+
+  mocks.messages.mockResolvedValueOnce(page([latest], cursor));
+  mocks.messages.mockResolvedValueOnce(page([existing, middle]));
+  fireEvent(window, new Event("online"));
+
+  expect(await screen.findByText(latest.text)).toBeVisible();
+  expect(screen.getByText(middle.text)).toBeVisible();
+  expect(screen.getAllByText(existing.text)).toHaveLength(1);
+  expect(mocks.messages).toHaveBeenLastCalledWith("match", "me", cursor);
 });
 
 it("retries a first reply with the same id, preserving the draft and real reply context", async () => {
@@ -146,7 +211,7 @@ it("can remove context from a failed opening while preserving the text and retry
 });
 
 it("waits for the server's mutual consent before requesting video and closes without sending a message", async () => {
-  mocks.messages.mockResolvedValue([{ id: "existing", from: "me", text: "Ahoj", ts: 1 }]);
+  mocks.messages.mockResolvedValue(page([{ id: "existing", from: "me", text: "Ahoj", ts: 1 }]));
   const onClose = vi.fn();
   render(<Thread onClose={onClose} />);
   const share = await screen.findByText("Súhlasím so zdieľaním videí");
@@ -176,10 +241,12 @@ it("waits for the server's mutual consent before requesting video and closes wit
 });
 
 it("marks the last incoming message as read and offers voluntary feedback only once both have replied", async () => {
-  mocks.messages.mockResolvedValue([
-    { id: "sent", from: "me", text: "Ahoj", ts: 1 },
-    { id: "reply", from: "them", text: "Rada ťa počujem.", ts: 2 },
-  ]);
+  mocks.messages.mockResolvedValue(
+    page([
+      { id: "sent", from: "me", text: "Ahoj", ts: 1 },
+      { id: "reply", from: "them", text: "Rada ťa počujem.", ts: 2 },
+    ]),
+  );
   render(<Thread />);
   const yes = await screen.findByRole("button", { name: "Áno" });
   await waitFor(() => expect(mocks.markRead).toHaveBeenCalledExactlyOnceWith("match", "reply"));
@@ -189,7 +256,7 @@ it("marks the last incoming message as read and offers voluntary feedback only o
 });
 
 it("keeps the shared question after a normal message and attaches a revealed answer to a reply", async () => {
-  mocks.messages.mockResolvedValue([{ id: "existing", from: "me", text: "Ahoj", ts: 1 }]);
+  mocks.messages.mockResolvedValue(page([{ id: "existing", from: "me", text: "Ahoj", ts: 1 }]));
   mocks.question.mockResolvedValue({
     data: {
       question: "Ako vyzerá tvoj dobrý víkend?",

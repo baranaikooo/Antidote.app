@@ -9,7 +9,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, Eye, Mic, MoreVertical, Reply, Send, Sparkles, X } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/lib/resonance";
 import {
@@ -21,7 +21,12 @@ import {
   type ConversationPartner,
   type ConversationStatus,
 } from "@/lib/conversations";
-import { fetchChatMessages, saveChatMessage, supabase } from "@/lib/supabase";
+import {
+  fetchChatMessages,
+  saveChatMessage,
+  supabase,
+  type ChatMessageCursor,
+} from "@/lib/supabase";
 import { FEATURED_GIFS, isKlipyGif, matchFeaturedGifs, type ChatGif } from "@/lib/chat-reactions";
 import { useHaptic } from "@/hooks/use-haptics";
 import { VoiceBubble } from "./VoiceBubble";
@@ -79,7 +84,18 @@ export function MessageThread({
   const [confirmClose, setConfirmClose] = useState(false);
   const [videos, setVideos] = useState<string[] | null>(null);
   const [videosFailed, setVideosFailed] = useState(false);
-  const listEnd = useRef<HTMLDivElement>(null);
+  const [olderCursor, setOlderCursor] = useState<ChatMessageCursor | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderFailed, setOlderFailed] = useState(false);
+  const [atLatest, setAtLatest] = useState(true);
+  const viewport = useRef<HTMLDivElement>(null);
+  const latestRenderedId = useRef<string | null>(null);
+  const latestFetched = useRef<ChatMessage | undefined>(undefined);
+  const historyInitialized = useRef(false);
+  const historyRequest = useRef(0);
+  const historyLock = useRef(false);
+  const prependAnchor = useRef<{ element: HTMLElement; top: number } | null>(null);
+  const pinned = useRef(true);
   const composerInput = useRef<HTMLTextAreaElement>(null);
   const reactionTrigger = useRef<HTMLButtonElement>(null);
   const gifSearchInput = useRef<HTMLInputElement>(null);
@@ -144,17 +160,35 @@ export function MessageThread({
         if (current === request.current) setQuestionLoadFailed(true);
       });
     try {
-      const [next, messages] = await Promise.all([
+      const [next, newestPage] = await Promise.all([
         readConversationStatus(conversation.id, userId),
         fetchChatMessages(conversation.id, userId),
       ]);
       if (current !== request.current) return;
+      const marker = latestFetched.current;
+      let page = newestPage;
+      const incoming = [...page.messages];
+      // A reconnect may have missed more than one page. Bridge the gap before rendering.
+      while (
+        marker &&
+        page.olderCursor &&
+        page.messages[0] &&
+        compareMessages(page.messages[0], marker) > 0
+      ) {
+        page = await fetchChatMessages(conversation.id, userId, page.olderCursor);
+        if (current !== request.current) return;
+        incoming.push(...page.messages);
+      }
+      const initializing = !historyInitialized.current;
+      if (!marker) setOlderCursor(newestPage.olderCursor);
+      historyInitialized.current = true;
+      latestFetched.current = newestPage.messages.at(-1) ?? marker;
       setStatus(next);
       setLoadFailed(false);
       onUpdate((previous) => ({
         ...previous,
         status: next.status === "active" ? "active" : "closed",
-        messages: mergeMessages(previous.messages, messages),
+        messages: mergeMessages(initializing ? [] : previous.messages, incoming),
       }));
     } catch {
       if (current === request.current) setLoadFailed(true);
@@ -186,18 +220,69 @@ export function MessageThread({
     void refresh();
     return () => {
       request.current += 1;
+      historyRequest.current += 1;
+      historyLock.current = false;
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", onVisible);
       void supabase.removeChannel(channel);
     };
   }, [conversation.id, refresh]);
 
-  useEffect(() => {
-    if (conversation.messages.length) listEnd.current?.scrollIntoView?.({ block: "end" });
-  }, [conversation.messages.length]);
+  async function loadOlderMessages() {
+    if (!olderCursor || historyLock.current) return;
+    historyLock.current = true;
+    const current = ++historyRequest.current;
+    setLoadingOlder(true);
+    setOlderFailed(false);
+    try {
+      const page = await fetchChatMessages(conversation.id, userId, olderCursor);
+      if (current !== historyRequest.current) return;
+      const list = viewport.current;
+      if (list) {
+        const viewTop = list.getBoundingClientRect().top;
+        const element = [...list.querySelectorAll<HTMLElement>("[data-chat-message]")].find(
+          (item) => item.getBoundingClientRect().bottom > viewTop,
+        );
+        if (element) prependAnchor.current = { element, top: element.getBoundingClientRect().top };
+      }
+      setOlderCursor(page.olderCursor);
+      onUpdate((previous) => ({
+        ...previous,
+        messages: mergeMessages(previous.messages, page.messages),
+      }));
+    } catch {
+      if (current === historyRequest.current) setOlderFailed(true);
+    } finally {
+      if (current === historyRequest.current) {
+        historyLock.current = false;
+        setLoadingOlder(false);
+      }
+    }
+  }
+
+  function trackScroll() {
+    const list = viewport.current;
+    if (!list) return;
+    pinned.current = list.scrollHeight - list.scrollTop - list.clientHeight <= 72;
+    setAtLatest(pinned.current);
+  }
+
+  useLayoutEffect(() => {
+    const list = viewport.current;
+    if (!list) return;
+    const anchor = prependAnchor.current;
+    const latestId = conversation.messages.at(-1)?.id ?? null;
+    prependAnchor.current = null;
+    if (anchor && list.contains(anchor.element)) {
+      list.scrollTop += anchor.element.getBoundingClientRect().top - anchor.top;
+    } else if (pinned.current && latestId && latestId !== latestRenderedId.current) {
+      list.scrollTop = list.scrollHeight;
+    }
+    latestRenderedId.current = latestId;
+  }, [conversation.messages, olderCursor]);
 
   useEffect(() => {
-    if (!seenMessageId) return;
+    if (!seenMessageId || !atLatest) return;
     const messageId = seenMessageId;
     let listening = true;
     let marking = false;
@@ -226,7 +311,7 @@ export function MessageThread({
       document.removeEventListener("visibilitychange", mark);
       window.removeEventListener("online", mark);
     };
-  }, [conversation.id, seenMessageId, onUpdate]);
+  }, [conversation.id, seenMessageId, onUpdate, atLatest]);
 
   useEffect(() => {
     if (!showVideos || !status?.is_unlocked) return;
@@ -303,6 +388,8 @@ export function MessageThread({
         draft.current.id,
         reaction ? undefined : (replyContext ?? undefined),
       );
+      pinned.current = true;
+      setAtLatest(true);
       onUpdate((previous) => ({
         ...previous,
         messages: mergeMessages(previous.messages, [
@@ -312,6 +399,7 @@ export function MessageThread({
             text,
             replyContext: message.reply_context ?? undefined,
             ts: new Date(message.created_at).getTime(),
+            createdAt: message.created_at,
             media: reaction ? { kind: "gif", url: reaction.url, label: reaction.label } : undefined,
           },
         ]),
@@ -535,7 +623,13 @@ export function MessageThread({
         </Drawer>
       )}
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
+      <div
+        ref={viewport}
+        role="region"
+        aria-label="História správ"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 [overflow-anchor:none]"
+        onScroll={trackScroll}
+      >
         {loadFailed && (
           <div role="alert" className="editorial-panel p-4">
             Rozhovor sa nepodarilo načítať.{" "}
@@ -696,57 +790,71 @@ export function MessageThread({
           </details>
         )}
 
-        {conversation.messages.map((message) =>
-          message.media?.kind === "audio" ? (
-            <VoiceBubble
-              key={message.id}
-              msg={{
-                id: message.id,
-                from: message.from,
-                audioUrl: message.media.url,
-                duration: message.media.duration || 0,
-              }}
-              playing={playing === message.id}
-              onToggle={() => setPlaying((value) => (value === message.id ? null : message.id))}
-              onEnded={() => setPlaying(null)}
-            />
-          ) : (
-            <div
-              key={message.id}
-              className={"flex " + (message.from === "me" ? "justify-end" : "justify-start")}
+        {olderCursor && (
+          <div className="grid justify-items-center gap-2">
+            <button
+              type="button"
+              className="personal-action"
+              disabled={loadingOlder}
+              onClick={() => void loadOlderMessages()}
             >
-              <div
-                className={
-                  "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm " +
-                  (message.from === "me"
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-card text-foreground")
-                }
-              >
-                {message.media && (
-                  <img
-                    src={message.media.url}
-                    alt={message.media.label ?? "GIF"}
-                    referrerPolicy="no-referrer"
-                    loading="lazy"
-                    className="max-h-80 max-w-full rounded-xl object-contain"
-                  />
-                )}
-                {message.replyContext && (
-                  <blockquote className="mb-2 border-s border-current/40 ps-2 text-sm [overflow-wrap:anywhere]">
-                    <span className="sr-only">Reakcia na zdieľanú odpoveď. </span>
-                    {message.replyContext}
-                  </blockquote>
-                )}
-                {message.text && (
-                  <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.text}</p>
-                )}
-              </div>
-            </div>
-          ),
+              {loadingOlder ? "Načítavam staršie správy…" : "Načítať staršie správy"}
+            </button>
+            {olderFailed && (
+              <p role="alert" className="text-sm text-destructive">
+                Staršie správy sa nepodarilo načítať. Skús to znova.
+              </p>
+            )}
+          </div>
         )}
+        {conversation.messages.map((message) => (
+          <div key={message.id} data-chat-message>
+            {message.media?.kind === "audio" ? (
+              <VoiceBubble
+                msg={{
+                  id: message.id,
+                  from: message.from,
+                  audioUrl: message.media.url,
+                  duration: message.media.duration || 0,
+                }}
+                playing={playing === message.id}
+                onToggle={() => setPlaying((value) => (value === message.id ? null : message.id))}
+                onEnded={() => setPlaying(null)}
+              />
+            ) : (
+              <div className={"flex " + (message.from === "me" ? "justify-end" : "justify-start")}>
+                <div
+                  className={
+                    "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm " +
+                    (message.from === "me"
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-card text-foreground")
+                  }
+                >
+                  {message.media && (
+                    <img
+                      src={message.media.url}
+                      alt={message.media.label ?? "GIF"}
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      className="max-h-80 max-w-full rounded-xl object-contain"
+                    />
+                  )}
+                  {message.replyContext && (
+                    <blockquote className="mb-2 border-s border-current/40 ps-2 text-sm [overflow-wrap:anywhere]">
+                      <span className="sr-only">Reakcia na zdieľanú odpoveď. </span>
+                      {message.replyContext}
+                    </blockquote>
+                  )}
+                  {message.text && (
+                    <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.text}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
         {showPilotQuestion && <ConversationFeedback matchId={conversation.id} userId={userId} />}
-        <div ref={listEnd} />
       </div>
 
       {needsVoiceAnswer && (
@@ -754,11 +862,7 @@ export function MessageThread({
           <p>
             Max. {QUESTION_VOICE_MAX_SECONDS} sekúnd. Odpovede si vypočujete, keď odpoviete obaja.
           </p>
-          <button
-            type="button"
-            className="match-card-action"
-            onClick={() => setRecorder("answer")}
-          >
+          <button type="button" className="match-card-action" onClick={() => setRecorder("answer")}>
             Nahrať odpoveď
             <Mic size={22} aria-hidden="true" />
           </button>
@@ -931,5 +1035,12 @@ export function MessageThread({
 function mergeMessages(previous: ChatMessage[], incoming: ChatMessage[]) {
   const byId = new Map(previous.map((message) => [message.id, message]));
   for (const message of incoming) byId.set(message.id, message);
-  return [...byId.values()].sort((a, b) => a.ts - b.ts);
+  return [...byId.values()].sort(compareMessages);
+}
+
+function compareMessages(a: ChatMessage, b: ChatMessage) {
+  if (a.ts !== b.ts) return a.ts - b.ts;
+  if (a.createdAt && b.createdAt && a.createdAt !== b.createdAt)
+    return a.createdAt < b.createdAt ? -1 : 1;
+  return a.id.localeCompare(b.id);
 }
