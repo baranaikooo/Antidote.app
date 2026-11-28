@@ -1,7 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "fake-indexeddb/auto";
+import { Blob as NodeBlob } from "node:buffer";
 import { useState } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Conversation } from "@/lib/resonance";
+import { clearVoiceDrafts, readVoiceDraft } from "@/lib/voice-drafts";
 import { MessageThread } from "./MessageThread";
 
 const mocks = vi.hoisted(() => ({
@@ -73,13 +76,13 @@ function Thread({ onClose = () => {} }: { onClose?: () => void }) {
       prompt={reply}
       onUpdate={setConversation}
       onBack={() => {}}
-      onVoice={() => {}}
       onClose={onClose}
     />
   );
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await clearVoiceDrafts();
   vi.resetAllMocks();
   mocks.read.mockResolvedValue(open);
   mocks.question.mockResolvedValue({ data: null, error: null });
@@ -365,6 +368,8 @@ it("only allows answering the required question until both people have responded
 });
 
 it("requires a voice answer only for the first question and opens chat after both answer", async () => {
+  // fake-indexeddb uses Node's structuredClone, which supports Node's Blob.
+  vi.stubGlobal("Blob", NodeBlob);
   const pending = {
     question: "Ako vyzerá tvoj dobrý víkend?",
     own_answer: null,
@@ -421,25 +426,30 @@ it("requires a voice answer only for the first question and opens chat after bot
   expect(screen.getByRole("heading", { name: "Hlasová odpoveď" })).toBeVisible();
   expect(screen.getByText(/Máš najviac 20 sekúnd/)).toBeVisible();
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Späť na rozhovor" })).toBeEnabled(),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Späť na rozhovor" }));
   expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "GIFy" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Preskočiť" })).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole("button", { name: "Nahrať odpoveď" }));
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "Nahrať hlasovú odpoveď" })).toBeEnabled(),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Nahrať hlasovú odpoveď" }));
   const finish = await screen.findByRole("button", { name: /Hotovo/ });
   now.mockReturnValue(2000);
   fireEvent.click(finish);
-  expect(screen.getByRole("button", { name: "Prehrať ukážku" })).toBeEnabled();
-  expect(screen.getByRole("button", { name: "Nahrať znova" })).toBeEnabled();
-  fireEvent.click(screen.getByRole("button", { name: "Späť na rozhovor" }));
-  const leaveDialog = await screen.findByRole("dialog", { name: "Zahodiť nahrávku?" });
-  expect(leaveDialog).toBeVisible();
-  // JSDOM does not complete Vaul’s exit animation.
-  leaveDialog.style.animationName = "none";
-  fireEvent.click(screen.getByRole("button", { name: "Zostať pri nahrávke" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Odoslať" })).toBeEnabled());
+  const savedDraft = await readVoiceDraft(["me", "match", "answer"]);
+  expect(savedDraft?.duration).toBe(2);
+  expect(await readVoiceDraft(["someone-else", "match", "answer"])).toBeUndefined();
+  cleanup();
+  render(<Thread />);
   expect(await screen.findByRole("button", { name: "Prehrať ukážku" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Zahodiť" })).toBeEnabled();
   expect(stopTrack).toHaveBeenCalledOnce();
   expect(mocks.uploadVoice).not.toHaveBeenCalled();
   let ownPath = "";
@@ -449,6 +459,7 @@ it("requires a voice answer only for the first question and opens chat after bot
   });
   fireEvent.click(screen.getByRole("button", { name: "Odoslať" }));
   await screen.findByText(/Chat sa otvorí/);
+  expect(await readVoiceDraft(["me", "match", "answer"])).toBeUndefined();
   expect(ownPath).toMatch(/^me\/match_[0-9a-f-]{36}$/);
   expect(mocks.uploadVoice).toHaveBeenCalledExactlyOnceWith(ownPath, expect.any(Blob), {
     contentType: "audio/webm",
@@ -467,9 +478,12 @@ it("requires a voice answer only for the first question and opens chat after bot
   expect(await screen.findByRole("textbox", { name: "Správa" })).toBeEnabled();
   expect(screen.getByRole("button", { name: "GIFy" })).toBeEnabled();
   expect(screen.getByRole("button", { name: "Nahrať hlasovú správu" })).toBeEnabled();
-  expect(await screen.findByLabelText("Jana")).toHaveAttribute(
-    "src",
-    "https://storage.example.test/partner",
-  );
+  expect(await screen.findByRole("button", { name: "Vypočuť odpoveď" })).toBeEnabled();
+  const partnerVoice = await screen.findByLabelText("Jana");
+  expect(partnerVoice).toHaveAttribute("src", "https://storage.example.test/partner");
+  expect(
+    partnerVoice.compareDocumentPosition(screen.getByLabelText("Tvoja odpoveď")) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Vziať odpoveď späť" })).not.toBeInTheDocument();
 });

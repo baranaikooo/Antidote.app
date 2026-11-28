@@ -14,6 +14,12 @@ import {
 } from "@/components/ui/drawer";
 import { QUESTION_VOICE_MAX_SECONDS } from "@/lib/shared-question";
 import { uploadVoiceMessageBlob } from "@/lib/supabase";
+import {
+  deleteVoiceDraft,
+  readVoiceDraft,
+  saveVoiceDraft,
+  type VoiceDraft,
+} from "@/lib/voice-drafts";
 
 const MAX_REC_SECONDS = 60;
 const PEAK_BINS = 24;
@@ -58,13 +64,8 @@ export function Chamber({
   const [finishing, setFinishing] = useState(false);
   const [recLen, setRecLen] = useState(0);
   const [liveLevel, setLiveLevel] = useState(0);
-  const [draftVoice, setDraftVoice] = useState<{
-    id: string;
-    blob: Blob;
-    url: string;
-    duration: number;
-    peaks: number[];
-  } | null>(null);
+  const [draftVoice, setDraftVoice] = useState<(VoiceDraft & { url: string }) | null>(null);
+  const [loadingDraft, setLoadingDraft] = useState(true);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -79,6 +80,30 @@ export function Chamber({
   const recStartRef = useRef<number>(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cancelledRef = useRef(false);
+  const mountedRef = useRef(false);
+  const draftKind = onAnswer ? "answer" : "message";
+
+  useEffect(() => {
+    let active = true;
+    mountedRef.current = true;
+    void readVoiceDraft([userId, matchId, draftKind])
+      .then((draft) => {
+        if (!active || !draft) return;
+        const url = URL.createObjectURL(draft.blob);
+        draftUrlRef.current = url;
+        setDraftVoice({ ...draft, url });
+      })
+      .catch(() => {
+        if (active) setMicError("Uloženú nahrávku sa nepodarilo načítať.");
+      })
+      .finally(() => {
+        if (active) setLoadingDraft(false);
+      });
+    return () => {
+      active = false;
+      mountedRef.current = false;
+    };
+  }, [userId, matchId, draftKind]);
 
   function stopAudioMeter() {
     if (meterRafRef.current !== null) {
@@ -119,7 +144,7 @@ export function Chamber({
   }
 
   async function startRec() {
-    if (captureLock.current || sendingRef.current) return;
+    if (loadingDraft || captureLock.current || sendingRef.current) return;
     if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       const msg = "Tento prehliadač nepodporuje nahrávanie z mikrofónu.";
       console.warn("[voice]", msg);
@@ -196,7 +221,7 @@ export function Chamber({
         cancelledRef.current = true;
         setMicError("Nahrávanie sa prerušilo. Skús to znova.");
       };
-      rec.onstop = () => {
+      rec.onstop = async () => {
         stopAudioMeter();
         if (tickRef.current) {
           clearInterval(tickRef.current);
@@ -206,19 +231,23 @@ export function Chamber({
         micStreamRef.current = null;
         mediaRecRef.current = null;
         captureLock.current = false;
-        setFinishing(false);
         setRecording(false);
 
-        if (cancelledRef.current) return;
+        if (cancelledRef.current) {
+          setFinishing(false);
+          return;
+        }
 
         const elapsed = (performance.now() - recStartRef.current) / 1000;
         if (elapsed < 1.0) {
+          setFinishing(false);
           setMicError("Hlasovka je príliš krátka.");
           return;
         }
 
         const blob = chunks.length ? new Blob(chunks, { type: rec.mimeType || mime }) : null;
         if (!blob || blob.size === 0) {
+          setFinishing(false);
           setMicError("V nahrávke nie je zvuk. Skús ju nahrať znova.");
           return;
         }
@@ -229,7 +258,16 @@ export function Chamber({
 
         if (draftUrlRef.current) URL.revokeObjectURL(draftUrlRef.current);
         draftUrlRef.current = url;
-        setDraftVoice({ id: crypto.randomUUID(), blob, url, duration: dur, peaks });
+        const draft = { id: crypto.randomUUID(), blob, duration: dur, peaks };
+        setDraftVoice({ ...draft, url });
+        try {
+          await saveVoiceDraft([userId, matchId, draftKind], draft);
+        } catch {
+          if (mountedRef.current)
+            setMicError("Nahrávku sa nepodarilo uložiť do zariadenia. Môžeš ju ešte odoslať.");
+        } finally {
+          if (mountedRef.current) setFinishing(false);
+        }
       };
 
       rec.start(100);
@@ -288,10 +326,19 @@ export function Chamber({
     }
   }
 
-  function discardDraftVoice() {
-    if (draftUrlRef.current) URL.revokeObjectURL(draftUrlRef.current);
-    draftUrlRef.current = null;
-    setDraftVoice(null);
+  async function discardDraftVoice() {
+    setFinishing(true);
+    try {
+      await deleteVoiceDraft([userId, matchId, draftKind]);
+      if (draftUrlRef.current) URL.revokeObjectURL(draftUrlRef.current);
+      draftUrlRef.current = null;
+      setDraftVoice(null);
+      setMicError(null);
+    } catch {
+      setMicError("Nahrávku sa nepodarilo zahodiť. Skús to znova.");
+    } finally {
+      setFinishing(false);
+    }
   }
 
   async function sendDraftVoice() {
@@ -303,15 +350,17 @@ export function Chamber({
     try {
       if (onAnswer) await onAnswer(blob, id);
       else await uploadVoiceMessageBlob(matchId, userId, blob, duration, id);
-      haptic("send");
-      onBack();
     } catch (err) {
       console.error("[Chamber] Failed to upload voice message:", err);
       setMicError("Správu sa nepodarilo odoslať. Nahrávka zostala pripravená, skús to znova.");
+      return;
     } finally {
       sendingRef.current = false;
       setSending(false);
     }
+    await discardDraftVoice();
+    haptic("send");
+    onBack();
   }
 
   return (
@@ -326,10 +375,10 @@ export function Chamber({
           data-voice-back=""
           className="conversation-header-action"
           onClick={() => {
-            if (recording || draftVoice) setConfirmLeave(true);
+            if (recording) setConfirmLeave(true);
             else onBack();
           }}
-          disabled={sending || preparing || finishing}
+          disabled={sending || preparing || finishing || loadingDraft}
         >
           <ArrowLeft aria-hidden="true" className="size-5" />
         </button>
@@ -389,7 +438,7 @@ export function Chamber({
             ? { url: draftVoice.url, duration: draftVoice.duration, peaks: draftVoice.peaks }
             : null
         }
-        disabled={sending || preparing || finishing}
+        disabled={sending || preparing || finishing || loadingDraft}
         maxSeconds={maxSeconds}
         sending={sending}
         onStart={startRec}

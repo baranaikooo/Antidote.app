@@ -48,14 +48,9 @@ export function SharedVoiceQuestion({
       {own ? (
         <>
           <dl className="mt-3 grid gap-2">
+            {partner && <QuestionVoicePlayer key={partner} label={name} path={partner} primary />}
             <QuestionVoicePlayer key={own} label="Tvoja odpoveď" path={own} />
-            {partner && <QuestionVoicePlayer key={partner} label={name} path={partner} />}
           </dl>
-          {partner && (
-            <p role="status" className="mt-3 text-sm">
-              Obaja ste odpovedali. Chat je otvorený.
-            </p>
-          )}
           {!partner && (
             <>
               <p role="status" className="mt-3 text-sm text-muted-foreground">
@@ -88,7 +83,15 @@ function formatDuration(seconds: number): string {
   return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, "0")}`;
 }
 
-function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
+function QuestionVoicePlayer({
+  label,
+  path,
+  primary = false,
+}: {
+  label: string;
+  path: string;
+  primary?: boolean;
+}) {
   const [url, setUrl] = useState<string>();
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -158,20 +161,39 @@ function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
             Načítať nahrávku znova
           </button>
         ) : url ? (
-          <div className="flex items-center gap-2.5">
+          <div
+            className={
+              primary
+                ? "grid grid-cols-[1fr_auto] items-center gap-2.5"
+                : "flex items-center gap-2.5"
+            }
+          >
             <button
               type="button"
               onClick={togglePlayback}
-              aria-label={playing ? `Pozastaviť odpoveď: ${label}` : `Prehrať odpoveď: ${label}`}
-              className={`grid size-10 shrink-0 place-items-center rounded-full transition-transform active:scale-95 cursor-pointer ${
-                playing ? "bg-coral text-coral-foreground" : "bg-accent text-accent-foreground"
-              }`}
+              aria-label={
+                primary
+                  ? undefined
+                  : playing
+                    ? `Pozastaviť odpoveď: ${label}`
+                    : `Prehrať odpoveď: ${label}`
+              }
+              className={
+                primary
+                  ? "match-card-action col-span-2"
+                  : `grid size-10 shrink-0 place-items-center rounded-full transition-transform active:scale-95 cursor-pointer ${
+                      playing
+                        ? "bg-coral text-coral-foreground"
+                        : "bg-accent text-accent-foreground"
+                    }`
+              }
             >
               {playing ? (
                 <Pause className="size-4" aria-hidden="true" />
               ) : (
                 <Play className="size-4 translate-x-[1px]" aria-hidden="true" />
               )}
+              {primary && (playing ? "Pozastaviť odpoveď" : "Vypočuť odpoveď")}
             </button>
             <VoiceWaveformScrubber
               peaks={peaks}

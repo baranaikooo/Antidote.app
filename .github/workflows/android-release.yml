@@ -87,6 +87,9 @@ jobs:
         if: steps.version.outputs.code != ''
         shell: bash
         run: |
+          if [[ -n "$FIREBASE_ANDROID_CONFIG" ]]; then
+            printf '%s' "$FIREBASE_ANDROID_CONFIG" | base64 --decode > android/app/google-services.json
+          fi
           npm ci
           npm exec -- tsc --noEmit
           npm test -- --run
@@ -95,6 +98,7 @@ jobs:
           bash android/gradlew -p android assembleDebug \
             -PantidoteVersionCode="$VERSION_CODE" -PantidoteVersionName="$VERSION_NAME"
         env:
+          FIREBASE_ANDROID_CONFIG: ${{ secrets.FIREBASE_ANDROID_CONFIG }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
 
