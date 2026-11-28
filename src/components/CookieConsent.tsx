@@ -88,9 +88,9 @@ export function CookieConsent() {
             <Cookie className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-display text-lg font-bold leading-tight">
+            <h2 className="font-display text-lg font-bold leading-tight">
               Nastavenia cookies
-            </h3>
+            </h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Nevyhnutné cookies potrebujeme na fungovanie aplikácie. Analytiku a personalizáciu môžeš povoliť alebo odmietnuť.
             </p>

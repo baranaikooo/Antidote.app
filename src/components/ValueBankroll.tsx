@@ -3,19 +3,15 @@ import { Check, Minus, Plus } from "lucide-react";
 
 import { useHaptic } from "@/hooks/use-haptics";
 
+import { PRIORITY_CATEGORIES } from "@/lib/priority-categories";
+
+export { PRIORITY_CATEGORIES };
+
 interface ValueBankrollProps {
   userId?: string | null;
   onDone: (conscientiousness: number, priorities: Record<string, number>) => void;
   onSliderChange?: (conscientiousness: number, extraversion: number) => void;
 }
-
-export const PRIORITY_CATEGORIES = [
-  { id: "rodina", label: "Rodina", desc: "Blízkosť, zázemie a ľudia, na ktorých sa dá spoľahnúť." },
-  { id: "kariera", label: "Kariéra", desc: "Rast, ambície a práca, ktorá má význam." },
-  { id: "stabilita", label: "Stabilita", desc: "Istota, plán a pokoj v každodennom živote." },
-  { id: "kreativita", label: "Tvorivosť", desc: "Zvedavosť, nápady a chuť vytvárať niečo nové." },
-  { id: "sloboda", label: "Sloboda", desc: "Nezávislosť, dobrodružstvo a priestor meniť smer." },
-] as const;
 
 const TOTAL_TOKENS = 10;
 const TOKEN_VALUE = 10;
