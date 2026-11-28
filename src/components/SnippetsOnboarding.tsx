@@ -59,12 +59,12 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
     setRecordingIndex(index);
   }
 
-  function handleCapturedSnippet(index: number, blob: Blob) {
+  async function handleCapturedSnippet(index: number, blob: Blob) {
     const videoUrl = URL.createObjectURL(blob);
+    await saveVideoBlob(`snippet_${index + 1}`, blob);
     setSnippets((prev) => {
       const next = [...prev];
       next[index] = videoUrl;
-      syncSnippetsToDB(next).catch(console.error);
       return next;
     });
   }

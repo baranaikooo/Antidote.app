@@ -115,12 +115,23 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
   }
 
   async function saveCapturedSnippet(index: number, blob: Blob) {
+    let uploadBlob: Blob = blob;
     const maxLimit = 5 * 1024 * 1024;
-    if (blob.size > maxLimit) {
-      toast.error(`Súbor je príliš veľký (${(blob.size / 1024 / 1024).toFixed(2)} MB). Limit je 5 MB.`);
-      throw new Error("File size exceeds 5MB limit");
+    if (
+      uploadBlob.size > 4.5 * 1024 * 1024 &&
+      typeof HTMLCanvasElement.prototype.captureStream === "function" &&
+      typeof window.MediaRecorder === "function"
+    ) {
+      try {
+        uploadBlob = await compressVideo(new File([blob], "moment.webm", { type: blob.type || "video/webm" }));
+      } catch (compressErr) {
+        console.warn("[dossier] camera compression skipped:", compressErr);
+      }
     }
-    await uploadFileAndSave(index, blob);
+    if (uploadBlob.size > maxLimit) {
+      throw new Error(`Súbor je príliš veľký (${(uploadBlob.size / 1024 / 1024).toFixed(2)} MB). Limit je 5 MB.`);
+    }
+    await uploadFileAndSave(index, uploadBlob);
   }
 
   async function uploadFileAndSave(index: number, blob: Blob | File) {
