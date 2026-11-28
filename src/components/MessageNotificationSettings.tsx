@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { AndroidNotificationSettings } from "@/components/AndroidNotificationSettings";
 import { ChoiceSelect } from "@/components/ui/choice-select";
 import { Switch } from "@/components/ui/switch";
 import { readMessageAlertSettings, saveMessageAlertSettings } from "@/lib/message-notifications";
+import { hasAndroidPush } from "@/lib/android-voice-alerts";
 
 export default function MessageNotificationSettings({ userId }: { userId: string }) {
   const [settings, setSettings] = useState(() => readMessageAlertSettings(userId));
@@ -78,6 +80,7 @@ export default function MessageNotificationSettings({ userId }: { userId: string
           Uložiť upozornenia
         </button>
       </form>
+      {hasAndroidPush() && <AndroidNotificationSettings userId={userId} />}
     </section>
   );
 }

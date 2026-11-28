@@ -43,6 +43,10 @@ a zamkni telefón. Keď odpovie druhý účet, over text „Máš novú odpoveď
 dostupnosť prehrávača aj textového chatu po návrate. Zopakuj scenár s
 odhlásením prvého účtu pred druhou odpoveďou a over, že upozornenie nepríde.
 
+V nastaveniach Android upozornení zapni iba nové správy. Over všeobecný
+text „Máš novú správu“, potom zapni zobrazenie mena a pošli ďalšiu správu.
+Na zamknutej obrazovke môže Android zobraziť meno podľa nastavení telefónu.
+
 ## Porovnanie odporúčaní
 
 Po súhlase pridaj účastníkov s uloženými žetónmi cez Supabase SQL Editor. Novým účastníkom sa náhodne pridelí verzia `baseline` alebo `full_priorities`. Obe používajú rovnaký výber kandidátov a vzdialenosť rozhoduje pri zhode skóre. Prvá verzia porovnáva najvyššiu prioritu. Druhá porovnáva všetkých päť hodnôt a mení poradie iba na miestach, kde sú údaje oboch ľudí dostupné. Profily bez žetónov zostávajú na pôvodných miestach. Záznamy v pôvodnej skupine `current` zostávajú v reporte, ak existujú.

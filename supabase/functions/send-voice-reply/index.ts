@@ -12,7 +12,9 @@ async function getGoogleToken(account: {
   client_email: string;
   private_key: string;
 }) {
-  const assertion = await new SignJWT({ scope: "https://www.googleapis.com/auth/firebase.messaging" })
+  const assertion = await new SignJWT({
+    scope: "https://www.googleapis.com/auth/firebase.messaging",
+  })
     .setProtectedHeader({ alg: "RS256" })
     .setIssuer(account.client_email)
     .setAudience(googleTokenUrl)
@@ -26,68 +28,112 @@ async function getGoogleToken(account: {
       assertion,
     }),
   });
-  if (!response.ok) throw new Error(`Firebase authentication status ${response.status}`);
+  if (!response.ok) {
+    throw new Error(`Firebase authentication status ${response.status}`);
+  }
   const { access_token: token } = await response.json();
-  if (typeof token !== "string") throw new Error("Missing Firebase access token");
+  if (typeof token !== "string") {
+    throw new Error("Missing Firebase access token");
+  }
   return token;
 }
 
 Deno.serve(async (request) => {
   if (request.method !== "POST") return new Response(null, { status: 405 });
   const signature = request.headers.get("x-voice-reply-signature") ?? "";
-  if (!secret || !/^[a-f0-9]{64}$/.test(signature)) return new Response(null, { status: 401 });
+  if (!secret || !/^[a-f0-9]{64}$/.test(signature)) {
+    return new Response(null, { status: 401 });
+  }
 
   const payload = await request.json().catch(() => null);
   const ticket = payload?.ticket;
-  if (typeof ticket !== "string" || !uuid.test(ticket))
+  if (typeof ticket !== "string" || !uuid.test(ticket)) {
     return new Response(null, { status: 400 });
+  }
   const expected = createHmac("sha256", secret).update(ticket).digest("hex");
-  if (!timingSafeEqual(encoder.encode(signature), encoder.encode(expected)))
+  if (!timingSafeEqual(encoder.encode(signature), encoder.encode(expected))) {
     return new Response(null, { status: 401 });
+  }
   if (!serviceAccount) return new Response(null, { status: 503 });
 
   try {
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data: tokens, error } = await supabase.rpc("claim_voice_reply_delivery", {
-      p_ticket: ticket,
-    });
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+      },
+    );
+    const { data: devices, error } = await supabase.rpc(
+      "claim_android_notification",
+      {
+        p_ticket: ticket,
+      },
+    );
     if (error) throw new Error(`Device lookup failed (${error.code})`);
-    if (!tokens?.length) return new Response(null, { status: 204 });
+    if (!devices?.length) return new Response(null, { status: 204 });
 
     const account = JSON.parse(serviceAccount);
     const accessToken = await getGoogleToken(account);
     const project = encodeURIComponent(account.project_id);
-    const results = await Promise.allSettled(tokens.map(async (token: string) => {
-      const result = await fetch(`https://fcm.googleapis.com/v1/projects/${project}/messages:send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({
-          message: {
-            token,
-            notification: { title: "Máš novú odpoveď" },
-            android: {
-              ttl: "86400s",
-              notification: { channel_id: "voice-replies", visibility: "PUBLIC" },
-            },
+    const results = await Promise.allSettled(devices.map(async (device: {
+      token: string;
+      is_message: boolean;
+      sender_name: string | null;
+    }) => {
+      const title = device.is_message ? "Máš novú správu" : "Máš novú odpoveď";
+      const notification = device.sender_name
+        ? {
+          title: device.sender_name,
+          body: device.is_message ? "Nová správa" : "Nová hlasová odpoveď",
+        }
+        : { title };
+      const result = await fetch(
+        `https://fcm.googleapis.com/v1/projects/${project}/messages:send`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
-        }),
-      });
+          body: JSON.stringify({
+            message: {
+              token: device.token,
+              notification,
+              android: {
+                ttl: "86400s",
+                notification: {
+                  channel_id: device.is_message
+                    ? "chat-messages"
+                    : "voice-replies",
+                  visibility: "PUBLIC",
+                },
+              },
+            },
+          }),
+        },
+      );
       if (result.ok) return;
       if (result.status === 404) {
         const payload = await result.json().catch(() => null);
-        if (payload?.error?.details?.some((detail: { errorCode?: string }) =>
-          detail.errorCode === "UNREGISTERED"
-        )) return;
+        if (
+          payload?.error?.details?.some((detail: { errorCode?: string }) =>
+            detail.errorCode === "UNREGISTERED"
+          )
+        ) return;
       }
       throw new Error(`FCM status ${result.status}`);
     }));
-    if (results.some((result) => result.status === "rejected"))
+    if (results.some((result) => result.status === "rejected")) {
       throw new Error("One or more voice notifications could not be delivered");
+    }
     return new Response(null, { status: 204 });
   } catch (error) {
-    console.error(error instanceof Error ? error.message : "Voice notification delivery failed");
+    console.error(
+      error instanceof Error
+        ? error.message
+        : "Voice notification delivery failed",
+    );
     return new Response(null, { status: 502 });
   }
 });
