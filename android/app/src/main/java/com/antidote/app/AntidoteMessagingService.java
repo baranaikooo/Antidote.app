@@ -53,7 +53,8 @@ public class AntidoteMessagingService extends MessagingService {
             privateVersion.setContentTitle(previewTitle);
         }
 
-        String tag = message.getMessageId();
+        String tag = message.getData().get("notification_id");
+        if (tag == null) tag = message.getMessageId();
         manager.notify(tag == null ? UUID.randomUUID().toString() : tag, 0, privateVersion.build());
     }
 
@@ -63,6 +64,7 @@ public class AntidoteMessagingService extends MessagingService {
             .setColor(ContextCompat.getColor(this, R.color.ic_launcher_background))
             .setContentIntent(open)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT);
     }
