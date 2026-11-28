@@ -5,30 +5,19 @@ import {
   priorityDistributionFromPercentages,
   readPriorityDistribution,
 } from "@/lib/priority-distribution";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Compass,
-  Heart,
-  ChevronLeft,
   ChevronRight,
-  Check,
   Camera,
   MessageCircle,
-  MapPin,
   Home,
-  RefreshCw,
-  Radar,
   Settings as SettingsIcon,
-  User,
 } from "lucide-react";
 import {
-  pickScenarios,
   orbSeedFor,
   toRankedMatch,
   type RecommendationRow,
   archetypeOf,
-  type Scenario,
-  type Answer,
   type Answers,
   type FullAnswers,
   type UserProfile,
@@ -36,11 +25,11 @@ import {
   type Orientation,
   type RankedMatch,
   type Conversation,
-  type Archetype,
   haversineKm,
 } from "@/lib/resonance";
 
-import { GoogleSignInButton, type GoogleProfile } from "@/components/GoogleSignInButton";
+import { Landing } from "@/features/onboarding/LandingScreen";
+import type { GoogleProfile } from "@/components/GoogleSignInButton";
 import { useHaptic } from "@/hooks/use-haptics";
 import {
   attachStreamToVideo,
@@ -60,47 +49,67 @@ import {
   getOrCreateMatch,
 } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
-import { ResonanceAvatar } from "@/components/ResonanceAvatar";
 import { BirthDateFields } from "@/components/BirthDateFields";
-import { SemanticMirror } from "@/components/SemanticMirror";
-import { recommendationReason } from "@/lib/recommendation-reason";
 import { readSituationScores } from "@/lib/situation-scores";
-import { PRIORITY_CATEGORIES, ValueBankroll } from "@/components/ValueBankroll";
-import { ReflectionEditor } from "@/components/ReflectionEditor";
 import { fetchConversationPartners, type ConversationPartner } from "@/lib/conversations";
 import {
   fetchConversationInbox,
   inboxMessageLabel,
   type InboxConversation,
 } from "@/lib/conversation-inbox";
-import { Chamber } from "@/components/chat/VoiceChamber";
-import { MessageThread } from "@/components/chat/MessageThread";
 import {
-  LegalPage,
   TERMS_BODY,
   PRIVACY_BODY,
   COOKIES_BODY,
   CONTACT_BODY,
 } from "@/components/settings/LegalAndSettings";
-import { AssetDossier } from "@/components/AssetDossier";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
-import { NebulaOrb } from "@/components/NebulaOrb";
-import { SystemConfig } from "@/components/SystemConfig";
-import { SnippetsOnboarding } from "@/components/SnippetsOnboarding";
-import { MatchCardIdentity } from "@/components/MatchCardIdentity";
 import { AndroidUpdateProvider, UpdateNotice } from "@/components/UpdateNotice";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { shouldShowMessageAlert } from "@/lib/message-notifications";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
+import { introductionFor, toConversationPartner } from "@/lib/match-intro";
+
+const SemanticMirror = lazy(() =>
+  import("@/components/SemanticMirror").then((m) => ({ default: m.SemanticMirror })),
+);
+const ValueBankroll = lazy(() =>
+  import("@/components/ValueBankroll").then((m) => ({ default: m.ValueBankroll })),
+);
+const ReflectionEditor = lazy(() =>
+  import("@/components/ReflectionEditor").then((m) => ({ default: m.ReflectionEditor })),
+);
+const Chamber = lazy(() =>
+  import("@/components/chat/VoiceChamber").then((m) => ({ default: m.Chamber })),
+);
+const MessageThread = lazy(() =>
+  import("@/components/chat/MessageThread").then((m) => ({ default: m.MessageThread })),
+);
+const LegalPage = lazy(() =>
+  import("@/components/settings/LegalAndSettings").then((m) => ({ default: m.LegalPage })),
+);
+const AssetDossier = lazy(() =>
+  import("@/components/AssetDossier").then((m) => ({ default: m.AssetDossier })),
+);
+const SystemConfig = lazy(() =>
+  import("@/components/SystemConfig").then((m) => ({ default: m.SystemConfig })),
+);
+const SnippetsOnboarding = lazy(() =>
+  import("@/components/SnippetsOnboarding").then((m) => ({ default: m.SnippetsOnboarding })),
+);
+const Dashboard = lazy(() =>
+  import("@/features/discover/DiscoverDashboard").then((m) => ({ default: m.Dashboard })),
+);
+const MessagesList = lazy(() =>
+  import("@/features/messages/MessagesListScreen").then((m) => ({ default: m.MessagesList })),
+);
+const Briefing = lazy(() =>
+  import("@/features/onboarding/QuizFlow").then((m) => ({ default: m.Briefing })),
+);
+const Processing = lazy(() =>
+  import("@/features/onboarding/QuizFlow").then((m) => ({ default: m.Processing })),
+);
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -143,14 +152,17 @@ function Shell({
       className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
     >
       {landing && (
-        <img
-          className="landing-art"
-          src="/antidote-fold.jpg"
-          alt=""
-          width={1536}
-          height={1024}
-          fetchPriority="high"
-        />
+        <picture>
+          <source srcSet="/antidote-fold.webp" type="image/webp" />
+          <img
+            className="landing-art"
+            src="/antidote-fold.jpg"
+            alt=""
+            width={1536}
+            height={1024}
+            fetchPriority="high"
+          />
+        </picture>
       )}
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
@@ -1192,6 +1204,7 @@ function AntidoteApp() {
       <Toaster theme={theme} position="top-center" />
       <AndroidUpdateProvider enabled={showUpdateNotice}>
         {showUpdateNotice && <UpdateNotice />}
+        <Suspense fallback={<AppSplash />}>
         {screen === "landing" && (
           <Landing
             onGoogle={(profile) => {
@@ -1621,6 +1634,7 @@ function AntidoteApp() {
             />
           </div>
         )}
+        </Suspense>
 
         {showNav && (
           <BottomNav
@@ -1747,94 +1761,6 @@ function BottomNav({
         ))}
       </div>
     </nav>
-  );
-}
-
-function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
-  const haptic = useHaptic();
-  const [choice, setChoice] = useState<"travel" | "love" | null>(null);
-  const [showReturningLogin, setShowReturningLogin] = useState(false);
-  const options = [
-    { value: "travel", label: "Možnosť cestovať", icon: Compass },
-    { value: "love", label: "Možnosť zamilovať sa", icon: Heart },
-  ] as const;
-
-  const choose = (nextChoice: "travel" | "love") => {
-    haptic("medium");
-    setChoice(nextChoice);
-    setShowReturningLogin(false);
-  };
-
-  return (
-    <main className="landing-main">
-      <div className="landing-hero">
-        <header className="landing-intro">
-          <div className="landing-brand">
-            <AntidoteLogo markClassName="h-8" />
-          </div>
-          <p>Zoznamka, ktorá začína otázkou</p>
-        </header>
-        <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
-        <p className="landing-subcopy">
-          Najprv sa spoznáte hlasom, až potom odhalíte tvár.
-        </p>
-      </div>
-      <div className="landing-interaction" data-answered={choice !== null || showReturningLogin}>
-        <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
-          {options.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => choose(value)}
-              aria-pressed={choice === value}
-              data-option={value}
-              className="landing-option"
-            >
-              <span className="landing-option-icon" aria-hidden="true">
-                <Icon size={21} />
-              </span>
-              <span>{label}</span>
-              <span className="landing-option-state" aria-hidden="true">
-                {choice === value && <Check size={19} />}
-              </span>
-            </button>
-          ))}
-        </div>
-        <div role="status" className="sr-only">
-          {choice && "Odpoveď vybraná. Môžeš pokračovať cez Google."}
-        </div>
-        {choice ? (
-          <div className="landing-result">
-            <p>Podľa odpovedí v dotazníku ti odporučíme ľudí.</p>
-            <div className="landing-sign-in">
-              <GoogleSignInButton onSuccess={onGoogle} />
-            </div>
-          </div>
-        ) : (
-          <div className="landing-returning">
-            {showReturningLogin ? (
-              <div className="landing-result">
-                <p>Prihlás sa k svojmu profilu.</p>
-                <div className="landing-sign-in">
-                  <GoogleSignInButton onSuccess={onGoogle} />
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="landing-returning-toggle"
-                onClick={() => {
-                  haptic("tap");
-                  setShowReturningLogin(true);
-                }}
-              >
-                Už mám účet · Prihlásiť sa
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </main>
   );
 }
 
@@ -2296,652 +2222,6 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
   );
 }
 
-function Briefing({ onBegin }: { onBegin: () => void }) {
-  return (
-    <main className="onboarding-panel mx-auto max-w-md animate-fade-up">
-      <h1 className="mb-2 max-w-sm font-display text-[clamp(2.35rem,10vw,3.5rem)] font-extrabold leading-none tracking-[-0.04em]">
-        Poďme sa trochu spoznať.
-      </h1>
-      <p className="text-sm font-medium text-coral">Približne 2 minúty</p>
-      <div className="mt-6 pt-4 text-muted-foreground">
-        <p className="max-w-sm text-base leading-relaxed">
-          Prvé otázky sa týkajú toho, ako sa rozhoduješ vo vzťahoch.
-        </p>
-        <p className="mt-3 text-sm leading-relaxed">
-          Žiadne správne odpovede — iba to, čo je ti blízke.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onBegin}
-        className="tactile-button mt-6 flex min-h-14 w-full items-center justify-between bg-coral p-4 text-left text-coral-foreground"
-      >
-        <span className="font-display text-xl font-bold">Začať</span>
-        <ChevronRight className="size-5" aria-hidden="true" />
-      </button>
-    </main>
-  );
-}
-
-function toConversationPartner(match: RankedMatch): ConversationPartner {
-  return {
-    id: match.id,
-    name: match.name,
-    age: match.age,
-    city: match.city,
-    top_priority: match.top_priority,
-    shared_reflection: match.shared_reflection ?? null,
-  };
-}
-
-const PRIORITY_QUESTIONS: Record<string, string> = {
-  rodina: "Ako vyzerá blízkosť v tvojom bežnom týždni?",
-  kariera: "Kedy sa ti podarilo nájsť čas na niekoho, aj keď ťa práca naplno zamestnávala?",
-  stabilita: "Ktorá drobná vec ti vo vzťahu dáva pocit istoty?",
-  kreativita: "Čo by si raz chcel/a spolu s niekým vytvoriť?",
-  sloboda: "Kedy si sa vo vzťahu cítil/a slobodne a zároveň blízko?",
-};
-
-function sharedPriority(myPriority: string | undefined, partnerPriority: string | null) {
-  return myPriority === partnerPriority
-    ? PRIORITY_CATEGORIES.find((category) => category.id === myPriority)
-    : undefined;
-}
-
-function introductionFor(myPriority: string | undefined, partner: ConversationPartner) {
-  const shared = sharedPriority(myPriority, partner.top_priority);
-  const text =
-    partner.shared_reflection?.trim() ||
-    (shared
-      ? PRIORITY_QUESTIONS[shared.id]
-      : "Ktorú vec o sebe človek pochopí až po dobrom rozhovore s tebou?");
-  return { shared, text };
-}
-
-function MatchCard({
-  match,
-  myPriority,
-  radiusKm,
-  position,
-  busy,
-  onSelect,
-}: {
-  match: RankedMatch;
-  myPriority?: string;
-  radiusKm?: number;
-  position?: number;
-  busy: boolean;
-  onSelect: () => void;
-}) {
-  const reason = recommendationReason(myPriority, match.top_priority, radiusKm, match.distanceKm);
-  const priorityLabel = match.top_priority
-    ? PRIORITY_CATEGORIES.find((category) => category.id === match.top_priority)?.label
-    : undefined;
-  const reflection = match.shared_reflection?.trim();
-  const card = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (!position || !card.current || !("IntersectionObserver" in window)) return;
-    let visible = false;
-    let sent = false;
-    function recordView() {
-      if (!visible || sent || document.visibilityState !== "visible") return;
-      sent = true;
-      void supabase
-        .rpc("record_matching_pilot_exposure", {
-          p_candidate_id: match.id,
-          p_position: position,
-        })
-        .then(({ error }) => {
-          if (error) sent = false;
-        });
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        visible = entry.isIntersecting && entry.intersectionRatio >= 0.25;
-        recordView();
-      },
-      { threshold: 0.25 },
-    );
-    observer.observe(card.current);
-    document.addEventListener("visibilitychange", recordView);
-    return () => {
-      observer.disconnect();
-      document.removeEventListener("visibilitychange", recordView);
-    };
-  }, [match.id, position]);
-
-  return (
-    <article ref={card} className="match-card" data-tone={match.top_priority ?? "default"}>
-      <MatchCardIdentity
-        name={match.name}
-        age={match.age}
-        city={match.city}
-        distanceKm={match.distanceKm}
-        orbSeed={match.id}
-      />
-      {priorityLabel && (
-        <div className="match-card-meta">
-          <span className="match-card-pill">Priorita: {priorityLabel}</span>
-        </div>
-      )}
-      {reason && (
-        <p className="match-card-reason">
-          <Compass className="size-4" aria-hidden="true" />
-          <span>{reason}</span>
-        </p>
-      )}
-      {reflection && (
-        <div className="match-card-reflection">
-          <p className="match-card-reflection-label">Myšlienka z profilu</p>
-          <blockquote>„{reflection}“</blockquote>
-        </div>
-      )}
-      <button type="button" onClick={onSelect} disabled={busy} className="match-card-action">
-        {busy ? "Otváram rozhovor…" : "Osloviť"}
-        <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
-      </button>
-    </article>
-  );
-}
-
-function Dashboard({
-  profile,
-  matches,
-  pendingRadius,
-  loading,
-  failed,
-  onRefresh,
-  onChangeRadius,
-  onProfile,
-  onSelectMatch,
-  openingMatch,
-  openError,
-  onMessages,
-  hasMessages,
-  recentReply,
-}: {
-  profile: UserProfile;
-  matches: RankedMatch[];
-  pendingRadius: number | null;
-  loading: boolean;
-  failed: boolean;
-  onRefresh: () => void;
-  onChangeRadius: (radius: number) => Promise<void>;
-  onProfile: () => void;
-  onSelectMatch: (match: RankedMatch) => void;
-  openingMatch: boolean;
-  openError: boolean;
-  onMessages: () => void;
-  hasMessages: boolean;
-  recentReply?: { name: string; preview?: string; onOpen: () => void };
-}) {
-  const haptic = useHaptic();
-
-  const [matchIndex, setMatchIndex] = useState(0);
-  const [editingRadius, setEditingRadius] = useState(false);
-  const savedRadius = Math.min(profile.radiusKm ?? 500, 500);
-  const [radiusChoice, setRadiusChoice] = useState(savedRadius);
-  const savingRadius = pendingRadius !== null;
-  const [radiusFailed, setRadiusFailed] = useState(false);
-  const displayedRadius = pendingRadius ?? savedRadius;
-  const nearby = displayedRadius < 500;
-  const searchRange = nearby ? `Do ${displayedRadius} km` : "Celý svet";
-  const radiusButton = useRef<HTMLButtonElement>(null);
-  const swipeStart = useRef<{ x: number; y: number } | null>(null);
-
-  function closeRadiusEditor() {
-    setEditingRadius(false);
-    requestAnimationFrame(() => radiusButton.current?.focus({ preventScroll: true }));
-  }
-  const initial = Array.from(profile.name.trim())[0]?.toLocaleUpperCase("sk");
-
-  async function saveSearchRadius() {
-    if (savingRadius || radiusChoice === savedRadius) return;
-    haptic("tap");
-    setRadiusFailed(false);
-    closeRadiusEditor();
-    try {
-      await onChangeRadius(radiusChoice);
-      setMatchIndex(0);
-    } catch {
-      setRadiusFailed(true);
-      setEditingRadius(true);
-    }
-  }
-  const availableMatches = matches;
-  const activeIndex = Math.max(0, Math.min(matchIndex, availableMatches.length - 1));
-  const activeMatch = availableMatches[activeIndex];
-  const radiusOptions = [...new Set([25, 50, 100, 200, savedRadius])]
-    .filter((radius) => radius < 500)
-    .sort((a, b) => a - b)
-    .map((radius) => ({ value: radius, label: `Do ${radius} km` }))
-    .concat({ value: 500, label: "Celý svet" });
-
-  function selectProfile(index: number) {
-    if (index === activeIndex || index < 0 || index >= availableMatches.length) return;
-    haptic("tap");
-    setMatchIndex(index);
-  }
-
-  return (
-    <div className="personal-screen discover-screen">
-      <header className="discover-header">
-        <div className="discover-topline">
-          <AntidoteLogo markClassName="h-6" />
-          <button
-            type="button"
-            className="discover-profile"
-            aria-label={`Otvoriť môj profil, ${profile.name}`}
-            onClick={onProfile}
-          >
-            <span className="discover-avatar" aria-hidden="true">
-              {initial || <User className="size-4" />}
-            </span>
-            <span>{profile.name}</span>
-            <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
-          </button>
-        </div>
-        <div className="discover-title-row">
-          <h1 className="personal-title">Spojenia</h1>
-          <button
-            ref={radiusButton}
-            type="button"
-            className="discover-radius-chip"
-            aria-expanded={editingRadius}
-            aria-controls="discover-radius-editor"
-            aria-disabled={savingRadius}
-            aria-label={`Upraviť dosah odporúčaní, aktuálne ${searchRange}`}
-            onClick={() => {
-              if (savingRadius) return;
-              if (editingRadius) {
-                closeRadiusEditor();
-              } else {
-                setRadiusChoice(savedRadius);
-                setRadiusFailed(false);
-                setEditingRadius(true);
-              }
-            }}
-          >
-            <MapPin className="size-4 shrink-0" aria-hidden="true" />
-            <span>{savingRadius ? "Ukladám…" : searchRange}</span>
-          </button>
-        </div>
-        <Drawer
-          open={editingRadius}
-          onOpenChange={(open) => {
-            if (!open && !savingRadius) closeRadiusEditor();
-          }}
-        >
-          <DrawerContent className="mx-auto max-w-md border-border bg-card text-foreground">
-            <DrawerHeader>
-              <DrawerTitle className="font-display text-xl">Nový dosah odporúčaní</DrawerTitle>
-            </DrawerHeader>
-            <form
-              className="grid gap-2 px-4 pb-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void saveSearchRadius();
-              }}
-            >
-              <div className="grid gap-1.5" role="radiogroup" aria-label="Nový dosah odporúčaní">
-                {radiusOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={radiusChoice === opt.value}
-                    disabled={savingRadius}
-                    onClick={() => {
-                      haptic("tap");
-                      setRadiusChoice(opt.value);
-                    }}
-                    className="drawer-option"
-                  >
-                    <span>{opt.label}</span>
-                    {radiusChoice === opt.value && <Check className="size-4 shrink-0" aria-hidden="true" />}
-                  </button>
-                ))}
-              </div>
-              {radiusFailed && (
-                <p role="alert" className="text-sm text-destructive">
-                  Dosah sa nepodarilo uložiť. Skús to znova.
-                </p>
-              )}
-              <DrawerFooter className="px-0 pt-3">
-                <button
-                  type="submit"
-                  className="match-card-action"
-                  disabled={savingRadius || radiusChoice === savedRadius}
-                >
-                  {savingRadius ? "Ukladám…" : "Uložiť dosah"}
-                </button>
-                <DrawerClose asChild>
-                  <button
-                    type="button"
-                    className="personal-action w-full justify-center"
-                    disabled={savingRadius}
-                    onClick={closeRadiusEditor}
-                  >
-                    Zrušiť
-                  </button>
-                </DrawerClose>
-              </DrawerFooter>
-            </form>
-          </DrawerContent>
-        </Drawer>
-      </header>
-
-      {recentReply && (
-        <section className="discover-reply editorial-panel" aria-labelledby="discover-reply-title">
-          <MessageCircle className="size-5 text-accent" aria-hidden="true" />
-          <div className="min-w-0">
-            <h2 id="discover-reply-title" className="font-bold text-foreground">
-              Nová správa od {recentReply.name}
-            </h2>
-            {recentReply.preview && (
-              <p className="mt-1 truncate text-sm text-muted-foreground">{recentReply.preview}</p>
-            )}
-            <button type="button" className="personal-action mt-3" onClick={recentReply.onOpen}>
-              Pokračovať v rozhovore
-            </button>
-          </div>
-        </section>
-      )}
-
-      {activeMatch ? (
-        <section
-          className="match-deck match-swipe-area"
-          aria-label="Dnešné odporúčania"
-          onPointerDown={(e) => {
-            if (availableMatches.length < 2) return;
-            swipeStart.current = { x: e.clientX, y: e.clientY };
-          }}
-          onPointerUp={(e) => {
-            const start = swipeStart.current;
-            swipeStart.current = null;
-            if (!start || availableMatches.length < 2) return;
-            const dx = e.clientX - start.x;
-            const dy = e.clientY - start.y;
-            if (Math.abs(dx) < 56 || Math.abs(dx) <= Math.abs(dy) * 1.4) return;
-            if (dx < 0 && activeIndex < availableMatches.length - 1) selectProfile(activeIndex + 1);
-            if (dx > 0 && activeIndex > 0) selectProfile(activeIndex - 1);
-          }}
-        >
-          <MatchCard
-            key={activeMatch.id}
-            match={activeMatch}
-            myPriority={profile.topPriority}
-            radiusKm={profile.radiusKm}
-            position={loading || failed ? undefined : activeIndex + 1}
-            busy={openingMatch}
-            onSelect={() => onSelectMatch(activeMatch)}
-          />
-          {openError && (
-            <p role="alert" className="mt-2 text-destructive">
-              Rozhovor sa nepodarilo otvoriť. Skús to znova.
-            </p>
-          )}
-          {availableMatches.length > 1 && (
-            <div className="match-deck-nav" role="group" aria-label="Výber profilu">
-              <button
-                type="button"
-                aria-label="Predchádzajúci profil"
-                disabled={activeIndex === 0}
-                onClick={() => selectProfile(activeIndex - 1)}
-              >
-                <ChevronLeft aria-hidden="true" className="size-5" />
-                <span>Predošlý</span>
-              </button>
-              <span className="match-deck-counter">
-                {activeIndex + 1} / {availableMatches.length}
-              </span>
-              <button
-                type="button"
-                aria-label="Ďalší profil"
-                disabled={activeIndex === availableMatches.length - 1}
-                onClick={() => selectProfile(activeIndex + 1)}
-              >
-                <span>Ďalší</span>
-                <ChevronRight aria-hidden="true" className="size-5" />
-              </button>
-            </div>
-          )}
-          <p className="sr-only" role="status">
-            Profil {activeIndex + 1} z {availableMatches.length}, {activeMatch.name}
-          </p>
-          {activeIndex === availableMatches.length - 1 && (
-            <p className="mt-3 text-sm text-muted-foreground">Tu sa táto sada odporúčaní končí.</p>
-          )}
-        </section>
-      ) : (
-        <section className="discover-search" aria-busy={loading || savingRadius}>
-          <div className="discover-search-icon" data-busy={loading || savingRadius}>
-            <Radar className="size-6" aria-hidden="true" />
-          </div>
-          <div>
-            <h2 className="personal-heading">
-              {savingRadius
-                ? "Ukladám nový dosah…"
-                : loading
-                  ? "Hľadám nové spojenia…"
-                  : failed
-                    ? "Spojenia sa nepodarilo načítať"
-                    : "Zatiaľ žiadne nové spojenia"}
-            </h2>
-            <p className="discover-search-copy">
-              {failed
-                ? "Skontroluj pripojenie a skús hľadať znova."
-                : nearby
-                  ? "V tomto okruhu momentálne nemáš žiadne odporúčania."
-                  : "Odporúčania sa tu objavia, keď budú dostupné."}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className="discover-refresh"
-            disabled={loading || savingRadius}
-            onClick={() => {
-              haptic("tap");
-              onRefresh();
-            }}
-          >
-            <RefreshCw className="size-4 shrink-0" aria-hidden="true" />
-            Hľadať znova
-          </button>
-        </section>
-      )}
-
-      {hasMessages && (
-        <button type="button" onClick={onMessages} className="discover-messages">
-          <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
-          Otvoriť rozhovory
-          <ChevronRight className="ml-auto size-5 shrink-0" aria-hidden="true" />
-        </button>
-      )}
-    </div>
-  );
-}
-// ============ Test ============
-// Each question runs as a two-phase staggered timer:
-//   PHASE 1 "read"   — 10s, only the scenario is visible (answers hidden).
-//   PHASE 2 "choose" — 15s, answers fade in and the user must pick (else random).
-const READ_TIME = 10;
-const CHOOSE_TIME = 15;
-
-function Test({ onComplete }: { onComplete: (a: FullAnswers) => void }) {
-  const scenariosRef = useRef<Scenario[]>(pickScenarios());
-  const scenarios = scenariosRef.current;
-  const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<Answers>({});
-  const [phase, setPhase] = useState<"read" | "choose">("read");
-  const [timeLeft, setTimeLeft] = useState(READ_TIME);
-  const haptic = useHaptic();
-  const s = scenarios[idx];
-  const answersRef = useRef(answers);
-  answersRef.current = answers;
-
-  // Reset both phases on new question.
-  useEffect(() => {
-    setPhase("read");
-    setTimeLeft(READ_TIME);
-  }, [idx]);
-
-  // Subtle warning haptic in the last 3 seconds of the choice phase.
-  useEffect(() => {
-    if (phase === "choose" && timeLeft <= 3 && timeLeft > 0) haptic("warning");
-  }, [phase, timeLeft, haptic]);
-
-  function advance(choice: Answer) {
-    const next = { ...answersRef.current, [s.id]: choice } as Answers;
-    setAnswers(next);
-    if (idx === scenarios.length - 1) onComplete(next as FullAnswers);
-    else setIdx(idx + 1);
-  }
-
-  // Single 1Hz ticker that drives both phases.
-  useEffect(() => {
-    const t = setInterval(() => {
-      setTimeLeft((v) => {
-        if (v > 1) return v - 1;
-        // Phase transition.
-        if (phase === "read") {
-          haptic("phase");
-          setPhase("choose");
-          return CHOOSE_TIME;
-        }
-        // Phase 2 timeout — force-pick a random answer.
-        const pick: Answer = Math.random() < 0.5 ? "A" : "B";
-        advance(pick);
-        return 0;
-      });
-    }, 1000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx, phase]);
-
-  function pick(choice: Answer) {
-    haptic("success");
-    advance(choice);
-  }
-
-  const total = phase === "read" ? READ_TIME : CHOOSE_TIME;
-  const pct = timeLeft / total;
-  const danger = phase === "choose" && timeLeft <= 3;
-
-  return (
-    <div className="animate-screen-in">
-      <div className="mb-8 flex items-end justify-between border-b border-foreground/25 pb-3">
-        <div>
-          <p className="editorial-kicker text-cerebral">Dilema</p>
-          <p className="mt-1 font-display text-2xl font-bold tracking-[-0.04em]">
-            {String(idx + 1).padStart(2, "0")} <span className="text-foreground/30">/ 06</span>
-          </p>
-        </div>
-        <div className="text-right">
-          <span className="editorial-kicker text-foreground/45">
-            {phase === "read" ? "Najprv iba čítaj" : "Teraz sa rozhodni"}
-          </span>
-          <p className={`mt-1 text-sm font-semibold tabular-nums ${danger ? "text-cerebral" : ""}`}>
-            {timeLeft} sek.
-          </p>
-        </div>
-      </div>
-
-      <div className="mb-8 flex gap-1.5" aria-label={`Otázka ${idx + 1} zo ${scenarios.length}`}>
-        {scenarios.map((_, step) => (
-          <span
-            key={step}
-            className={`h-1.5 flex-1 rounded-full transition-colors ${step <= idx ? "bg-accent" : "bg-muted"}`}
-          />
-        ))}
-      </div>
-
-      <div className="mb-6 h-1 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className={`h-full rounded-full transition-all duration-1000 ease-linear ${danger ? "bg-destructive" : "bg-accent"}`}
-          style={{ width: `${pct * 100}%` }}
-        />
-      </div>
-
-      <div className="onboarding-panel min-h-48 py-7">
-        <p className="font-display text-[clamp(1.65rem,7.5vw,2.5rem)] font-bold leading-[1.06] tracking-[-0.035em] text-foreground">
-          {s.text}
-        </p>
-      </div>
-
-      {phase === "read" ? (
-        <div className="mt-6 flex items-center gap-3 text-muted-foreground">
-          <span className="size-2 animate-pulse rounded-full bg-accent" />
-          <p className="text-sm">Nechaj prvú reakciu prejsť. Možnosti sa objavia o {timeLeft}s.</p>
-        </div>
-      ) : (
-        <div className="mt-6 grid gap-3 animate-fade-up">
-          {(["a", "b"] as const).map((k) => (
-            <button
-              key={k}
-              onClick={() => pick(k.toUpperCase() as Answer)}
-              className="tactile-button group bg-card p-4 text-left text-foreground hover:border-accent hover:bg-accent hover:text-accent-foreground cursor-pointer"
-            >
-              <span className="flex min-h-14 items-center justify-between gap-4">
-                <span className="font-display text-lg font-bold leading-snug">{s[k]}</span>
-                <span className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-xs font-semibold">
-                  {k.toUpperCase()}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============ Processing ============
-function Processing({
-  seed,
-  archetype,
-  onDone,
-}: {
-  seed: ReturnType<typeof orbSeedFor>;
-  archetype: Archetype;
-  onDone: () => void;
-}) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 4200);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
-  return (
-    <div className="onboarding-panel mx-auto max-w-md text-center animate-fade-up">
-      <p className="editorial-kicker text-accent">Tvoj profil je hotový</p>
-      <h2 className="mt-2 font-display text-[clamp(2rem,8vw,2.85rem)] font-extrabold leading-[1.02] tracking-[-0.04em]">
-        {archetype.label}
-      </h2>
-      <div className="my-6 grid place-items-center">
-        <NebulaOrb seed={seed} size={168} />
-      </div>
-      <div className="mx-auto flex max-w-44 gap-1.5" aria-label="Pripravujem tvoje spojenia">
-        {[0, 1, 2, 3, 4].map((step) => (
-          <span
-            key={step}
-            className="h-1.5 flex-1 animate-pulse rounded-full bg-accent"
-            style={{ animationDelay: `${step * 140}ms` }}
-          />
-        ))}
-      </div>
-      <p className="mt-4 text-sm text-muted-foreground">
-        Hľadáme spojenia podľa tvojich odpovedí.
-      </p>
-      <button type="button" onClick={onDone} className="priority-primary mt-5">
-        Pokračovať do Spojení
-        <ChevronRight className="size-4" aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
-
 // ============ Profile form ============
 function ProfileForm({
   onSubmit,
@@ -3364,130 +2644,6 @@ function ProfileForm({
           </div>
         </form>
       )}
-    </div>
-  );
-}
-
-// ============ Messages list ============
-function formatRelativeInboxTime(ts?: number): string | null {
-  if (!ts || !Number.isFinite(ts)) return null;
-  const diffMin = Math.max(0, Math.floor((Date.now() - ts) / 60000));
-  if (diffMin < 1) return "teraz";
-  if (diffMin < 60) return `pred ${diffMin} min`;
-  const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `pred ${diffHours} h`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return "včera";
-  if (diffDays < 7) return `pred ${diffDays} dňami`;
-  return new Date(ts).toLocaleDateString("sk-SK", { day: "numeric", month: "numeric" });
-}
-
-function MessagesList({
-  conversations,
-  matches,
-  failed,
-  loading,
-  onRetry,
-  onOpen,
-  onFindNew,
-}: {
-  conversations: InboxConversation[];
-  matches: ConversationPartner[];
-  failed: boolean;
-  loading: boolean;
-  onRetry: () => void;
-  onOpen: (id: string) => void;
-  onFindNew: () => void;
-}) {
-  return (
-    <div className="personal-screen">
-      <header className="personal-header">
-        <AntidoteLogo markClassName="h-6" />
-        <h1 className="personal-title mt-3">Správy</h1>
-      </header>
-
-      {failed && (
-        <p role="alert" className="mb-3">
-          Rozhovory sa nepodarilo načítať.{" "}
-          <button type="button" className="underline" onClick={onRetry}>
-            Skúsiť znova
-          </button>
-        </p>
-      )}
-      {loading && conversations.length === 0 ? (
-        <div className="message-list" role="status" aria-label="Načítavam rozhovory">
-          {[0, 1, 2].map((item) => (
-            <div key={item} className="message-list-row pointer-events-none">
-              <Skeleton className="size-12 shrink-0 rounded-full" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-4 w-40 rounded-md" />
-                <Skeleton className="h-3.5 w-56 rounded-md" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : conversations.length === 0 && !failed ? (
-        <div className="app-empty">
-          <MessageCircle className="size-6" aria-hidden="true" />
-          <h2 className="personal-heading mt-2">Zatiaľ žiadne správy</h2>
-          <p className="personal-intro">Keď niekto z vás odošle prvú správu, rozhovor sa objaví tu.</p>
-        </div>
-      ) : (
-        <div className="message-list">
-          {conversations.map((c) => {
-            const m = matches.find((x) => x.id === c.matchId);
-            if (!m) return null;
-            const last = c.preview;
-            const timeLabel = formatRelativeInboxTime(last?.ts ?? c.createdAt);
-            return (
-              <button
-                key={c.id}
-                onClick={() => onOpen(c.id)}
-                className="message-list-row group"
-                data-unread={!!c.unread}
-              >
-                <ResonanceAvatar name={m.name} seed={m.id} unread={Boolean(c.unread)} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <h3 className={`truncate text-base ${c.unread ? "font-bold" : "font-medium"}`}>
-                        {m.name}
-                      </h3>
-                      <span className="shrink-0 text-sm text-muted-foreground">{m.age}</span>
-                      <span className="truncate text-sm text-muted-foreground">· {m.city}</span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {timeLabel && (
-                        <span className="text-xs text-muted-foreground">{timeLabel}</span>
-                      )}
-                      {c.unread && (
-                        <>
-                          <span
-                            className="size-2 shrink-0 rounded-full bg-accent"
-                            aria-hidden="true"
-                          />
-                          <span className="sr-only">Neprečítané</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <p className="mt-1 flex items-center gap-2 text-sm text-foreground/75">
-                    {!last && <span className="message-list-stage">Spoločná otázka</span>}
-                    <span className="truncate">
-                      {last ? inboxMessageLabel(last) : "Odpovedz hlasom a chat sa otvorí"}
-                    </span>
-                  </p>
-                </div>
-                <ChevronRight className="size-5 shrink-0 text-foreground/30 group-hover:text-foreground" />
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <button onClick={onFindNew} className="personal-action mt-4 w-full">
-        Nájsť spojenie
-      </button>
     </div>
   );
 }
