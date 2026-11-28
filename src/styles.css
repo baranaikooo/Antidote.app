@@ -249,9 +249,10 @@ html.dark {
   --app-line: color-mix(in srgb, var(--foreground) 16%, transparent);
   --app-radius: 0.875rem;
   --app-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --app-ink: #10182c;
-  --app-paper: #f5f7ff;
-  --app-ice: #bfceff;
+  --app-ink: #131624;
+  --app-paper: #f6efe6;
+  --app-ice: #82a2ff;
+  --app-ice-soft: #c7d4ff;
 }
 
 .app-welcome {
@@ -266,7 +267,7 @@ html.dark {
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
 .landing-intro { display: grid; gap: 0.625rem; }
-.landing-intro p { color: var(--app-ice); font-size: 0.9375rem; line-height: 1.4; }
+.landing-intro p { color: var(--app-ice-soft); font-size: 0.9375rem; line-height: 1.4; }
 .landing-brand { display: flex; }
 .landing-brand svg circle { fill: var(--app-ice); }
 .discover-topline > div svg circle { fill: var(--accent); }
@@ -296,14 +297,8 @@ html.dark {
 .landing-interaction {
   --foreground: var(--app-paper);
   --background: var(--app-ink);
-  --muted-foreground: var(--app-ice);
+  --muted-foreground: var(--app-ice-soft);
   min-width: 0;
-  margin: -0.75rem;
-  padding: 0.75rem;
-  border-radius: 1rem;
-}
-.landing-interaction[data-answered="true"] {
-  background: color-mix(in srgb, var(--app-ink) 92%, transparent);
 }
 .landing-options { display: grid; gap: 0.5rem; }
 .landing-option {
@@ -347,11 +342,14 @@ html.dark {
 .landing-option[aria-pressed="true"] .landing-option-icon { background: var(--app-ice); color: var(--app-ink); }
 .landing-option:focus-visible, .landing-sign-in button:focus-visible { outline: 2px solid var(--app-ice); outline-offset: 3px; }
 .landing-result {
-  margin-top: 1rem;
-  padding-top: 0.875rem;
-  border-top: 1px solid color-mix(in srgb, var(--app-ice) 36%, transparent);
+  margin-top: 0.875rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--app-ice) 28%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, #1b2034 86%, transparent);
+  backdrop-filter: blur(12px);
 }
-.landing-result > p { color: var(--app-ice); font-size: 0.9375rem; line-height: 1.4; }
+.landing-result > p { color: var(--app-ice-soft); font-size: 0.9375rem; line-height: 1.4; }
 .landing-sign-in { margin-top: 0.75rem; }
 
 @media (hover: hover) and (pointer: fine) {
@@ -365,6 +363,13 @@ html.dark {
 @media (min-width: 760px), (orientation: landscape) and (max-height: 500px) and (min-width: 560px) {
   .landing-main { grid-template-columns: 1.3fr 1fr; align-items: center; gap: clamp(0.875rem, 3vw, 2.75rem); }
   .landing-title { font-size: clamp(2rem, 5vw, 4.5rem); }
+}
+@media (min-width: 760px) and (min-height: 640px) {
+  .landing-viewport {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
 }
 @media (max-width: 759px) {
   .landing-hero { padding-inline: 0; }
@@ -632,6 +637,40 @@ html.dark {
   border-radius: 0.875rem;
   background: var(--card);
 }
+.settings-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.625rem;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.settings-status-pill[data-ok="true"] {
+  background: color-mix(in srgb, var(--sage) 15%, var(--card));
+  color: var(--sage);
+}
+.settings-danger-row {
+  display: flex;
+  min-height: 3rem;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--destructive) 11%, var(--card));
+  color: var(--destructive);
+  font-weight: 650;
+  text-align: left;
+  transition: background-color 140ms;
+}
+.settings-danger-row:hover {
+  background: color-mix(in srgb, var(--destructive) 18%, var(--card));
+}
+.settings-danger-row > span { display: inline-flex; align-items: center; gap: 0.625rem; }
 .app-nav-dock {
   position: fixed;
   inset: auto var(--app-gutter) var(--app-bottom);
@@ -1299,12 +1338,26 @@ html.dark {
   box-shadow: 0 12px 32px #0002;
 }
 
+body:has(.app-welcome) .cookie-dock {
+  --foreground: #f6efe6;
+  --muted-foreground: #b5b8ce;
+  --card: #1b2034;
+  --muted: #20263c;
+  --accent: #82a2ff;
+  --accent-foreground: #131624;
+  border-color: color-mix(in srgb, #82a2ff 24%, transparent);
+  background: color-mix(in srgb, #131624 90%, transparent);
+  color: #f6efe6;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 36px #00000073;
+}
+
 .landing-subcopy {
   max-width: 24rem;
-  color: var(--app-ice);
+  color: var(--app-ice-soft);
   font-size: 0.9375rem;
   line-height: 1.45;
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 .landing-option[data-option="love"] .landing-option-icon {
@@ -1334,8 +1387,8 @@ html.dark {
   justify-content: center;
   padding: 0.625rem 1rem;
   border-radius: 0.875rem;
-  background: color-mix(in srgb, var(--app-ink) 72%, transparent);
-  color: var(--app-ice);
+  background: color-mix(in srgb, #1b2034 78%, transparent);
+  color: var(--app-ice-soft);
   font-size: 0.875rem;
   font-weight: 600;
   transition: background-color 150ms, transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1472,6 +1525,64 @@ html.dark {
   color: var(--coral);
   font-size: 0.75rem;
   font-weight: 650;
+}
+
+@media (min-width: 820px) {
+  .discover-screen .match-card {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+    align-items: start;
+    gap: 0.875rem 1.25rem;
+  }
+  .discover-screen .match-card-header {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    height: 100%;
+    min-height: 12.5rem;
+  }
+  .discover-screen :is(.match-card-meta, .match-card-reason, .match-card-reflection, .match-card-action) {
+    grid-column: 2;
+  }
+  .discover-screen .match-card-action {
+    margin-top: auto;
+  }
+}
+
+@media (min-width: 900px) {
+  .app-main .app-main-viewport {
+    max-width: 56rem;
+    padding-top: calc(5.25rem + env(safe-area-inset-top));
+    padding-bottom: 2.5rem;
+  }
+  .app-main .personal-screen {
+    max-width: 52rem;
+  }
+  .app-main .app-nav-dock {
+    inset: max(0.875rem, env(safe-area-inset-top)) var(--app-gutter) auto;
+    max-width: 30rem;
+  }
+  .app-main .app-nav-dock[data-hidden="true"] {
+    transform: translateY(-120%);
+  }
+  .app-main .app-nav-item {
+    grid-auto-flow: column;
+    min-height: 2.875rem;
+    gap: 0.45rem;
+    padding-inline: 0.625rem;
+    font-size: 0.875rem;
+  }
+  .app-main .app-nav-icon {
+    width: 1.75rem;
+    height: 1.5rem;
+  }
+  .thread-viewport {
+    max-width: 48rem;
+    padding-block: 1rem;
+  }
+  .thread-viewport .conversation-screen {
+    border: 1px solid var(--app-line);
+    border-radius: 1.25rem;
+    overflow: hidden;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

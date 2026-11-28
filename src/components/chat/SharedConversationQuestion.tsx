@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Mic, Pause, Play, Reply } from "lucide-react";
 import {
   respondToSharedQuestion,
@@ -6,6 +6,8 @@ import {
   withdrawQuestionVoice,
   type SharedQuestion,
 } from "@/lib/shared-question";
+import { buildDeterministicWaveform } from "@/lib/voice-waveform";
+import { VoiceWaveformScrubber } from "./VoiceWaveformScrubber";
 
 export function SharedVoiceQuestion({
   matchId,
@@ -133,12 +135,22 @@ function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
     }
   }
 
-  const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
+  const peaks = useMemo(() => buildDeterministicWaveform(path, 22), [path]);
+
+  function handleSeek(ratio: number) {
+    const audio = audioRef.current;
+    if (audio && audio.duration && Number.isFinite(audio.duration)) {
+      audio.currentTime = ratio * audio.duration;
+      setCurrentTime(audio.currentTime);
+    }
+    if (!playing) togglePlayback();
+  }
 
   return (
-    <div className="min-w-0 rounded-xl bg-muted p-3">
+    <div className="min-w-0 rounded-xl bg-muted px-3.5 py-3">
       <dt className="break-words text-sm font-semibold">{label}</dt>
-      <dd className="mt-2">
+      <dd className="mt-1.5">
         {failed ? (
           <button
             type="button"
@@ -152,12 +164,14 @@ function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
             Načítať nahrávku znova
           </button>
         ) : url ? (
-          <div className="flex items-center gap-3 rounded-xl border border-foreground/10 bg-card px-3 py-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={togglePlayback}
               aria-label={playing ? `Pozastaviť odpoveď: ${label}` : `Prehrať odpoveď: ${label}`}
-              className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground transition-transform active:scale-95 cursor-pointer"
+              className={`grid size-10 shrink-0 place-items-center rounded-full transition-transform active:scale-95 cursor-pointer ${
+                playing ? "bg-coral text-coral-foreground" : "bg-accent text-accent-foreground"
+              }`}
             >
               {playing ? (
                 <Pause className="size-4" aria-hidden="true" />
@@ -165,15 +179,14 @@ function QuestionVoicePlayer({ label, path }: { label: string; path: string }) {
                 <Play className="size-4 translate-x-[1px]" aria-hidden="true" />
               )}
             </button>
-            <div className="min-w-0 flex-1">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-accent transition-[width] duration-150"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-            <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+            <VoiceWaveformScrubber
+              peaks={peaks}
+              progress={progress}
+              tone={playing ? "coral" : "accent"}
+              label={`Priebeh odpovede: ${label}`}
+              onSeek={handleSeek}
+            />
+            <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
               {playing || currentTime > 0 ? formatDuration(currentTime) : formatDuration(duration)}
             </span>
             <audio

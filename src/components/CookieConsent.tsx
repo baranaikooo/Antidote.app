@@ -82,7 +82,7 @@ export function CookieConsent() {
 
   return (
     <div className="fixed inset-x-3 bottom-3 z-[60] md:inset-x-auto md:right-4 md:bottom-4 md:max-w-md animate-fade-up">
-      <div className="editorial-dock max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
+      <div className="editorial-dock cookie-dock max-h-[calc(100dvh-1.5rem)] overflow-y-auto">
         <div className="flex items-start gap-3 p-3.5 sm:p-4">
           <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/12 text-accent">
             <Cookie className="size-4" />

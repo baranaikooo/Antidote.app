@@ -163,7 +163,8 @@ it("waits for the server's mutual consent before requesting video and closes wit
   expect(mocks.videos).toHaveBeenCalledWith("partner");
 
   mocks.choice.mockResolvedValueOnce({ ...open, status: "deleted" });
-  fireEvent.click(screen.getByText("Ukončiť rozhovor", { selector: "button" }));
+  fireEvent.click(screen.getByRole("button", { name: "Možnosti rozhovoru" }));
+  fireEvent.click(await screen.findByText("Ukončiť rozhovor", { selector: "button" }));
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
   expect(mocks.choice).toHaveBeenLastCalledWith("match", "close");
   expect(mocks.send).not.toHaveBeenCalled();

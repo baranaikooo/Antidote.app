@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, Pause, Play, RotateCcw, Send, Square, Trash2 } from "lucide-react";
 
 import { useHaptic } from "@/hooks/use-haptics";
+import { VoiceWaveformScrubber } from "./VoiceWaveformScrubber";
 
 export type VoiceDraft = {
   url: string;
@@ -77,17 +78,19 @@ export function RecordButton({
       <div className="mx-auto w-full max-w-md px-4 py-3">
         {draft ? (
           <div className="space-y-3 animate-fade-up">
-            <div className="flex items-center justify-between text-xs text-foreground/60">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Skontroluj si odpoveď pred odoslaním</span>
-              <span className="tabular-nums">{formatClock(draft.duration)}</span>
+              <span className="font-semibold tabular-nums">{formatClock(draft.duration)}</span>
             </div>
 
-            <div className="flex items-center gap-3 rounded-xl border border-foreground/15 bg-background px-3.5 py-2.5">
+            <div className="flex items-center gap-3 rounded-2xl bg-muted px-3.5 py-2">
               <button
                 type="button"
                 onClick={togglePreview}
                 aria-label={previewPlaying ? "Pozastaviť ukážku" : "Prehrať ukážku"}
-                className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground cursor-pointer"
+                className={`grid size-11 shrink-0 place-items-center rounded-full transition-transform active:scale-95 cursor-pointer ${
+                  previewPlaying ? "bg-coral text-coral-foreground" : "bg-accent text-accent-foreground"
+                }`}
               >
                 {previewPlaying ? (
                   <Pause className="size-4" />
@@ -96,34 +99,19 @@ export function RecordButton({
                 )}
               </button>
 
-              <div className="flex h-8 flex-1 items-center gap-[3px]">
-                {draft.peaks.map((peak, idx) => {
-                  const ratio = (idx + 1) / draft.peaks.length;
-                  const lit = previewProgress > 0 && ratio <= previewProgress;
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        const el = previewAudioRef.current;
-                        if (el && el.duration && Number.isFinite(el.duration)) {
-                          el.currentTime = ratio * el.duration;
-                        }
-                        setPreviewProgress(ratio);
-                      }}
-                      aria-label={`Posunúť ukážku na ${Math.round(ratio * 100)} %`}
-                      className="flex h-full flex-1 items-center justify-center cursor-pointer"
-                    >
-                      <span
-                        className={`w-[3px] rounded-full transition-colors ${
-                          lit ? "bg-cerebral" : "bg-foreground/30"
-                        }`}
-                        style={{ height: `${Math.round(18 + peak * 78)}%` }}
-                      />
-                    </button>
-                  );
-                })}
-              </div>
+              <VoiceWaveformScrubber
+                peaks={draft.peaks}
+                progress={previewProgress}
+                tone={previewPlaying ? "coral" : "accent"}
+                label="Priebeh nahratej ukážky"
+                onSeek={(ratio) => {
+                  const el = previewAudioRef.current;
+                  if (el && el.duration && Number.isFinite(el.duration)) {
+                    el.currentTime = ratio * el.duration;
+                  }
+                  setPreviewProgress(ratio);
+                }}
+              />
 
               <audio
                 ref={previewAudioRef}
@@ -152,7 +140,7 @@ export function RecordButton({
                   previewAudioRef.current?.pause();
                   onDiscardDraft?.();
                 }}
-                className="flex items-center justify-center gap-2 rounded-xl border border-foreground/20 bg-transparent px-4 py-3.5 text-sm font-semibold text-foreground/85 transition-colors hover:border-foreground/45 hover:bg-muted disabled:opacity-40 cursor-pointer"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/80 disabled:opacity-40 cursor-pointer"
               >
                 <RotateCcw className="size-4" />
                 <span>Nahrať znova</span>
@@ -166,7 +154,7 @@ export function RecordButton({
                   previewAudioRef.current?.pause();
                   onSendDraft?.();
                 }}
-                className="tactile-button flex items-center justify-center gap-2 bg-accent px-4 py-3.5 font-display text-sm font-bold text-accent-foreground disabled:opacity-40 cursor-pointer"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-coral px-4 py-3 font-display text-sm font-bold text-coral-foreground transition-transform active:scale-[0.98] disabled:opacity-40 cursor-pointer"
               >
                 <span>{sending ? "Odosielam…" : "Odoslať"}</span>
                 <Send className="size-4" />
@@ -176,25 +164,25 @@ export function RecordButton({
         ) : recording ? (
           <div className="space-y-3 animate-fade-up">
             <div className="flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-2 font-semibold text-accent">
-                <span className="size-2 animate-pulse rounded-full bg-accent" />
+              <span className="inline-flex items-center gap-2 font-semibold text-coral">
+                <span className="size-2 animate-pulse rounded-full bg-coral" />
                 Nahrávaš odpoveď
               </span>
-              <span className="font-semibold tabular-nums text-foreground/80">
+              <span className="font-semibold tabular-nums text-foreground">
                 {formatClock(Math.min(recLen, maxSeconds))}{" "}
-                <span className="text-foreground/45">/ {formatClock(maxSeconds)}</span>
+                <span className="text-muted-foreground">/ {formatClock(maxSeconds)}</span>
               </span>
             </div>
 
             <div className="h-1 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
               <div
-                className="h-full rounded-full bg-accent transition-[width] duration-200 ease-linear"
+                className="h-full rounded-full bg-coral transition-[width] duration-200 ease-linear"
                 style={{ width: `${Math.min(100, (recLen / maxSeconds) * 100)}%` }}
               />
             </div>
 
             <div
-              className="flex h-9 items-center gap-1 rounded-xl border border-foreground/15 bg-background px-3"
+              className="flex h-11 items-center gap-1 rounded-2xl bg-muted px-3.5"
               aria-hidden
             >
               {Array.from({ length: 20 }).map((_, idx) => {
@@ -206,7 +194,7 @@ export function RecordButton({
                 return (
                   <span
                     key={idx}
-                    className="flex-1 rounded-full bg-accent transition-all duration-100"
+                    className="flex-1 rounded-full bg-coral transition-all duration-100"
                     style={{ height: `${barHeight}%` }}
                   />
                 );
@@ -221,7 +209,7 @@ export function RecordButton({
                   onCancel();
                 }}
                 aria-label="Zahodiť nahrávanie"
-                className="flex items-center gap-2 rounded-xl border border-foreground/20 px-4 py-3.5 text-sm font-medium text-foreground/80 transition-colors hover:border-foreground/45 hover:bg-muted cursor-pointer"
+                className="flex min-h-12 items-center gap-2 rounded-2xl bg-muted px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/80 cursor-pointer"
               >
                 <Trash2 className="size-4" />
                 <span>Zahodiť</span>
@@ -233,7 +221,7 @@ export function RecordButton({
                   haptic("medium");
                   onCommit();
                 }}
-                className="tactile-button flex items-center justify-center gap-2 bg-accent px-5 py-3.5 font-display text-sm font-bold text-accent-foreground cursor-pointer"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-coral px-5 py-3 font-display text-sm font-bold text-coral-foreground transition-transform active:scale-[0.98] cursor-pointer"
               >
                 <Square className="size-3.5 fill-current" />
                 <span>Hotovo · vypočuť si</span>
@@ -250,12 +238,12 @@ export function RecordButton({
                 onStart();
               }}
               aria-label="Nahrať hlasovú odpoveď"
-              className="grid size-16 place-items-center rounded-full bg-accent text-accent-foreground transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent disabled:opacity-35 cursor-pointer"
+              className="grid size-16 place-items-center rounded-full bg-coral text-coral-foreground transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-coral disabled:opacity-35 cursor-pointer"
             >
               <Mic className="size-6" aria-hidden="true" />
             </button>
             <p className="font-display text-sm font-semibold">Nahrať odpoveď</p>
-            <p className="max-w-xs text-xs leading-relaxed text-foreground/70">
+            <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
               Povolíš mikrofón a pred odoslaním si môžeš nahrávku vypočuť.
             </p>
           </div>

@@ -120,13 +120,17 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
               type="button"
               onClick={() => handleSelect(idx)}
               aria-pressed={isSelected}
-              className={`tactile-button flex min-h-16 w-full items-center justify-between gap-4 p-4 text-left cursor-pointer ${
-                isSelected ? "bg-cerebral text-background" : "bg-card text-foreground"
+              className={`flex min-h-16 w-full items-center justify-between gap-4 rounded-2xl p-4 text-left transition-all active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent cursor-pointer ${
+                isSelected
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-card text-foreground hover:bg-muted/70"
               }`}
             >
               <span className="font-display text-lg font-bold leading-tight">{opt.text}</span>
               <span
-                className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-sm"
+                className={`grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold ${
+                  isSelected ? "bg-accent-foreground/20 text-accent-foreground" : "bg-muted text-muted-foreground"
+                }`}
                 aria-hidden="true"
               >
                 {isSelected ? <Check size={16} /> : letter}
@@ -140,7 +144,7 @@ export function SemanticMirror({ onDone }: SemanticMirrorProps) {
         type="button"
         disabled={selectedIdx === null}
         onClick={handleNext}
-        className="tactile-button mt-6 flex w-full items-center justify-between bg-foreground px-5 py-4 text-background disabled:pointer-events-none disabled:opacity-25 cursor-pointer"
+        className="mt-6 flex min-h-13 w-full items-center justify-between rounded-2xl bg-coral px-5 py-4 text-coral-foreground transition-all active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground cursor-pointer"
       >
         <span className="font-display text-base font-bold">
           {step === prompts.length - 1 ? "Pokračovať k prioritám" : "Ďalšia situácia"}
