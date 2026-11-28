@@ -1,4 +1,13 @@
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { AndroidUpdateSettings } from "@/components/UpdateNotice";
 import MessageNotificationSettings from "@/components/MessageNotificationSettings";
 import React, { useState, useEffect } from "react";
@@ -372,33 +381,75 @@ export function SystemConfig({
           </span>
         </DisclosureSummary>
         {freezeMessage && <p role="status" className="mb-3 text-foreground/75">{freezeMessage}</p>}
-        {showWipeConfirm ? (
-          <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4">
-            <p className="font-semibold text-destructive">Naozaj chceš vymazať účet?</p>
-            <p className="mt-2 leading-relaxed text-foreground/80">Všetky informácie, výsledky testov a správy budú natrvalo vymazané. Táto akcia je nevratná.</p>
-            <div className="mt-4 flex gap-2"><button type="button" onClick={executeDataWipe} className="personal-action personal-danger flex-1">Vymazať účet</button><button type="button" onClick={() => { haptic("tap"); setShowWipeConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
-          </div>
-        ) : showLogoutConfirm ? (
-          <div className="rounded-xl border border-foreground/12 bg-muted p-4">
-            <p className="font-semibold">Naozaj sa chceš odhlásiť?</p>
-            <div className="mt-4 flex gap-2"><button type="button" onClick={executeLogout} className="personal-action flex-1">Odhlásiť sa</button><button type="button" onClick={() => { haptic("tap"); setShowLogoutConfirm(false); }} className="personal-action flex-1">Zrušiť</button></div>
-          </div>
-        ) : (
-          <>
-            <button type="button" onClick={handleToggleFreeze} aria-pressed={isFrozen} className="personal-link">
-              <span><Snowflake className="size-5" aria-hidden="true" />Skryť profil</span>
-              <span className="settings-status-pill" data-ok={isFrozen} aria-hidden="true">
-                {isFrozen ? "Zapnuté" : "Vypnuté"}
-              </span>
-            </button>
-            <button type="button" onClick={() => { haptic("warning"); setShowLogoutConfirm(true); }} className="personal-link"><span><LogOut className="size-5" />Odhlásiť sa</span><ChevronRight className="size-5" /></button>
-            <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="settings-danger-row">
-              <span><Trash2 className="size-5" />Vymazať účet</span>
-              <ChevronRight className="size-5" />
-            </button>
-          </>
-        )}
+        <button type="button" onClick={handleToggleFreeze} aria-pressed={isFrozen} className="personal-link">
+          <span><Snowflake className="size-5" aria-hidden="true" />Skryť profil</span>
+          <span className="settings-status-pill" data-ok={isFrozen} aria-hidden="true">
+            {isFrozen ? "Zapnuté" : "Vypnuté"}
+          </span>
+        </button>
+        <button type="button" onClick={() => { haptic("warning"); setShowLogoutConfirm(true); }} className="personal-link"><span><LogOut className="size-5" />Odhlásiť sa</span><ChevronRight className="size-5" /></button>
+        <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="settings-danger-row">
+          <span><Trash2 className="size-5" />Vymazať účet</span>
+          <ChevronRight className="size-5" />
+        </button>
       </details>
+
+      <Drawer
+        open={showWipeConfirm || showLogoutConfirm}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowWipeConfirm(false);
+            setShowLogoutConfirm(false);
+          }
+        }}
+      >
+        <DrawerContent className="mx-auto max-w-md rounded-t-[1.75rem] border-border bg-card text-foreground">
+          <DrawerHeader>
+            <DrawerTitle
+              className={`font-display text-xl ${showWipeConfirm ? "text-destructive" : ""}`}
+            >
+              {showWipeConfirm ? "Naozaj chceš vymazať účet?" : "Naozaj sa chceš odhlásiť?"}
+            </DrawerTitle>
+            <DrawerDescription>
+              {showWipeConfirm
+                ? "Všetky informácie, výsledky testov a správy budú natrvalo vymazané. Táto akcia je nevratná."
+                : "K svojmu profilu sa môžeš kedykoľvek znova prihlásiť cez Google."}
+            </DrawerDescription>
+          </DrawerHeader>
+          <DrawerFooter className="gap-2 pt-2">
+            {showWipeConfirm ? (
+              <button
+                type="button"
+                onClick={executeDataWipe}
+                className="personal-action personal-danger w-full justify-center rounded-full"
+              >
+                Vymazať účet
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={executeLogout}
+                className="match-card-action w-full justify-center"
+              >
+                Odhlásiť sa
+              </button>
+            )}
+            <DrawerClose asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  haptic("tap");
+                  setShowWipeConfirm(false);
+                  setShowLogoutConfirm(false);
+                }}
+                className="personal-action w-full justify-center rounded-full"
+              >
+                Zrušiť
+              </button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

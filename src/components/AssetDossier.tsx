@@ -1,8 +1,17 @@
 import { Slider } from "@/components/ui/slider";
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { SnippetRows } from "@/components/SnippetRows";
 import { VideoRecorderModal } from "@/components/VideoRecorderModal";
@@ -30,8 +39,11 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
     profileHeader.current?.querySelector("h1")?.focus({ preventScroll: true });
   }, []);
 
-  // Snippets local list — initialized from profile data
+  // Snippets local list — initialized and kept synced from profile data
   const [snippets, setSnippets] = useState<string[]>(user.videoUrls ?? []);
+  useEffect(() => {
+    setSnippets(user.videoUrls ?? []);
+  }, [user.videoUrls]);
   const [recordingIndex, setRecordingIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeUploadIndex, setActiveUploadIndex] = useState<number | null>(null);
@@ -461,19 +473,46 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
             <span className="moment-progress-track" aria-hidden="true">{Array.from({ length: 4 }, (_, index) => <span key={index} data-filled={!!snippets[index]} />)}</span>
           </div>
           <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={requestDeleteSnippet} />
-          {confirmDeleteIndex !== null && (
-            <div className="mt-3 rounded-xl border border-destructive/25 bg-destructive/10 p-3 text-sm" role="alertdialog" aria-label="Potvrdiť odstránenie videa">
-              <p className="font-semibold text-destructive">Odstrániť video {confirmDeleteIndex + 1}?</p>
-              <div className="mt-2.5 flex gap-2">
-                <button type="button" onClick={() => void confirmDeleteSnippet()} className="personal-action personal-danger flex-1">
-                  Odstrániť
+          <Drawer
+            open={confirmDeleteIndex !== null}
+            onOpenChange={(open) => {
+              if (!open) setConfirmDeleteIndex(null);
+            }}
+          >
+            <DrawerContent className="mx-auto max-w-md rounded-t-[1.75rem] border-border bg-card text-foreground">
+              <DrawerHeader>
+                <DrawerTitle className="flex items-center gap-2 font-display text-xl text-destructive">
+                  <Trash2 className="size-5 shrink-0" aria-hidden="true" />
+                  <span>
+                    {confirmDeleteIndex !== null
+                      ? `Odstrániť video ${confirmDeleteIndex + 1}?`
+                      : "Odstrániť video?"}
+                  </span>
+                </DrawerTitle>
+                <DrawerDescription>
+                  Tento krátky moment vymažeš z profilu a môžeš kedykoľvek nahrať nový.
+                </DrawerDescription>
+              </DrawerHeader>
+              <DrawerFooter className="gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => void confirmDeleteSnippet()}
+                  className="personal-action personal-danger w-full justify-center rounded-full"
+                >
+                  Odstrániť video
                 </button>
-                <button type="button" onClick={() => setConfirmDeleteIndex(null)} className="personal-action flex-1">
-                  Zrušiť
-                </button>
-              </div>
-            </div>
-          )}
+                <DrawerClose asChild>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteIndex(null)}
+                    className="personal-action w-full justify-center rounded-full"
+                  >
+                    Zrušiť
+                  </button>
+                </DrawerClose>
+              </DrawerFooter>
+            </DrawerContent>
+          </Drawer>
           <input type="file" ref={fileInputRef} accept="video/*,video/mp4,video/quicktime,video/webm,video/3gpp,video/x-matroska" className="hidden" onChange={handleFileChange} />
         </section>
 
