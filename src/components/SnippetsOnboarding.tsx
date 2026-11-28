@@ -160,7 +160,8 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
         <p className="personal-eyebrow">Tvoj profil</p>
         <h1 className="personal-title">Pridaj krátke video</h1>
         <p className="personal-intro">
-          Jedno trojsekundové video na profil. Ďalšie tri sú voliteľné.
+          Pridaj jedno trojsekundové video. Ľudia v rozhovore ho uvidia, až keď s tým obaja
+          súhlasíte. Ďalšie tri videá sú voliteľné.
         </p>
       </header>
       <section className="onboarding-panel first-profile-video" aria-labelledby="first-profile-video">

@@ -8,16 +8,20 @@ vi.mock("@/components/GoogleSignInButton", () => ({
 }));
 
 describe("Landing", () => {
-  it("offers sign-in directly and lets people try the introductory question", () => {
+  it("shows the question first and reveals sign-in only after selecting an answer", () => {
     render(<Landing mobile onGoogle={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Pokračovať cez Google" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Vyskúšať otázku" }));
+    expect(
+      screen.getByRole("heading", { name: "Čo by si radšej stratil/a na jeden rok?" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Pokračovať cez Google" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Možnosť cestovať" }));
 
+    expect(screen.getByText("Antidote")).toBeVisible();
     expect(screen.getByRole("button", { name: "Možnosť cestovať" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
+    expect(screen.getByRole("button", { name: "Pokračovať cez Google" })).toBeVisible();
   });
 });

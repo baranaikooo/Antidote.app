@@ -29,7 +29,12 @@ import { markConversationRead } from "@/lib/conversation-inbox";
 import { ConversationFeedback } from "./ConversationFeedback";
 import { SharedConversationQuestion, SharedVoiceQuestion } from "./SharedConversationQuestion";
 import { Chamber } from "./VoiceChamber";
-import { readSharedQuestion, submitQuestionVoice, type SharedQuestion } from "@/lib/shared-question";
+import {
+  QUESTION_VOICE_MAX_SECONDS,
+  readSharedQuestion,
+  submitQuestionVoice,
+  type SharedQuestion,
+} from "@/lib/shared-question";
 
 export function MessageThread({
   conversation,
@@ -72,6 +77,7 @@ export function MessageThread({
   } | null>(null);
   const [showVideos, setShowVideos] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
   const [videos, setVideos] = useState<string[] | null>(null);
   const [videosFailed, setVideosFailed] = useState(false);
   const listEnd = useRef<HTMLDivElement>(null);
@@ -342,6 +348,8 @@ export function MessageThread({
               ? sharedQuestion.own_voice_path && sharedQuestion.partner_voice_path
               : sharedQuestion.own_answer && sharedQuestion.partner_answer,
           ))));
+  const needsVoiceAnswer =
+    isOpen && !canSend && sharedQuestion?.voice_required && !sharedQuestion.own_voice_path;
   const showPilotQuestion =
     isOpen && latestIncoming && conversation.messages.some((message) => message.from === "me");
   const canRetrySend = failedSend && (failedSend.reaction || failedSend.text === input.trim());
@@ -397,58 +405,93 @@ export function MessageThread({
       </header>
 
       {isOpen && (
-        <Drawer open={showOptions} onOpenChange={setShowOptions}>
+        <Drawer
+          open={showOptions}
+          onOpenChange={(open) => {
+            setShowOptions(open);
+            if (!open) setConfirmClose(false);
+          }}
+        >
           <DrawerContent
             id="conversation-options-panel"
             className="mx-auto max-w-md border-border bg-card text-foreground"
           >
             <DrawerHeader>
-              <DrawerTitle className="font-display text-xl">Možnosti rozhovoru</DrawerTitle>
-              <DrawerDescription>Rozhovor môžeš ukončiť kedykoľvek.</DrawerDescription>
+              <DrawerTitle className="font-display text-xl">
+                {confirmClose ? "Ukončiť tento rozhovor?" : "Možnosti rozhovoru"}
+              </DrawerTitle>
+              <DrawerDescription>
+                {confirmClose
+                  ? "Po ukončení si už v tomto rozhovore nebudete môcť písať."
+                  : "Rozhovor môžeš ukončiť kedykoľvek."}
+              </DrawerDescription>
             </DrawerHeader>
-            <div className="grid gap-2 px-4">
-              <button
-                type="button"
-                disabled={savingChoice}
-                className="drawer-option justify-start"
-                onClick={() => {
-                  setShowOptions(false);
-                  void changeChoice("close");
-                }}
-              >
-                Ukončiť rozhovor
-              </button>
-              <details className="rounded-xl bg-muted px-3.5 py-2.5 text-sm">
-                <DisclosureSummary className="font-semibold text-destructive">
-                  Nahlásiť a ukončiť
-                </DisclosureSummary>
-                <div className="grid gap-1.5 pt-2">
-                  {(Object.entries(REPORT_REASONS) as [keyof typeof REPORT_REASONS, string][]).map(
-                    ([reason, label]) => (
-                      <button
-                        type="button"
-                        key={reason}
-                        disabled={savingChoice}
-                        className="drawer-option"
-                        onClick={() => {
-                          setShowOptions(false);
-                          void changeChoice(reason);
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ),
-                  )}
-                </div>
-              </details>
-            </div>
-            <DrawerFooter>
-              <DrawerClose asChild>
-                <button type="button" className="personal-action w-full justify-center">
-                  Zavrieť
+            {confirmClose ? (
+              <DrawerFooter>
+                <button
+                  type="button"
+                  className="personal-action personal-danger w-full"
+                  disabled={savingChoice}
+                  onClick={() => {
+                    setConfirmClose(false);
+                    setShowOptions(false);
+                    void changeChoice("close");
+                  }}
+                >
+                  Potvrdiť ukončenie
                 </button>
-              </DrawerClose>
-            </DrawerFooter>
+                <button
+                  type="button"
+                  className="personal-action w-full"
+                  onClick={() => setConfirmClose(false)}
+                >
+                  Pokračovať v rozhovore
+                </button>
+              </DrawerFooter>
+            ) : (
+              <>
+                <div className="grid gap-2 px-4">
+                  <button
+                    type="button"
+                    disabled={savingChoice}
+                    className="drawer-option justify-start"
+                    onClick={() => setConfirmClose(true)}
+                  >
+                    Ukončiť rozhovor
+                  </button>
+                  <details className="rounded-xl bg-muted px-3.5 py-2.5 text-sm">
+                    <DisclosureSummary className="font-semibold text-destructive">
+                      Nahlásiť a ukončiť
+                    </DisclosureSummary>
+                    <div className="grid gap-1.5 pt-2">
+                      {(
+                        Object.entries(REPORT_REASONS) as [keyof typeof REPORT_REASONS, string][]
+                      ).map(([reason, label]) => (
+                        <button
+                          type="button"
+                          key={reason}
+                          disabled={savingChoice}
+                          className="drawer-option"
+                          onClick={() => {
+                            setShowOptions(false);
+                            void changeChoice(reason);
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+                <DrawerFooter>
+                  <DrawerClose asChild>
+                    <button type="button" className="personal-action w-full justify-center">
+                      Zavrieť
+                    </button>
+                  </DrawerClose>
+                </DrawerFooter>
+              </>
+            )}
           </DrawerContent>
         </Drawer>
       )}
@@ -468,6 +511,11 @@ export function MessageThread({
             <Skeleton className="h-12 w-3/4 rounded-2xl" />
             <Skeleton className="ml-auto h-12 w-2/3 rounded-2xl" />
           </div>
+        )}
+        {error && !canSend && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
         )}
         {status?.status === "deleted" && (
           <p role="status" className="editorial-panel p-4">
@@ -503,7 +551,6 @@ export function MessageThread({
             name={match.name}
             question={sharedQuestion}
             onChange={updateSharedQuestion}
-            onRecord={() => setRecordingAnswer(true)}
           />
         )}
         {isOpen && sharedQuestion && !sharedQuestion.voice_required && (
@@ -563,7 +610,11 @@ export function MessageThread({
                   (videosFailed ? (
                     <p role="alert">Videá sa nepodarilo načítať. Skry ich a otvor znova.</p>
                   ) : videos === null ? (
-                    <div className="mt-3 grid grid-cols-2 gap-2" role="status" aria-label="Načítavam videá">
+                    <div
+                      className="mt-3 grid grid-cols-2 gap-2"
+                      role="status"
+                      aria-label="Načítavam videá"
+                    >
                       <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
                       <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
                     </div>
@@ -659,8 +710,24 @@ export function MessageThread({
         <div ref={listEnd} />
       </div>
 
+      {needsVoiceAnswer && (
+        <footer className="conversation-composer shared-voice-footer">
+          <p>
+            Max. {QUESTION_VOICE_MAX_SECONDS} sekúnd. Odpovede si vypočujete, keď odpoviete obaja.
+          </p>
+          <button
+            type="button"
+            className="match-card-action"
+            onClick={() => setRecordingAnswer(true)}
+          >
+            Nahrať odpoveď
+            <Mic size={22} aria-hidden="true" />
+          </button>
+        </footer>
+      )}
+
       {isOpen && (
-        <div className="conversation-composer shrink-0">
+        <div className="conversation-composer shrink-0" hidden={!canSend}>
           {canSend && (
             <>
               {replyContext && (

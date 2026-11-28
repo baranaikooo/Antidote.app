@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/drawer";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, Settings, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { SnippetRows } from "@/components/SnippetRows";
 import { VideoRecorderModal } from "@/components/VideoRecorderModal";
@@ -26,11 +26,12 @@ interface AssetDossierProps {
   user: UserProfile;
   onUpdateUser: React.Dispatch<React.SetStateAction<UserProfile | null>>;
   onBack: () => void;
+  onSettings: () => void;
   pendingRadius: number | null;
   onChangeRadius: (radius: number) => Promise<void>;
 }
 
-export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChangeRadius }: AssetDossierProps) {
+export function AssetDossier({ user, onUpdateUser, onBack, onSettings, pendingRadius, onChangeRadius }: AssetDossierProps) {
   const haptic = useHaptic();
   const profileHeader = useRef<HTMLElement>(null);
 
@@ -451,9 +452,14 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
     <>
       <div className="personal-screen">
         <header ref={profileHeader} className="personal-header">
-          <button type="button" onClick={onBack} className="personal-action mb-3 inline-flex items-center gap-2">
-            <ArrowLeft className="size-4" aria-hidden="true" />Späť do Spojení
-          </button>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <button type="button" onClick={onBack} className="personal-action inline-flex items-center gap-2">
+              <ArrowLeft className="size-4" aria-hidden="true" />Spojenia
+            </button>
+            <button type="button" onClick={onSettings} className="personal-action inline-flex items-center gap-2">
+              <Settings className="size-4" aria-hidden="true" />Nastavenia
+            </button>
+          </div>
           <h1 tabIndex={-1} className="personal-title">{user.name}</h1>
           <p className="personal-intro">{[user.age && `${user.age} rokov`, user.city].filter(Boolean).join(" · ")}</p>
         </header>

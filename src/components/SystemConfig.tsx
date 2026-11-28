@@ -13,6 +13,7 @@ import MessageNotificationSettings from "@/components/MessageNotificationSetting
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
+  ArrowLeft,
   LogOut,
   Trash2,
   Camera,
@@ -35,6 +36,7 @@ interface SystemConfigProps {
   user: UserProfile;
   onUpdateUser: React.Dispatch<React.SetStateAction<UserProfile | null>>;
   theme: ThemeMode;
+  onBack: () => void;
   onTheme: (m: ThemeMode) => void;
   onOpenTerms: () => void;
   onOpenPrivacy: () => void;
@@ -46,6 +48,7 @@ export function SystemConfig({
   user,
   onUpdateUser,
   theme,
+  onBack,
   onTheme,
   onOpenTerms,
   onOpenPrivacy,
@@ -293,6 +296,9 @@ export function SystemConfig({
   return (
     <div className="personal-screen">
       <header className="personal-header">
+        <button type="button" onClick={onBack} className="personal-action mb-3 inline-flex items-center gap-2">
+          <ArrowLeft className="size-4" aria-hidden="true" />Profil
+        </button>
         <h1 className="personal-title">Nastavenia</h1>
       </header>
 

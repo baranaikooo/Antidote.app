@@ -11,6 +11,7 @@ export type SharedQuestion = {
   partner_voice_path?: string | null;
 };
 
+export const QUESTION_VOICE_MAX_SECONDS = 20;
 export const QUESTION_VOICE_BUCKET = "question-voices";
 
 export async function readSharedQuestion(matchId: string): Promise<SharedQuestion | null> {

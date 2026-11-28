@@ -11,8 +11,8 @@ export function CookieConsent() {
   const [expanded, setExpanded] = useState(false);
   const [prefs, setPrefs] = useState<Prefs>({
     necessary: true,
-    analytics: true,
-    personalization: true,
+    analytics: false,
+    personalization: false,
   });
 
   useEffect(() => {
@@ -124,16 +124,6 @@ export function CookieConsent() {
         )}
 
         <div className="cookie-actions flex flex-wrap items-center justify-between gap-2 px-3.5 pb-3.5 sm:px-4">
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            aria-expanded={expanded}
-            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground"
-          >
-            {expanded ? "Skryť detaily" : "Prispôsobiť"}
-            <ChevronDown
-              className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`}
-            />
-          </button>
           <div className="cookie-decisions flex flex-wrap gap-2">
             <button
               onClick={() => (expanded ? save("custom", prefs) : save("rejected"))}
@@ -148,6 +138,16 @@ export function CookieConsent() {
               <span className="relative z-10">Prijať všetko</span>
             </button>
           </div>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          >
+            {expanded ? "Skryť detaily" : "Prispôsobiť"}
+            <ChevronDown
+              className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
+          </button>
         </div>
       </div>
     </div>
