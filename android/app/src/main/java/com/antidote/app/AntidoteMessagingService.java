@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.os.Build;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import com.capacitorjs.plugins.pushnotifications.MessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import java.util.UUID;
@@ -58,7 +59,8 @@ public class AntidoteMessagingService extends MessagingService {
 
     private NotificationCompat.Builder notification(String channel, PendingIntent open) {
         return new NotificationCompat.Builder(this, channel)
-            .setSmallIcon(R.drawable.ic_voice_notification)
+            .setSmallIcon(R.drawable.ic_antidote_notification)
+            .setColor(ContextCompat.getColor(this, R.color.ic_launcher_background))
             .setContentIntent(open)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
