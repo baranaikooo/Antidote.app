@@ -5,9 +5,9 @@ import { createPortal } from "react-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { SnippetRows } from "@/components/SnippetRows";
+import { VideoRecorderModal } from "@/components/VideoRecorderModal";
 import { UserProfile } from "@/lib/resonance";
 import { useHaptic } from "@/hooks/use-haptics";
-import { openCamera, recordStreamForMs, stopStream, attachStreamToVideo } from "@/lib/media";
 import { supabase } from "@/lib/supabase";
 import { updateSharedReflection } from "@/lib/conversations";
 import { ReflectionEditor } from "./ReflectionEditor";
@@ -33,65 +33,10 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
   // Snippets local list — initialized from profile data
   const [snippets, setSnippets] = useState<string[]>(user.videoUrls ?? []);
   const [recordingIndex, setRecordingIndex] = useState<number | null>(null);
-  const [countdown, setCountdown] = useState(3);
-  const [recordingState, setRecordingState] = useState<
-    "idle" | "countdown" | "recording" | "saving"
-  >("idle");
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-
-  const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const sessionRef = useRef(0);
-  const triggeredSessionRef = useRef<number | null>(null);
   const [activeUploadIndex, setActiveUploadIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [confirmDeleteIndex, setConfirmDeleteIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    const currentStream = cameraStream;
-    return () => {
-      if (currentStream) stopStream(currentStream);
-    };
-  }, [cameraStream]);
-
-  useEffect(() => {
-    if (recordingIndex === null || !cameraStream || !videoRef.current) return;
-    void attachStreamToVideo(videoRef.current, cameraStream);
-  }, [cameraStream, recordingIndex]);
-
-  useEffect(() => {
-    if (recordingState !== "countdown" || recordingIndex === null || !cameraStream) return;
-    if (countdown > 0) {
-      const timer = window.setTimeout(() => {
-        setCountdown((prev) => Math.max(0, prev - 1));
-      }, 1000);
-      return () => window.clearTimeout(timer);
-    }
-    const session = sessionRef.current;
-    if (triggeredSessionRef.current === session) return;
-    triggeredSessionRef.current = session;
-    void triggerRecord(cameraStream, recordingIndex, session);
-  }, [recordingState, countdown, cameraStream, recordingIndex]);
-
-  // Handle app going to background / tab switch
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        sessionRef.current += 1;
-        if (cameraStream) {
-          stopStream(cameraStream);
-          setCameraStream(null);
-        }
-        setRecordingIndex(null);
-        setRecordingState("idle");
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [cameraStream]);
 
   // Local settings states
   const [distance, setDistance] = useState(
@@ -164,33 +109,18 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
     });
   }
 
-  // JIT Camera Record Flow
-  async function startRecording(index: number) {
+  function startRecording(index: number) {
     haptic("tap");
-    const session = ++sessionRef.current;
-    triggeredSessionRef.current = null;
-    if (cameraStream) {
-      stopStream(cameraStream);
-      setCameraStream(null);
-    }
     setRecordingIndex(index);
-    setRecordingState("countdown");
-    setCountdown(3);
+  }
 
-    let stream: MediaStream;
-    try {
-      stream = await openCamera();
-      if (sessionRef.current !== session) {
-        stopStream(stream);
-        return;
-      }
-      setCameraStream(stream);
-    } catch (err) {
-      console.error("[dossier] openCamera failed:", err);
-      toast.error("Kamera sa nespustila. Skontroluj, či má Antidote prístup ku kamere.");
-      cancelRecording();
-      return;
+  async function saveCapturedSnippet(index: number, blob: Blob) {
+    const maxLimit = 5 * 1024 * 1024;
+    if (blob.size > maxLimit) {
+      toast.error(`Súbor je príliš veľký (${(blob.size / 1024 / 1024).toFixed(2)} MB). Limit je 5 MB.`);
+      throw new Error("File size exceeds 5MB limit");
     }
+    await uploadFileAndSave(index, blob);
   }
 
   async function uploadFileAndSave(index: number, blob: Blob | File) {
@@ -258,50 +188,6 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       syncVideoUrls(next);
       return next;
     });
-  }
-
-  async function triggerRecord(stream: MediaStream, index: number, session: number) {
-    if (sessionRef.current !== session) return;
-    haptic("warning");
-    setRecordingState("recording");
-
-    try {
-      const { blob } = await recordStreamForMs(stream, 3000, "video");
-      if (sessionRef.current !== session) return;
-      setRecordingState("saving");
-
-      // Enforce max upload limit of 5 MB
-      const maxLimit = 5 * 1024 * 1024;
-      if (blob.size > maxLimit) {
-        toast.error(`Súbor je príliš veľký (${(blob.size / 1024 / 1024).toFixed(2)} MB). Limit je 5 MB.`);
-        throw new Error("File size exceeds 5MB limit");
-      }
-
-      await uploadFileAndSave(index, blob);
-      haptic("success");
-    } catch (err) {
-      if (sessionRef.current !== session) return;
-      console.error("[dossier] recordStreamForMs failed:", err);
-      toast.error("Video sa nepodarilo nahrať alebo uložiť.");
-    } finally {
-      stopStream(stream);
-      if (sessionRef.current === session) {
-        setCameraStream(null);
-        setRecordingIndex(null);
-        setRecordingState("idle");
-      }
-    }
-  }
-
-  function cancelRecording() {
-    sessionRef.current += 1;
-    triggeredSessionRef.current = null;
-    if (cameraStream) {
-      stopStream(cameraStream);
-      setCameraStream(null);
-    }
-    setRecordingIndex(null);
-    setRecordingState("idle");
   }
 
   // Gallery File Upload Trim logic
@@ -744,63 +630,12 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
         </details>
       </div>
 
-      {/* Recording Overlay Modal */}
-      {recordingIndex !== null && createPortal(
-        <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-background/90 p-4 backdrop-blur-sm">
-          <div className="editorial-dock relative w-full max-w-xs p-4">
-            <div className="mb-3 font-display text-lg font-bold">
-              Nahrať moment
-            </div>
-
-            <div className="relative mx-auto mb-3 aspect-[3/4] w-[min(100%,12rem,40dvh)] overflow-hidden rounded-xl border border-foreground/15 bg-black">
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="size-full bg-black object-contain"
-                style={{ transform: "scaleX(-1)" }}
-              />
-
-              {recordingState === "countdown" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55">
-                  <span className="font-display text-5xl font-bold text-white tabular-nums">
-                    {countdown}
-                  </span>
-                  <span className="mt-1.5 text-xs font-medium text-white/75">
-                    Priprav sa…
-                  </span>
-                </div>
-              )}
-
-              {recordingState === "recording" && (
-                <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-destructive px-2.5 py-1">
-                  <span className="size-1.5 animate-pulse rounded-full bg-white" />
-                  <span className="text-xs font-semibold text-white">
-                    Nahráva sa · 3 s
-                  </span>
-                </div>
-              )}
-
-              {recordingState === "saving" && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/65">
-                  <span className="text-sm font-semibold text-white">Ukladám video…</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={cancelRecording}
-                className="personal-action flex-1 rounded-xl"
-              >
-                Zrušiť
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <VideoRecorderModal
+        slotIndex={recordingIndex}
+        title="Nahrať moment"
+        onCapture={saveCapturedSnippet}
+        onClose={() => setRecordingIndex(null)}
+      />
 
       {isUploading && createPortal(
         <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-background/90 p-4 backdrop-blur-sm">

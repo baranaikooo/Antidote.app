@@ -38,7 +38,7 @@ export function VoiceWaveformScrubber({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(clamped * 100)}
-      className={`flex min-h-11 flex-1 touch-none items-center gap-[3px] rounded-lg px-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+      className={`flex min-h-12 flex-1 touch-none items-center gap-[3px] rounded-lg px-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
         disabled ? "cursor-default opacity-60" : "cursor-pointer"
       }`}
       onPointerDown={(event) => {
