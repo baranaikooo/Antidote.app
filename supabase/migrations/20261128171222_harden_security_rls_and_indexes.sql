@@ -124,3 +124,24 @@ DROP POLICY IF EXISTS "select_ledger" ON public.psychometric_ledger;
 CREATE POLICY "select_ledger" ON public.psychometric_ledger
   FOR SELECT TO authenticated
   USING ((SELECT auth.uid()) = user_id);
+
+do $$
+begin
+  if exists (
+    select from unnest(array[
+      'public.handle_new_user()',
+      'public.protect_liveness_verified()',
+      'public.handle_blind_vote()',
+      'public.handle_blind_vote_inserted()',
+      'public.update_bandit_state(text,double precision,bigint)'
+    ]) as restricted(signature)
+    where has_function_privilege('anon', signature, 'execute')
+       or has_function_privilege('authenticated', signature, 'execute')
+  ) or has_function_privilege('anon', 'public.delete_own_user()', 'execute')
+     or not has_function_privilege('authenticated', 'public.delete_own_user()', 'execute')
+     or not has_function_privilege('service_role', 'public.update_bandit_state(text,double precision,bigint)', 'execute')
+  then
+    raise exception 'Unexpected client permissions on privileged functions';
+  end if;
+end;
+$$;
