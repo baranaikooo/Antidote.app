@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.2";
 import { importPKCS8, SignJWT } from "npm:jose@6.1.3";
-import { timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const secret = Deno.env.get("VOICE_REPLY_WEBHOOK_SECRET");
 const serviceAccount = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
@@ -34,23 +34,24 @@ async function getGoogleToken(account: {
 
 Deno.serve(async (request) => {
   if (request.method !== "POST") return new Response(null, { status: 405 });
-  const supplied = encoder.encode(request.headers.get("x-voice-reply-secret") ?? "");
-  const expected = encoder.encode(secret ?? "");
-  if (!expected.length || supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
-    return new Response(null, { status: 401 });
-  if (!serviceAccount) return new Response(null, { status: 503 });
+  const signature = request.headers.get("x-voice-reply-signature") ?? "";
+  if (!secret || !/^[a-f0-9]{64}$/.test(signature)) return new Response(null, { status: 401 });
 
   const payload = await request.json().catch(() => null);
-  if (!uuid.test(payload?.match_id) || !uuid.test(payload?.recipient))
+  const ticket = payload?.ticket;
+  if (typeof ticket !== "string" || !uuid.test(ticket))
     return new Response(null, { status: 400 });
+  const expected = createHmac("sha256", secret).update(ticket).digest("hex");
+  if (!timingSafeEqual(encoder.encode(signature), encoder.encode(expected)))
+    return new Response(null, { status: 401 });
+  if (!serviceAccount) return new Response(null, { status: 503 });
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: tokens, error } = await supabase.rpc("voice_reply_delivery_tokens", {
-      p_match_id: payload.match_id,
-      p_recipient: payload.recipient,
+    const { data: tokens, error } = await supabase.rpc("claim_voice_reply_delivery", {
+      p_ticket: ticket,
     });
     if (error) throw new Error(`Device lookup failed (${error.code})`);
     if (!tokens?.length) return new Response(null, { status: 204 });

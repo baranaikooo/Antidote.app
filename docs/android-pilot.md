@@ -28,9 +28,9 @@ GitHub Actions načíta konfiguráciu Firebase pre Android z tajomstva
 `google-services.json` v Base64. Lokálny build načíta súbor priamo z
 `android/app/google-services.json`.
 
-Aplikuj migráciu `android_voice_reply_push` a nasaď Edge Function
+Aplikuj migrácie pre doručovanie hlasových upozornení a nasaď Edge Function
 `send-voice-reply` s vypnutým overovaním JWT na bráne. Funkcia sama overuje
-tajomstvo webhooku. Do nastavení funkcie pridaj `FIREBASE_SERVICE_ACCOUNT`
+podpis webhooku a spracuje každý doručovací lístok najviac raz. Do nastavení funkcie pridaj `FIREBASE_SERVICE_ACCOUNT`
 (JSON účtu s oprávnením odosielať cez Firebase Cloud Messaging) a
 `VOICE_REPLY_WEBHOOK_SECRET` (náhodné tajomstvo). Do Supabase Vault pridaj
 rovnaké tajomstvo pod názvom `voice_reply_webhook_secret` a úplnú URL funkcie
