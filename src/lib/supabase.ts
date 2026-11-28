@@ -6,6 +6,7 @@ import { ChatMessage } from "./resonance";
 import { readPriorityDistribution } from "./priority-distribution";
 import { readSituationScores } from "./situation-scores";
 import { readChatGif } from "./chat-reactions";
+import { parseFavoriteSong } from "./favorite-song";
 
 const sanitize = (val: string) => {
   return (val || "").trim().replace(/[^\x20-\x7E]/g, "");
@@ -301,6 +302,7 @@ export async function saveUserProfile(
     longitude: profileData.coords?.lon,
     current_thesis: profileData.currentThesis || "",
     shared_reflection: profileData.sharedReflection,
+    favorite_song: profileData.favoriteSong ? parseFavoriteSong(profileData.favoriteSong) : profileData.favoriteSong ?? null,
     similarity_vector: `[${profileData.cognitiveDepth || 0.5},${profileData.conscientiousness || 0.5}]`,
     cognitive_depth: profileData.cognitiveDepth,
     conscientiousness: profileData.conscientiousness,
@@ -428,6 +430,7 @@ export async function fetchUserProfile(userId: string): Promise<any | null> {
     nonNegotiable: data.non_negotiable || "",
     currentThesis: data.current_thesis || "",
     sharedReflection: data.shared_reflection ?? null,
+    favoriteSong: parseFavoriteSong(data.favorite_song),
     cognitiveDepth: data.cognitive_depth,
     conscientiousness: data.conscientiousness,
     extraversion: data.extraversion,

@@ -58,7 +58,7 @@ export function ProfileVisibilityPreview({
   );
 }
 
-function ConsentedVideos({ ownerId, savedVideos }: { ownerId: string; savedVideos?: string[] }) {
+export function ConsentedVideos({ ownerId, savedVideos }: { ownerId: string; savedVideos?: string[] }) {
   const [result, setResult] = useState<{ savedVideos?: string[]; videos: string[] | "error" }>();
 
   useEffect(() => {
