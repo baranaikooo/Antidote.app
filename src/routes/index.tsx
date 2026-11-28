@@ -69,7 +69,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { shouldShowMessageAlert } from "@/lib/message-notifications";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
 import { clearVoiceDrafts, readVoiceDraft } from "@/lib/voice-drafts";
-import { refreshVoiceAlerts, clearDeliveredVoiceAlerts } from "@/lib/android-voice-alerts";
+import {
+  clearDeliveredVoiceAlerts,
+  onStartupNotificationGrant,
+  refreshVoiceAlerts,
+} from "@/lib/android-voice-alerts";
 import { introductionFor, toConversationPartner } from "@/lib/match-intro";
 
 const SemanticMirror = lazy(() =>
@@ -674,13 +678,23 @@ function AntidoteApp() {
 
   useEffect(() => {
     if (!authUserId) return;
+    let stopped = false;
     const refresh = () => {
-      if (document.visibilityState === "visible") refreshVoiceAlerts(authUserId);
+      if (document.visibilityState === "visible") void refreshVoiceAlerts(authUserId);
     };
+    const startupGrant = onStartupNotificationGrant(() => {
+      if (stopped) return;
+      // Retry if the initial refresh read the grant before Android finished the dialog.
+      void refreshVoiceAlerts(authUserId)?.then(() => {
+        if (!stopped) void refreshVoiceAlerts(authUserId);
+      });
+    })?.catch(() => undefined);
     refresh();
     document.addEventListener("visibilitychange", refresh);
     window.addEventListener("online", refresh);
     return () => {
+      stopped = true;
+      void startupGrant?.then((listener) => listener?.remove()).catch(() => {});
       document.removeEventListener("visibilitychange", refresh);
       window.removeEventListener("online", refresh);
     };

@@ -34,12 +34,16 @@ podpis webhooku a spracuje každý doručovací lístok najviac raz. Do nastaven
 (JSON účtu s oprávnením odosielať cez Firebase Cloud Messaging) a
 `VOICE_REPLY_WEBHOOK_SECRET` (náhodné tajomstvo). Do Supabase Vault pridaj
 rovnaké tajomstvo pod názvom `voice_reply_webhook_secret` a úplnú URL funkcie
-pod názvom `voice_reply_webhook_url`. Až potom sa v aplikácii zobrazí ponuka
-na zapnutie upozornení.
+pod názvom `voice_reply_webhook_url`.
+
+Pri prvom otvorení čistej inštalácie na Androide 13 alebo novšom over
+systémovú žiadosť o upozornenia. Vyskúšaj povolenie aj odmietnutie. Po
+odmietnutí zavri aplikáciu a znova ju otvor. Žiadosť sa nemá zopakovať.
+Po povolení sa prihlás a v nastaveniach skontroluj oba typy upozornení.
 
 Zavri aplikáciu po dokončení nahrávky. Po otvorení over prehratie, odoslanie
-a zahodenie návrhu. Pri ďalšom pokuse odošli prvú odpoveď, povoľ upozornenia
-a zamkni telefón. Keď odpovie druhý účet, over text „Máš novú odpoveď“ a
+a zahodenie návrhu. Pri ďalšom pokuse odošli prvú odpoveď a zamkni telefón.
+Keď odpovie druhý účet, over text „Máš novú odpoveď“ a
 dostupnosť prehrávača aj textového chatu po návrate. Zopakuj scenár s
 odhlásením prvého účtu pred druhou odpoveďou a over, že upozornenie nepríde.
 

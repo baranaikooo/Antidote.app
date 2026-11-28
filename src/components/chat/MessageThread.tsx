@@ -30,7 +30,6 @@ import { ConversationFeedback } from "./ConversationFeedback";
 import { SharedConversationQuestion, SharedVoiceQuestion } from "./SharedConversationQuestion";
 import { Chamber } from "./VoiceChamber";
 import { deleteVoiceDraft, readVoiceDraft, type VoiceDraftKind } from "@/lib/voice-drafts";
-import { enableVoiceAlerts, saveVoiceAlertChoice, shouldOfferVoiceAlerts } from "@/lib/android-voice-alerts";
 import {
   QUESTION_VOICE_MAX_SECONDS,
   readSharedQuestion,
@@ -61,7 +60,6 @@ export function MessageThread({
   const [selectedReply, setSelectedReply] = useState<string | null>(null);
   const [sharedQuestion, setSharedQuestion] = useState<SharedQuestion | null>();
   const [recorder, setRecorder] = useState<VoiceDraftKind | false | null>(null);
-  const [voiceAlertOffer, setVoiceAlertOffer] = useState<"offered" | "enabling" | "failed" | null>(null);
   const [questionLoadFailed, setQuestionLoadFailed] = useState(false);
   const [sending, setSending] = useState(false);
   const [savingChoice, setSavingChoice] = useState(false);
@@ -392,15 +390,7 @@ export function MessageThread({
         prompt={sharedQuestion.question}
         onBack={() => setRecorder(false)}
         onAnswer={async (blob, id) => {
-          const answer = await submitQuestionVoice(conversation.id, userId, id, blob);
-          updateSharedQuestion(answer);
-          if (answer.own_voice_path) {
-            void shouldOfferVoiceAlerts(userId)
-              .then((offer) => {
-                if (offer) setVoiceAlertOffer("offered");
-              })
-              .catch(() => {});
-          }
+          updateSharedQuestion(await submitQuestionVoice(conversation.id, userId, id, blob));
         }}
       />
     );
@@ -601,48 +591,6 @@ export function MessageThread({
             question={sharedQuestion}
             onChange={updateSharedQuestion}
           />
-        )}
-        {isOpen && voiceAlertOffer && (
-          <section className="conversation-intro" aria-labelledby="voice-alert-heading">
-            <h2 id="voice-alert-heading">Chceš vedieť, keď príde hlasová odpoveď?</h2>
-            <p className="mt-2 text-sm">
-              Ak Android skrýva citlivý obsah, na zamknutej obrazovke uvidíš len „Máš novú odpoveď“.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="personal-action"
-                disabled={voiceAlertOffer === "enabling"}
-                onClick={async () => {
-                  setVoiceAlertOffer("enabling");
-                  try {
-                    await enableVoiceAlerts(userId);
-                    setVoiceAlertOffer(null);
-                  } catch {
-                    setVoiceAlertOffer("failed");
-                  }
-                }}
-              >
-                {voiceAlertOffer === "enabling" ? "Zapínam…" : "Povoliť upozornenia"}
-              </button>
-              <button
-                type="button"
-                className="personal-action"
-                disabled={voiceAlertOffer === "enabling"}
-                onClick={() => {
-                  setVoiceAlertOffer(null);
-                  saveVoiceAlertChoice(userId, "dismissed");
-                }}
-              >
-                Teraz nie
-              </button>
-            </div>
-            {voiceAlertOffer === "failed" && (
-              <p role="alert" className="mt-2 text-sm text-destructive">
-                Upozornenia sa nepodarilo zapnúť. Skús to znova.
-              </p>
-            )}
-          </section>
         )}
         {isOpen && sharedQuestion && !sharedQuestion.voice_required && (
           <SharedConversationQuestion
