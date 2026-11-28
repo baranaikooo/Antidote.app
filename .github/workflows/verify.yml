@@ -1,0 +1,53 @@
+name: Pull request checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify Antidote
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+      - run: npm ci
+      - name: Verify web application
+        run: |
+          npm exec -- tsc --noEmit
+          npm test -- --run
+          npm run build
+      - name: Verify notification Edge Function
+        run: |
+          deno test --node-modules-dir=none --no-lock supabase/functions/send-voice-reply/notification-copy_test.ts
+          deno check --node-modules-dir=none --no-lock supabase/functions/send-voice-reply/index.ts
+      - name: Assemble Android app
+        run: |
+          npm exec -- cap sync android
+          bash android/gradlew -p android assembleDebug
