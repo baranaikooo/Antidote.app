@@ -8,7 +8,6 @@ import {
   MessageCircle,
   Radar,
   RefreshCw,
-  User,
 } from "lucide-react";
 
 import { AntidoteLogo } from "@/components/AntidoteLogo";
@@ -42,11 +41,23 @@ export function MatchCard({
   busy: boolean;
   onSelect: () => void;
 }) {
-  const reason = recommendationReason(myPriority, match.top_priority, radiusKm, match.distanceKm);
+  const sharedPriorityReason = recommendationReason(
+    myPriority,
+    match.top_priority,
+    undefined,
+    undefined,
+  );
+  const reason =
+    sharedPriorityReason ??
+    recommendationReason(undefined, match.top_priority, radiusKm, match.distanceKm);
   const priorityLabel = match.top_priority
     ? PRIORITY_CATEGORIES.find((category) => category.id === match.top_priority)?.label
     : undefined;
   const reflection = match.shared_reflection?.trim();
+  const compactReflection = reflection && Array.from(reflection).slice(0, 112).join("");
+  const hasLongReflection = Boolean(reflection && compactReflection !== reflection);
+  const hideIdentityDistance = Boolean(reason && !sharedPriorityReason);
+  const [showReflection, setShowReflection] = useState(false);
   const card = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -81,33 +92,39 @@ export function MatchCard({
   }, [match.id, position]);
 
   return (
-    <article ref={card} className="match-card" data-tone={match.top_priority ?? "default"}>
+    <article ref={card} className="match-card">
       <MatchCardIdentity
         name={match.name}
         age={match.age}
         city={match.city}
-        distanceKm={match.distanceKm}
+        distanceKm={hideIdentityDistance ? undefined : match.distanceKm}
         orbSeed={match.id}
       />
-      {priorityLabel && (
-        <div className="match-card-meta">
-          <span className="match-card-pill">Priorita: {priorityLabel}</span>
-        </div>
-      )}
-      {reason && (
-        <p className="match-card-reason">
-          <Compass className="size-4" aria-hidden="true" />
-          <span>{reason}</span>
-        </p>
-      )}
       {reflection && (
         <div className="match-card-reflection">
-          <p className="match-card-reflection-label">Myšlienka z profilu</p>
-          <blockquote>„{reflection}“</blockquote>
+          <blockquote>
+            „{showReflection || !hasLongReflection ? reflection : `${compactReflection}…`}“
+          </blockquote>
+          {hasLongReflection && (
+            <button
+              type="button"
+              className="match-card-more"
+              aria-expanded={showReflection}
+              onClick={() => setShowReflection((open) => !open)}
+            >
+              {showReflection ? "Zobraziť menej" : "Čítať ďalej"}
+            </button>
+          )}
         </div>
       )}
+      {(reason || priorityLabel) && (
+        <p className="match-card-reason">
+          <Compass className="size-4" aria-hidden="true" />
+          <span>{reason ?? `Najvyššia priorita: ${priorityLabel}`}</span>
+        </p>
+      )}
       <button type="button" onClick={onSelect} disabled={busy} className="match-card-action">
-        {busy ? "Otváram rozhovor…" : "Osloviť"}
+        {busy ? "Otváram rozhovor…" : "Otvoriť spoločnú otázku"}
         <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
       </button>
     </article>
@@ -122,12 +139,9 @@ export function Dashboard({
   failed,
   onRefresh,
   onChangeRadius,
-  onProfile,
   onSelectMatch,
   openingMatch,
   openError,
-  onMessages,
-  hasMessages,
   recentReply,
 }: {
   profile: UserProfile;
@@ -137,13 +151,10 @@ export function Dashboard({
   failed: boolean;
   onRefresh: () => void;
   onChangeRadius: (radius: number) => Promise<void>;
-  onProfile: () => void;
   onSelectMatch: (match: RankedMatch) => void;
   openingMatch: boolean;
   openError: boolean;
-  onMessages: () => void;
-  hasMessages: boolean;
-  recentReply?: { name: string; preview?: string; onOpen: () => void };
+  recentReply?: { name: string; onOpen: () => void };
 }) {
   const haptic = useHaptic();
 
@@ -165,7 +176,6 @@ export function Dashboard({
     setEditingRadius(false);
     requestAnimationFrame(() => radiusButton.current?.focus({ preventScroll: true }));
   }
-  const initial = Array.from(profile.name.trim())[0]?.toLocaleUpperCase("sk");
 
   async function saveSearchRadius() {
     if (savingRadius || radiusChoice === savedRadius) return;
@@ -200,18 +210,6 @@ export function Dashboard({
       <header className="discover-header">
         <div className="discover-topline">
           <AntidoteLogo markClassName="h-6" />
-          <button
-            type="button"
-            className="discover-profile"
-            aria-label={`Otvoriť môj profil, ${profile.name}`}
-            onClick={onProfile}
-          >
-            <span className="discover-avatar" aria-hidden="true">
-              {initial || <User className="size-4" />}
-            </span>
-            <span>{profile.name}</span>
-            <ChevronRight className="size-4 shrink-0" aria-hidden="true" />
-          </button>
         </div>
         <div className="discover-title-row">
           <h1 className="personal-title">Spojenia</h1>
@@ -270,7 +268,9 @@ export function Dashboard({
                     className="drawer-option"
                   >
                     <span>{opt.label}</span>
-                    {radiusChoice === opt.value && <Check className="size-4 shrink-0" aria-hidden="true" />}
+                    {radiusChoice === opt.value && (
+                      <Check className="size-4 shrink-0" aria-hidden="true" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -304,20 +304,11 @@ export function Dashboard({
       </header>
 
       {recentReply && (
-        <section className="discover-reply editorial-panel" aria-labelledby="discover-reply-title">
+        <button type="button" className="discover-reply" onClick={recentReply.onOpen}>
           <MessageCircle className="size-5 text-accent" aria-hidden="true" />
-          <div className="min-w-0">
-            <h2 id="discover-reply-title" className="font-bold text-foreground">
-              Nová správa od {recentReply.name}
-            </h2>
-            {recentReply.preview && (
-              <p className="mt-1 truncate text-sm text-muted-foreground">{recentReply.preview}</p>
-            )}
-            <button type="button" className="personal-action mt-3" onClick={recentReply.onOpen}>
-              Pokračovať v rozhovore
-            </button>
-          </div>
-        </section>
+          <span className="min-w-0 truncate">Nová správa · {recentReply.name}</span>
+          <ChevronRight className="size-5" aria-hidden="true" />
+        </button>
       )}
 
       {activeMatch ? (
@@ -344,9 +335,7 @@ export function Dashboard({
             const blockedLeft = activeIndex === 0 && dx > 0;
             const blockedRight = activeIndex === availableMatches.length - 1 && dx < 0;
             const damped =
-              blockedLeft || blockedRight
-                ? dx * 0.22
-                : Math.max(-135, Math.min(135, dx));
+              blockedLeft || blockedRight ? dx * 0.22 : Math.max(-135, Math.min(135, dx));
             if (!blockedLeft && !blockedRight && Math.abs(dx) >= 56 && !swipeTicked.current) {
               swipeTicked.current = true;
               haptic("tick");
@@ -462,14 +451,6 @@ export function Dashboard({
             Hľadať znova
           </button>
         </section>
-      )}
-
-      {hasMessages && (
-        <button type="button" onClick={onMessages} className="discover-messages">
-          <MessageCircle className="size-5 shrink-0" aria-hidden="true" />
-          Otvoriť rozhovory
-          <ChevronRight className="ml-auto size-5 shrink-0" aria-hidden="true" />
-        </button>
       )}
     </div>
   );

@@ -3,6 +3,16 @@ import { ArrowLeft } from "lucide-react";
 import { useHaptic } from "@/hooks/use-haptics";
 import { RecordButton } from "./RecordButton";
 import { pickAudioMime, createMediaRecorder, stopStream } from "@/lib/media";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { QUESTION_VOICE_MAX_SECONDS } from "@/lib/shared-question";
 import { uploadVoiceMessageBlob } from "@/lib/supabase";
 
 const MAX_REC_SECONDS = 60;
@@ -42,7 +52,7 @@ export function Chamber({
   onAnswer?: (blob: Blob, draftId: string) => Promise<void>;
 }) {
   const haptic = useHaptic();
-  const maxSeconds = onAnswer ? 20 : MAX_REC_SECONDS;
+  const maxSeconds = onAnswer ? QUESTION_VOICE_MAX_SECONDS : MAX_REC_SECONDS;
   const [recording, setRecording] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -55,6 +65,7 @@ export function Chamber({
     duration: number;
     peaks: number[];
   } | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
@@ -312,9 +323,13 @@ export function Chamber({
         <button
           type="button"
           aria-label="Späť na rozhovor"
+          data-voice-back=""
           className="conversation-header-action"
-          onClick={onBack}
-          disabled={sending}
+          onClick={() => {
+            if (recording || draftVoice) setConfirmLeave(true);
+            else onBack();
+          }}
+          disabled={sending || preparing || finishing}
         >
           <ArrowLeft aria-hidden="true" className="size-5" />
         </button>
@@ -328,7 +343,7 @@ export function Chamber({
           <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{prompt}</p>
           <p className="mt-2 text-sm text-muted-foreground">
             {onAnswer
-              ? "Máš najviac 20 sekúnd. Odpovede si vypočujete, keď odpoviete obaja."
+              ? `Máš najviac ${QUESTION_VOICE_MAX_SECONDS} sekúnd. Odpovede si vypočujete, keď odpoviete obaja.`
               : "Nahrávku si môžeš vypočuť pred odoslaním."}
           </p>
         </div>
@@ -343,6 +358,28 @@ export function Chamber({
           </p>
         )}
       </div>
+      <Drawer open={confirmLeave} onOpenChange={setConfirmLeave}>
+        <DrawerContent className="mx-auto max-w-md border-border bg-card text-foreground">
+          <DrawerHeader>
+            <DrawerTitle className="font-display text-xl">Zahodiť nahrávku?</DrawerTitle>
+            <DrawerDescription>Nahrávka sa pri návrate do rozhovoru stratí.</DrawerDescription>
+          </DrawerHeader>
+          <DrawerFooter>
+            <DrawerClose asChild>
+              <button type="button" className="personal-action w-full">
+                Zostať pri nahrávke
+              </button>
+            </DrawerClose>
+            <button
+              type="button"
+              className="personal-action personal-danger w-full"
+              onClick={onBack}
+            >
+              Zahodiť nahrávku
+            </button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
       <RecordButton
         recording={recording}
         recLen={recLen}

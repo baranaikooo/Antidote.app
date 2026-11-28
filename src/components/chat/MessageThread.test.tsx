@@ -164,7 +164,9 @@ it("waits for the server's mutual consent before requesting video and closes wit
 
   mocks.choice.mockResolvedValueOnce({ ...open, status: "deleted" });
   fireEvent.click(screen.getByRole("button", { name: "Možnosti rozhovoru" }));
-  fireEvent.click(await screen.findByText("Ukončiť rozhovor", { selector: "button" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Ukončiť rozhovor" }));
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByRole("button", { name: "Potvrdiť ukončenie" }));
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
   expect(mocks.choice).toHaveBeenLastCalledWith("match", "close");
   expect(mocks.send).not.toHaveBeenCalled();
@@ -431,6 +433,13 @@ it("requires a voice answer only for the first question and opens chat after bot
   fireEvent.click(finish);
   expect(screen.getByRole("button", { name: "Prehrať ukážku" })).toBeEnabled();
   expect(screen.getByRole("button", { name: "Nahrať znova" })).toBeEnabled();
+  fireEvent.click(screen.getByRole("button", { name: "Späť na rozhovor" }));
+  const leaveDialog = await screen.findByRole("dialog", { name: "Zahodiť nahrávku?" });
+  expect(leaveDialog).toBeVisible();
+  // JSDOM does not complete Vaul’s exit animation.
+  leaveDialog.style.animationName = "none";
+  fireEvent.click(screen.getByRole("button", { name: "Zostať pri nahrávke" }));
+  expect(await screen.findByRole("button", { name: "Prehrať ukážku" })).toBeEnabled();
   expect(stopTrack).toHaveBeenCalledOnce();
   expect(mocks.uploadVoice).not.toHaveBeenCalled();
   let ownPath = "";
@@ -462,5 +471,5 @@ it("requires a voice answer only for the first question and opens chat after bot
     "src",
     "https://storage.example.test/partner",
   );
-  expect(screen.queryByRole("button", { name: "Stiahnuť odpoveď" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Vziať odpoveď späť" })).not.toBeInTheDocument();
 });

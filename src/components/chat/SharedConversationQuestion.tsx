@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Mic, Pause, Play, Reply } from "lucide-react";
+import { Pause, Play, Reply } from "lucide-react";
 import {
   respondToSharedQuestion,
   signQuestionVoice,
@@ -13,13 +13,11 @@ export function SharedVoiceQuestion({
   matchId,
   name,
   question,
-  onRecord,
   onChange,
 }: {
   matchId: string;
   name: string;
   question: SharedQuestion;
-  onRecord: () => void;
   onChange: (question: SharedQuestion) => void;
 }) {
   const [withdrawing, setWithdrawing] = useState(false);
@@ -41,17 +39,23 @@ export function SharedVoiceQuestion({
   }
 
   return (
-    <section className="conversation-intro" aria-labelledby="shared-question-heading">
-      <h2 id="shared-question-heading" className="font-semibold">
-        Spoločná otázka
-      </h2>
-      <p className="mt-2 font-medium">{question.question}</p>
+    <section
+      className="conversation-intro shared-voice-question"
+      aria-labelledby="shared-question-heading"
+    >
+      <p className="shared-voice-label">Spoločná otázka</p>
+      <h2 id="shared-question-heading">{question.question}</h2>
       {own ? (
         <>
           <dl className="mt-3 grid gap-2">
             <QuestionVoicePlayer key={own} label="Tvoja odpoveď" path={own} />
             {partner && <QuestionVoicePlayer key={partner} label={name} path={partner} />}
           </dl>
+          {partner && (
+            <p role="status" className="mt-3 text-sm">
+              Obaja ste odpovedali. Chat je otvorený.
+            </p>
+          )}
           {!partner && (
             <>
               <p role="status" className="mt-3 text-sm text-muted-foreground">
@@ -63,22 +67,12 @@ export function SharedVoiceQuestion({
                 disabled={withdrawing}
                 onClick={() => void withdraw()}
               >
-                Stiahnuť odpoveď
+                Vziať odpoveď späť
               </button>
             </>
           )}
         </>
-      ) : (
-        <>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Odpovede si vypočujete, keď odpoviete obaja.
-          </p>
-          <button type="button" className="personal-action mt-3" onClick={onRecord}>
-            <Mic className="size-4" aria-hidden="true" />
-            Nahrať odpoveď
-          </button>
-        </>
-      )}
+      ) : null}
       {error && (
         <p role="alert" className="mt-2 text-sm text-destructive">
           Odpoveď sa nepodarilo stiahnuť. Skús to znova.

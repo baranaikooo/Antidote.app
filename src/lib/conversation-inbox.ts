@@ -9,7 +9,12 @@ export type InboxMessage = {
   ts: number;
 };
 
-export type InboxConversation = Conversation & { preview?: InboxMessage };
+type QuestionStage = "your_turn" | "waiting" | "ready";
+
+export type InboxConversation = Conversation & {
+  preview?: InboxMessage;
+  questionStage?: QuestionStage;
+};
 
 type InboxRow = {
   match_id: string;
@@ -23,10 +28,13 @@ type InboxRow = {
   has_media: boolean;
   message_at: string | null;
   unread: boolean;
+  question_stage?: QuestionStage | null;
 };
 
 export async function fetchConversationInbox(userId: string) {
-  const { data, error } = await supabase.rpc("get_conversation_inbox");
+  const result = await supabase.rpc("get_conversation_inbox_with_question_stage");
+  const { data, error } =
+    result.error?.code === "PGRST202" ? await supabase.rpc("get_conversation_inbox") : result;
   if (error) throw error;
   const rows = (data ?? []) as InboxRow[];
   const conversations: InboxConversation[] = [];
@@ -40,6 +48,7 @@ export async function fetchConversationInbox(userId: string) {
         matchId: row.partner_id,
         messages: [],
         unread: row.unread,
+        questionStage: row.question_stage ?? undefined,
         createdAt: Date.parse(row.created_at),
         preview:
           row.message_id && row.message_at

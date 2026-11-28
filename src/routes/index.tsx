@@ -12,7 +12,7 @@ import {
   Camera,
   MessageCircle,
   Home,
-  Settings as SettingsIcon,
+  User as ProfileIcon,
 } from "lucide-react";
 import {
   orbSeedFor,
@@ -31,6 +31,7 @@ import {
 
 import { Landing } from "@/features/onboarding/LandingScreen";
 import type { GoogleProfile } from "@/components/GoogleSignInButton";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useHaptic } from "@/hooks/use-haptics";
 import {
   attachStreamToVideo,
@@ -53,11 +54,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BirthDateFields } from "@/components/BirthDateFields";
 import { readSituationScores } from "@/lib/situation-scores";
 import { fetchConversationPartners, type ConversationPartner } from "@/lib/conversations";
-import {
-  fetchConversationInbox,
-  inboxMessageLabel,
-  type InboxConversation,
-} from "@/lib/conversation-inbox";
+import { fetchConversationInbox, type InboxConversation } from "@/lib/conversation-inbox";
 import {
   TERMS_BODY,
   PRIVACY_BODY,
@@ -134,6 +131,7 @@ export const Route = createFileRoute("/")({
 function Shell({
   children,
   landing = false,
+  mobileLanding = false,
   main = false,
   thread = false,
   onboardingScreen,
@@ -141,6 +139,7 @@ function Shell({
 }: {
   children: React.ReactNode;
   landing?: boolean;
+  mobileLanding?: boolean;
   main?: boolean;
   thread?: boolean;
   onboardingScreen?: Screen;
@@ -151,9 +150,9 @@ function Shell({
   const onboardingStep = onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen];
   return (
     <div
-      className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
+      className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : mobileLanding ? "app-mobile-welcome" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
     >
-      {landing && (
+      {landing && !mobileLanding && (
         <picture>
           <source srcSet="/antidote-fold.webp" type="image/webp" />
           <img
@@ -169,7 +168,7 @@ function Shell({
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
       <div
-        className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}
+        className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${mobileLanding ? "mobile-welcome-viewport" : landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}
       >
         {onboarding && (
           <header className="onboarding-header">
@@ -372,7 +371,9 @@ function AntidoteApp() {
   const [screen, setScreen] = useState<Screen>("landing");
   const onboardingStage = getOnboardingStage(screen);
   const [resumedOnboarding, setResumedOnboarding] = useState<Screen | null>(null);
-  const [theme, setTheme] = useTheme(screen === "landing");
+  const isNarrowScreen = useIsMobile();
+  const mobileLayout = isNarrowScreen || Capacitor.getPlatform() === "android";
+  const [theme, setTheme] = useTheme(screen === "landing" && !mobileLayout);
   const themeLoadedRef = useRef(false);
   const themeRef = useRef(theme);
 
@@ -1152,7 +1153,8 @@ function AntidoteApp() {
     setScreen("profile-dossier");
   }
 
-  const settingsScreens: Screen[] = [
+  const profileScreens: Screen[] = [
+    "profile-dossier",
     "settings",
     "legal-terms",
     "legal-privacy",
@@ -1160,7 +1162,7 @@ function AntidoteApp() {
     "legal-contact",
   ];
   const navActive =
-    screen === "messages" ? "messages" : settingsScreens.includes(screen) ? "settings" : "home";
+    screen === "messages" ? "messages" : profileScreens.includes(screen) ? "profile" : "home";
 
   useEffect(() => {
     if (!Capacitor.isPluginAvailable("App")) return;
@@ -1178,6 +1180,12 @@ function AntidoteApp() {
         return;
       }
 
+      const voiceBack = document.querySelector<HTMLButtonElement>("[data-voice-back]");
+      if (voiceBack) {
+        voiceBack.click();
+        return;
+      }
+
       if (screen === "chamber") setScreen("thread");
       else if (screen === "thread") setScreen("messages");
       else if (screen === "profile-dossier") setScreen("noOne");
@@ -1188,7 +1196,9 @@ function AntidoteApp() {
         screen === "legal-contact"
       ) {
         setScreen("settings");
-      } else if (screen === "messages" || screen === "settings") {
+      } else if (screen === "settings") {
+        setScreen("profile-dossier");
+      } else if (screen === "messages") {
         setScreen("noOne");
       } else if (screen === "profile") {
         setScreen("liveness");
@@ -1246,6 +1256,7 @@ function AntidoteApp() {
   return (
     <Shell
       landing={screen === "landing"}
+      mobileLanding={screen === "landing" && mobileLayout}
       main={showNav}
       thread={screen === "thread" || screen === "chamber"}
       onboardingScreen={onboardingStage >= 0 ? screen : undefined}
@@ -1258,6 +1269,7 @@ function AntidoteApp() {
         <Suspense fallback={<AppSplash />}>
         {screen === "landing" && (
           <Landing
+            mobile={mobileLayout}
             onGoogle={(profile) => {
               haptic("success");
               setGoogleProfile(profile);
@@ -1582,20 +1594,13 @@ function AntidoteApp() {
                 setMarketRevision((revision) => revision + 1);
               }}
               onChangeRadius={updateSearchRadius}
-              onProfile={goProfile}
               onSelectMatch={openIntroduction}
               openingMatch={openingMatch}
               openError={openError}
-              onMessages={() => setScreen("messages")}
-              hasMessages={conversations.length > 0}
               recentReply={
                 unreadConversation && replyPartner
                   ? {
                       name: replyPartner.name,
-                      preview:
-                        unreadConversation.preview?.from === "them"
-                          ? inboxMessageLabel(unreadConversation.preview)
-                          : undefined,
                       onOpen: () => openConversation(unreadConversation.id),
                     }
                   : undefined
@@ -1643,6 +1648,7 @@ function AntidoteApp() {
               user={profile!}
               onUpdateUser={setProfile as React.Dispatch<React.SetStateAction<UserProfile | null>>}
               theme={theme}
+              onBack={goProfile}
               onTheme={(m) => {
                 haptic("tap");
                 setTheme(m);
@@ -1669,7 +1675,7 @@ function AntidoteApp() {
           />
         )}
         {screen === "legal-cookies" && (
-          <LegalPage title="Cookies" onBack={() => setScreen("settings")} body={COOKIES_BODY} />
+          <LegalPage title="Lokálne úložisko" onBack={() => setScreen("settings")} body={COOKIES_BODY} />
         )}
         {screen === "legal-contact" && (
           <LegalPage title="Kontakt" onBack={() => setScreen("settings")} body={CONTACT_BODY} />
@@ -1679,6 +1685,7 @@ function AntidoteApp() {
             <AssetDossier
               user={profile}
               onBack={() => setScreen("noOne")}
+              onSettings={goSettings}
               onUpdateUser={setProfile}
               pendingRadius={pendingRadius}
               onChangeRadius={updateSearchRadius}
@@ -1694,7 +1701,7 @@ function AntidoteApp() {
             testDone={hasAnswers}
             onHome={goHome}
             onMessages={goMessages}
-            onSettings={goSettings}
+            onProfile={goProfile}
           />
         )}
       </AndroidUpdateProvider>
@@ -1771,20 +1778,20 @@ function BottomNav({
   testDone,
   onHome,
   onMessages,
-  onSettings,
+  onProfile,
 }: {
-  active: "home" | "messages" | "settings";
+  active: "home" | "messages" | "profile";
   unread: number;
   testDone: boolean;
   onHome: () => void;
   onMessages: () => void;
-  onSettings: () => void;
+  onProfile: () => void;
 }) {
   const isInputActive = useIsKeyboardOrInputActive();
   const items = [
     { id: "home", icon: Home, label: testDone ? "Spojenia" : "Domov", onClick: onHome },
     { id: "messages", icon: MessageCircle, label: "Správy", onClick: onMessages, badge: unread },
-    { id: "settings", icon: SettingsIcon, label: "Nastavenia", onClick: onSettings },
+    { id: "profile", icon: ProfileIcon, label: "Profil", onClick: onProfile },
   ];
 
   return (
@@ -2106,8 +2113,8 @@ function Liveness({ onDone }: { onDone: (videoUrl: string | null) => void }) {
         Najprv krátke overenie
       </h2>
       <p className="text-sm text-foreground/75 leading-relaxed mb-4">
-        Kameru použijeme na krátke overenie, že si skutočná osoba. Android alebo prehliadač si po
-        spustení vyžiada prístup.
+        Kameru použijeme na krátke overenie, že si skutočná osoba. Profilové video pridáš
+        samostatne v ďalšom kroku.
       </p>
 
       <div className="relative my-4 grid place-items-center">

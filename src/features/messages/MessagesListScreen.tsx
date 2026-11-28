@@ -36,6 +36,11 @@ export function MessagesList({
   onOpen: (id: string) => void;
   onFindNew: () => void;
 }) {
+  const orderedConversations = [
+    ...conversations.filter((conversation) => conversation.questionStage === "your_turn"),
+    ...conversations.filter((conversation) => conversation.questionStage !== "your_turn"),
+  ];
+
   return (
     <div className="personal-screen">
       <header className="personal-header">
@@ -57,8 +62,8 @@ export function MessagesList({
             <div key={item} className="message-list-row pointer-events-none">
               <Skeleton className="size-12 shrink-0 rounded-full" />
               <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-4 w-40 rounded-full" />
-                <Skeleton className="h-3.5 w-56 rounded-full" />
+                <Skeleton className="h-4 w-40 max-w-full rounded-full" />
+                <Skeleton className="h-3.5 w-56 max-w-full rounded-full" />
               </div>
             </div>
           ))}
@@ -67,31 +72,40 @@ export function MessagesList({
         <div className="app-empty">
           <MessageCircle className="size-6" aria-hidden="true" />
           <h2 className="personal-heading mt-2">Zatiaľ žiadne správy</h2>
-          <p className="personal-intro">Keď niekto z vás odošle prvú správu, rozhovor sa objaví tu.</p>
+          <p className="personal-intro">
+            Keď jeden z vás odpovie na spoločnú otázku, rozhovor sa objaví tu.
+          </p>
         </div>
       ) : (
         <div className="message-list">
-          {conversations.map((c) => {
+          {orderedConversations.map((c) => {
             const m = matches.find((x) => x.id === c.matchId);
             if (!m) return null;
             const last = c.preview;
+            const stageLabel = c.questionStage
+              ? {
+                  your_turn: "Čaká na tvoju odpoveď",
+                  waiting: "Tvoja odpoveď je uložená · čakáš na odpoveď",
+                  ready: "Obaja ste odpovedali · chat je otvorený",
+                }[c.questionStage]
+              : "Spoločná otázka";
             const timeLabel = formatRelativeInboxTime(last?.ts ?? c.createdAt);
             return (
               <button
                 key={c.id}
                 onClick={() => onOpen(c.id)}
-                className="message-list-row group"
+                className="message-list-row"
                 data-unread={!!c.unread}
               >
                 <ResonanceAvatar name={m.name} seed={m.id} unread={Boolean(c.unread)} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <h3 className={`truncate text-base ${c.unread ? "font-bold" : "font-medium"}`}>
+                      <span
+                        className={`truncate text-base ${c.unread ? "font-bold" : "font-medium"}`}
+                      >
                         {m.name}
-                      </h3>
-                      <span className="shrink-0 text-sm text-muted-foreground">{m.age}</span>
-                      <span className="truncate text-sm text-muted-foreground">· {m.city}</span>
+                      </span>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {timeLabel && (
@@ -108,14 +122,20 @@ export function MessagesList({
                       )}
                     </div>
                   </div>
-                  <p className="mt-1 flex items-center gap-2 text-sm text-foreground/75">
-                    {!last && <span className="message-list-stage">Spoločná otázka</span>}
-                    <span className="truncate">
-                      {last ? inboxMessageLabel(last) : "Odpovedz hlasom a chat sa otvorí"}
-                    </span>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {last ? (
+                      <span className="block truncate">{inboxMessageLabel(last)}</span>
+                    ) : (
+                      <span className="message-list-stage" data-stage={c.questionStage}>
+                        {stageLabel}
+                      </span>
+                    )}
                   </p>
                 </div>
-                <ChevronRight className="size-5 shrink-0 text-foreground/30 group-hover:text-foreground" />
+                <ChevronRight
+                  className="size-5 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
               </button>
             );
           })}

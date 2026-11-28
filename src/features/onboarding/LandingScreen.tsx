@@ -5,7 +5,15 @@ import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { GoogleSignInButton, type GoogleProfile } from "@/components/GoogleSignInButton";
 import { useHaptic } from "@/hooks/use-haptics";
 
-export function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => void }) {
+const sampleQuestion = "Čo by si radšej stratil/a na jeden rok?";
+
+export function Landing({
+  mobile = false,
+  onGoogle,
+}: {
+  mobile?: boolean;
+  onGoogle: (profile: GoogleProfile) => void;
+}) {
   const haptic = useHaptic();
   const [choice, setChoice] = useState<"travel" | "love" | null>(null);
   const [showReturningLogin, setShowReturningLogin] = useState(false);
@@ -20,6 +28,59 @@ export function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => vo
     setShowReturningLogin(false);
   };
 
+  const questionOptions = (
+    <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
+      {options.map(({ value, label, icon: Icon }) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => choose(value)}
+          aria-pressed={choice === value}
+          data-option={value}
+          className="landing-option"
+        >
+          <span className="landing-option-icon" aria-hidden="true">
+            <Icon size={21} />
+          </span>
+          <span>{label}</span>
+          <span className="landing-option-state" aria-hidden="true">
+            {choice === value && <Check size={19} />}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+
+  if (mobile) {
+    return (
+      <main className="mobile-welcome">
+        <header className="mobile-welcome-brand">
+          <div aria-hidden="true">
+            <AntidoteLogo markClassName="mobile-welcome-logo" showWordmark={false} />
+          </div>
+          <span>Antidote</span>
+        </header>
+        <div className="mobile-welcome-intro">
+          <h1>{sampleQuestion}</h1>
+        </div>
+        <div className="mobile-welcome-actions">
+          {questionOptions}
+          <div role="status" className="sr-only">
+            {choice && "Odpoveď vybraná. Môžeš pokračovať cez Google."}
+          </div>
+          {choice && (
+            <div
+              className="mobile-welcome-sign-in"
+              ref={(element) => element?.scrollIntoView?.({ block: "nearest" })}
+            >
+              <GoogleSignInButton onSuccess={onGoogle} />
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="landing-main">
       <div className="landing-hero">
@@ -29,32 +90,11 @@ export function Landing({ onGoogle }: { onGoogle: (profile: GoogleProfile) => vo
           </div>
           <p>Zoznamka, ktorá začína otázkou</p>
         </header>
-        <h1 className="landing-title">Čo by si radšej stratil/a na jeden rok?</h1>
-        <p className="landing-subcopy">
-          Najprv sa spoznáte hlasom, až potom odhalíte tvár.
-        </p>
+        <h1 className="landing-title">{sampleQuestion}</h1>
+        <p className="landing-subcopy">Najprv sa spoznáte hlasom, až potom odhalíte tvár.</p>
       </div>
       <div className="landing-interaction" data-answered={choice !== null || showReturningLogin}>
-        <div className="landing-options" role="group" aria-label="Vyber si odpoveď">
-          {options.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => choose(value)}
-              aria-pressed={choice === value}
-              data-option={value}
-              className="landing-option"
-            >
-              <span className="landing-option-icon" aria-hidden="true">
-                <Icon size={21} />
-              </span>
-              <span>{label}</span>
-              <span className="landing-option-state" aria-hidden="true">
-                {choice === value && <Check size={19} />}
-              </span>
-            </button>
-          ))}
-        </div>
+        {questionOptions}
         <div role="status" className="sr-only">
           {choice && "Odpoveď vybraná. Môžeš pokračovať cez Google."}
         </div>
