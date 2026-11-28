@@ -142,6 +142,10 @@ it("loads older messages on demand and keeps the reading position when a new mes
   expect(await screen.findByText(newest.text)).toBeVisible();
   expect(viewport.scrollTop).toBe(280);
   expect(mocks.markRead).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole("button", { name: "Prejsť na najnovšie správy" }));
+  expect(viewport.scrollTop).toBe(900);
+  await waitFor(() => expect(mocks.markRead).toHaveBeenCalledWith("match", newest.id));
 });
 
 it("fills a gap of new messages after reconnecting before the loaded endpoint", async () => {
