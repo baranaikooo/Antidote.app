@@ -50,16 +50,10 @@ export function AndroidNotificationSettings({ userId }: { userId: string }) {
   }
   if (!saved) return null;
   const changed =
-    options.voice_replies !== saved.voice_replies ||
-    options.chat_messages !== saved.chat_messages ||
-    options.show_sender !== saved.show_sender;
+    options.voice_replies !== saved.voice_replies || options.chat_messages !== saved.chat_messages;
 
   function changeOption(key: keyof AndroidAlertOptions, checked: boolean) {
-    setOptions((current) => {
-      const next = { ...current, [key]: checked };
-      if (!next.voice_replies && !next.chat_messages) next.show_sender = false;
-      return next;
-    });
+    setOptions((current) => ({ ...current, [key]: checked }));
     setNotice(undefined);
   }
 
@@ -106,17 +100,6 @@ export function AndroidNotificationSettings({ userId }: { userId: string }) {
           onCheckedChange={(value) => changeOption("voice_replies", value)}
         />
       </label>
-      <label className="settings-switch-row">
-        <span>Zobraziť meno odosielateľa</span>
-        <Switch
-          disabled={saving || (!options.chat_messages && !options.voice_replies)}
-          checked={options.show_sender}
-          onCheckedChange={(value) => changeOption("show_sender", value)}
-        />
-      </label>
-      <p className="summary-detail">
-        Po zapnutí môže Android zobraziť meno aj na zamknutej obrazovke.
-      </p>
       {notice && (
         <p
           role={notice.error ? "alert" : "status"}

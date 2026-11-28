@@ -3,7 +3,13 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "./supabase";
 
 const AppChrome = registerPlugin<{
-  hasFirebaseMessaging(): Promise<{ available: boolean; supportsChannels: boolean }>;
+  hasFirebaseMessaging(): Promise<{
+    available: boolean;
+    supportsChannels: boolean;
+    supportsPrivatePreview?: boolean;
+  }>;
+  prepareNotificationPreview(options: { userId: string }): Promise<{ audience: string }>;
+  clearNotificationPreview(): Promise<void>;
 }>("AppChrome");
 const choiceKey = (userId: string) => `antidote:voice-alerts:${userId}`;
 const channelId = "voice-replies";
@@ -12,13 +18,11 @@ let registration: Promise<void> | undefined;
 export type AndroidAlertOptions = {
   voice_replies: boolean;
   chat_messages: boolean;
-  show_sender: boolean;
 };
 
 export const defaultAndroidAlertOptions: AndroidAlertOptions = {
   voice_replies: false,
   chat_messages: false,
-  show_sender: false,
 };
 
 export function hasAndroidPush() {
@@ -47,23 +51,16 @@ export async function saveAndroidAlertOptions(
     await registration?.catch(() => {});
     await registerVoiceAlerts(userId, options);
   } else {
-    const { error } = await supabase.rpc(
-      "set_android_notification_options",
-      alertOptionParams(options),
-    );
+    const { error } = await supabase.rpc("set_android_notification_options", {
+      p_voice_replies: options.voice_replies,
+      p_chat_messages: options.chat_messages,
+      p_show_sender: false,
+    });
     if (error) throw error;
   }
-  if (!enabled || (previous.show_sender && !options.show_sender)) clearDeliveredVoiceAlerts();
+  if (!enabled) clearDeliveredVoiceAlerts();
   saveVoiceAlertChoice(userId, enabled ? "enabled" : "dismissed");
   return true;
-}
-
-function alertOptionParams(options: AndroidAlertOptions) {
-  return {
-    p_voice_replies: options.voice_replies,
-    p_chat_messages: options.chat_messages,
-    p_show_sender: options.show_sender,
-  };
 }
 
 export function saveVoiceAlertChoice(userId: string, choice: "enabled" | "dismissed") {
@@ -75,7 +72,9 @@ export function saveVoiceAlertChoice(userId: string, choice: "enabled" | "dismis
 }
 
 export function clearDeliveredVoiceAlerts() {
-  if (hasAndroidPush()) void PushNotifications.removeAllDeliveredNotifications().catch(() => {});
+  if (!hasAndroidPush()) return;
+  void AppChrome.clearNotificationPreview().catch(() => {});
+  void PushNotifications.removeAllDeliveredNotifications().catch(() => {});
 }
 
 export async function shouldOfferVoiceAlerts(userId: string) {
@@ -129,9 +128,10 @@ async function register(userId: string, options?: AndroidAlertOptions) {
     data: { session },
   } = await supabase.auth.getSession();
   if (session?.user.id !== userId) throw new Error("Account changed");
-  const { available, supportsChannels } = await AppChrome.hasFirebaseMessaging();
+  const { available, supportsChannels, supportsPrivatePreview } =
+    await AppChrome.hasFirebaseMessaging();
   if (!available) throw new Error("Firebase unavailable");
-  if (supportsChannels) {
+  if (supportsChannels && !supportsPrivatePreview) {
     await Promise.all([
       PushNotifications.createChannel({
         id: channelId,
@@ -167,12 +167,15 @@ async function register(userId: string, options?: AndroidAlertOptions) {
     if (active?.user.id !== userId || active.access_token !== session.access_token) {
       throw new Error("Account changed");
     }
-    const { error } = options
-      ? await supabase.rpc("register_android_notification_device", {
-          p_token: token,
-          ...alertOptionParams(options),
-        })
-      : await supabase.rpc("register_voice_reply_device", { p_token: token });
+    const preview = supportsPrivatePreview
+      ? await AppChrome.prepareNotificationPreview({ userId })
+      : null;
+    const { error } = await supabase.rpc("register_android_preview_device", {
+      p_token: token,
+      p_voice_replies: options?.voice_replies ?? null,
+      p_chat_messages: options?.chat_messages ?? null,
+      p_preview_audience: preview?.audience ?? null,
+    });
     if (error) throw error;
   } finally {
     clearTimeout(timeout);

@@ -1,5 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
+    <string name="new_chat_message">Máš novú správu</string>
+    <string name="new_voice_reply">Máš novú odpoveď</string>
+    <string name="chat_message_label">Nová správa</string>
+    <string name="voice_reply_label">Nová hlasová odpoveď</string>
+    <string name="chat_messages_channel">Správy</string>
+    <string name="voice_replies_channel">Hlasové odpovede</string>
     <string name="app_name">Antidote</string>
     <string name="title_activity_main">Antidote</string>
     <string name="package_name">com.antidote.app</string>

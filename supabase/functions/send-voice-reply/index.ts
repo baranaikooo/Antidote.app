@@ -65,7 +65,7 @@ Deno.serve(async (request) => {
       },
     );
     const { data: devices, error } = await supabase.rpc(
-      "claim_android_notification",
+      "claim_android_notification_preview",
       {
         p_ticket: ticket,
       },
@@ -80,14 +80,28 @@ Deno.serve(async (request) => {
       token: string;
       is_message: boolean;
       sender_name: string | null;
+      audience: string | null;
     }) => {
       const title = device.is_message ? "Máš novú správu" : "Máš novú odpoveď";
-      const notification = device.sender_name
+      const payload = device.audience === null
         ? {
-          title: device.sender_name,
-          body: device.is_message ? "Nová správa" : "Nová hlasová odpoveď",
+          notification: { title },
+          android: {
+            ttl: "86400s",
+            notification: {
+              channel_id: device.is_message ? "chat-messages" : "voice-replies",
+              visibility: "PUBLIC",
+            },
+          },
         }
-        : { title };
+        : {
+          data: {
+            antidote_kind: device.is_message ? "message" : "voice_reply",
+            sender_name: device.sender_name ?? "",
+            audience: device.audience,
+          },
+          android: { ttl: "86400s", priority: "HIGH" },
+        };
       const result = await fetch(
         `https://fcm.googleapis.com/v1/projects/${project}/messages:send`,
         {
@@ -99,16 +113,7 @@ Deno.serve(async (request) => {
           body: JSON.stringify({
             message: {
               token: device.token,
-              notification,
-              android: {
-                ttl: "86400s",
-                notification: {
-                  channel_id: device.is_message
-                    ? "chat-messages"
-                    : "voice-replies",
-                  visibility: "PUBLIC",
-                },
-              },
+              ...payload,
             },
           }),
         },
