@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Eye, Mic, MoreVertical, Reply, Send, Sparkles, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, Eye, Mic, MoreVertical, Reply, Send, Sparkles, X } from "lucide-react";
 import type { ChatMessage, Conversation } from "@/lib/resonance";
 import {
   fetchSharedProfileVideos,
@@ -169,12 +169,15 @@ export function MessageThread({
       let page = newestPage;
       const incoming = [...page.messages];
       // A reconnect may have missed more than one page. Bridge the gap before rendering.
+      let bridgedPages = 0;
       while (
         marker &&
         page.olderCursor &&
         page.messages[0] &&
-        compareMessages(page.messages[0], marker) > 0
+        compareMessages(page.messages[0], marker) > 0 &&
+        bridgedPages < 10
       ) {
+        bridgedPages += 1;
         page = await fetchChatMessages(conversation.id, userId, page.olderCursor);
         if (current !== request.current) return;
         incoming.push(...page.messages);
@@ -265,6 +268,13 @@ export function MessageThread({
     if (!list) return;
     pinned.current = list.scrollHeight - list.scrollTop - list.clientHeight <= 72;
     setAtLatest(pinned.current);
+  }
+
+  function jumpToLatest() {
+    const list = viewport.current;
+    if (list) list.scrollTop = list.scrollHeight;
+    pinned.current = true;
+    setAtLatest(true);
   }
 
   useLayoutEffect(() => {
@@ -856,6 +866,20 @@ export function MessageThread({
         ))}
         {showPilotQuestion && <ConversationFeedback matchId={conversation.id} userId={userId} />}
       </div>
+
+      {isOpen && !atLatest && conversation.messages.length > 0 && (
+        <div className="conversation-jump-bar shrink-0">
+          <button
+            type="button"
+            className="conversation-jump-latest"
+            aria-label="Prejsť na najnovšie správy"
+            onClick={jumpToLatest}
+          >
+            <ArrowDown className="size-4" aria-hidden="true" />
+            Na koniec
+          </button>
+        </div>
+      )}
 
       {needsVoiceAnswer && (
         <footer className="conversation-composer shared-voice-footer">
