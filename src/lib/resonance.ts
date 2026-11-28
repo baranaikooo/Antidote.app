@@ -3,6 +3,7 @@
 
 import type { PriorityDistribution } from "./priority-distribution";
 import type { SituationScores } from "./situation-scores";
+import type { FavoriteSong } from "./favorite-song";
 
 export type Answer = "A" | "B";
 export type Answers = Partial<Record<`q${1 | 2 | 3 | 4 | 5 | 6}`, Answer>>;
@@ -859,6 +860,7 @@ export type UserProfile = {
   nonNegotiable?: string; // user directive: non-negotiable
   currentThesis?: string; // user directive: current thesis
   sharedReflection?: string | null;
+  favoriteSong?: FavoriteSong | null;
   livenessVerified?: boolean; // Biometric verified tier
   verifiedAt?: string; // ISO timestamp of verification
   status?: "ACTIVE" | "FROZEN" | "BANNED";
