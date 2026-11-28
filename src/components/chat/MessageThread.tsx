@@ -1,4 +1,13 @@
 import { DisclosureSummary } from "@/components/ui/disclosure-summary";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Eye, Mic, MoreVertical, Reply, Send, Sparkles, X } from "lucide-react";
@@ -388,41 +397,60 @@ export function MessageThread({
       </header>
 
       {isOpen && (
-        <div
-          id="conversation-options-panel"
-          hidden={!showOptions}
-          className="shrink-0 border-b border-foreground/12 bg-card px-4 py-3 text-sm"
-        >
-          <p className="mb-2 text-muted-foreground">Rozhovor môžeš ukončiť kedykoľvek.</p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={savingChoice}
-              className="personal-action rounded-lg"
-              onClick={() => void changeChoice("close")}
-            >
-              Ukončiť rozhovor
-            </button>
-          </div>
-          <details className="mt-2">
-            <DisclosureSummary className="text-destructive">Nahlásiť a ukončiť</DisclosureSummary>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {(Object.entries(REPORT_REASONS) as [keyof typeof REPORT_REASONS, string][]).map(
-                ([reason, label]) => (
-                  <button
-                    type="button"
-                    key={reason}
-                    disabled={savingChoice}
-                    className="personal-action rounded-lg"
-                    onClick={() => void changeChoice(reason)}
-                  >
-                    {label}
-                  </button>
-                ),
-              )}
+        <Drawer open={showOptions} onOpenChange={setShowOptions}>
+          <DrawerContent
+            id="conversation-options-panel"
+            className="mx-auto max-w-md border-border bg-card text-foreground"
+          >
+            <DrawerHeader>
+              <DrawerTitle className="font-display text-xl">Možnosti rozhovoru</DrawerTitle>
+              <DrawerDescription>Rozhovor môžeš ukončiť kedykoľvek.</DrawerDescription>
+            </DrawerHeader>
+            <div className="grid gap-2 px-4">
+              <button
+                type="button"
+                disabled={savingChoice}
+                className="drawer-option justify-start"
+                onClick={() => {
+                  setShowOptions(false);
+                  void changeChoice("close");
+                }}
+              >
+                Ukončiť rozhovor
+              </button>
+              <details className="rounded-xl bg-muted px-3.5 py-2.5 text-sm">
+                <DisclosureSummary className="font-semibold text-destructive">
+                  Nahlásiť a ukončiť
+                </DisclosureSummary>
+                <div className="grid gap-1.5 pt-2">
+                  {(Object.entries(REPORT_REASONS) as [keyof typeof REPORT_REASONS, string][]).map(
+                    ([reason, label]) => (
+                      <button
+                        type="button"
+                        key={reason}
+                        disabled={savingChoice}
+                        className="drawer-option"
+                        onClick={() => {
+                          setShowOptions(false);
+                          void changeChoice(reason);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </details>
             </div>
-          </details>
-        </div>
+            <DrawerFooter>
+              <DrawerClose asChild>
+                <button type="button" className="personal-action w-full justify-center">
+                  Zavrieť
+                </button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
       )}
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">

@@ -324,7 +324,7 @@ export function Chamber({
         </div>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-        <div className="editorial-panel p-4">
+        <div className="rounded-2xl bg-card p-4">
           <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{prompt}</p>
           <p className="mt-2 text-sm text-muted-foreground">
             {onAnswer

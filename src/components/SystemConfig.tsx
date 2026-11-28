@@ -326,11 +326,23 @@ export function SystemConfig({
             <span className="summary-detail">Kamera, mikrofón a poloha</span>
           </span>
         </DisclosureSummary>
-        <div className="personal-row"><span><Mic className="size-5" /> Mikrofón</span><span className="personal-status">{micPermission === "granted" ? "Povolený" : "Nepovolený"}</span></div>
-        <div className="personal-row"><span><Camera className="size-5" /> Kamera</span><span className="personal-status">{camPermission === "granted" ? "Povolená" : "Nepovolená"}</span></div>
+        <div className="personal-row">
+          <span><Mic className="size-5" /> Mikrofón</span>
+          <span className="settings-status-pill" data-ok={micPermission === "granted"}>
+            {micPermission === "granted" ? "Povolený" : "Nepovolený"}
+          </span>
+        </div>
+        <div className="personal-row">
+          <span><Camera className="size-5" /> Kamera</span>
+          <span className="settings-status-pill" data-ok={camPermission === "granted"}>
+            {camPermission === "granted" ? "Povolená" : "Nepovolená"}
+          </span>
+        </div>
         <button type="button" onClick={handleRefreshCoordinates} disabled={isGpsLoading} className="personal-link">
           <span><Compass className="size-5 shrink-0" />{isGpsLoading ? "Vyhľadávam polohu…" : "Aktualizovať polohu"}</span>
-          <span className="personal-status">{gpsCoords ? "Dostupná" : "Nezistená"}</span>
+          <span className="settings-status-pill" data-ok={Boolean(gpsCoords)}>
+            {gpsCoords ? "Dostupná" : "Nezistená"}
+          </span>
         </button>
         <p className="personal-row justify-start py-3 text-foreground/75">
           <Bell className="size-5 shrink-0" aria-hidden="true" />
@@ -375,10 +387,15 @@ export function SystemConfig({
           <>
             <button type="button" onClick={handleToggleFreeze} aria-pressed={isFrozen} className="personal-link">
               <span><Snowflake className="size-5" aria-hidden="true" />Skryť profil</span>
-              <span className="personal-status" aria-hidden="true">{isFrozen ? "Zapnuté" : "Vypnuté"}</span>
+              <span className="settings-status-pill" data-ok={isFrozen} aria-hidden="true">
+                {isFrozen ? "Zapnuté" : "Vypnuté"}
+              </span>
             </button>
             <button type="button" onClick={() => { haptic("warning"); setShowLogoutConfirm(true); }} className="personal-link"><span><LogOut className="size-5" />Odhlásiť sa</span><ChevronRight className="size-5" /></button>
-            <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="personal-link text-destructive"><span><Trash2 className="size-5" />Vymazať účet</span><ChevronRight className="size-5" /></button>
+            <button type="button" onClick={() => { haptic("destructive"); setShowWipeConfirm(true); }} className="settings-danger-row">
+              <span><Trash2 className="size-5" />Vymazať účet</span>
+              <ChevronRight className="size-5" />
+            </button>
           </>
         )}
       </details>

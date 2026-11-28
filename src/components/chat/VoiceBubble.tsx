@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Pause, Play } from "lucide-react";
+import { buildDeterministicWaveform } from "@/lib/voice-waveform";
+import { VoiceWaveformScrubber } from "./VoiceWaveformScrubber";
 
 export type VoiceMsg = {
   id: string;
@@ -11,19 +13,6 @@ export type VoiceMsg = {
 };
 
 const BAR_COUNT = 24;
-
-function buildFallbackPeaks(seed: string, duration: number): number[] {
-  let hash = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    hash ^= seed.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return Array.from({ length: BAR_COUNT }, (_, idx) => {
-    const wave = Math.abs(Math.sin((idx + 1) * 0.65 + duration * 0.4 + (hash % 17)));
-    const detail = ((hash >>> (idx % 16)) & 7) / 14;
-    return Math.min(1, Math.max(0.18, wave * 0.68 + detail * 0.32));
-  });
-}
 
 function formatClock(seconds: number): string {
   const safe = Math.max(0, Math.round(seconds));
@@ -108,7 +97,7 @@ export function VoiceBubble({
         return Math.min(1, Math.max(0.16, msg.peaks![sourceIdx] ?? 0.3));
       });
     }
-    return decodedPeaks ?? buildFallbackPeaks(msg.id, msg.duration);
+    return decodedPeaks ?? buildDeterministicWaveform(msg.id, BAR_COUNT, msg.duration);
   }, [msg.id, msg.duration, msg.peaks, decodedPeaks]);
 
   useEffect(() => {
@@ -129,10 +118,9 @@ export function VoiceBubble({
 
   const canPlay = Boolean(msg.audioUrl);
 
-  function handleScrub(index: number) {
+  function handleSeekRatio(ratio: number) {
     if (!canPlay) return;
     const el = audioRef.current;
-    const ratio = (index + 0.5) / BAR_COUNT;
     if (el && el.duration && Number.isFinite(el.duration)) {
       el.currentTime = ratio * el.duration;
       setCurrentSec(el.currentTime);
@@ -182,68 +170,26 @@ export function VoiceBubble({
             {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-[1px]" />}
           </button>
 
-          <div className="min-w-0 flex-1">
-            <div
-              className="flex h-8 touch-none items-center gap-[3px]"
-              role="group"
-              aria-label="Priebeh hlasovej správy"
-              onPointerDown={(event) => {
-                if (!canPlay) return;
-                event.currentTarget.setPointerCapture(event.pointerId);
-                const bounds = event.currentTarget.getBoundingClientRect();
-                const index = Math.floor(((event.clientX - bounds.left) / bounds.width) * BAR_COUNT);
-                handleScrub(Math.max(0, Math.min(BAR_COUNT - 1, index)));
-              }}
-              onPointerMove={(event) => {
-                if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-                const bounds = event.currentTarget.getBoundingClientRect();
-                const index = Math.floor(((event.clientX - bounds.left) / bounds.width) * BAR_COUNT);
-                handleScrub(Math.max(0, Math.min(BAR_COUNT - 1, index)));
-              }}
-            >
-              {bars.map((amp, i) => {
-                const ratio = (i + 1) / BAR_COUNT;
-                const lit = progress > 0 && ratio <= progress;
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    disabled={!canPlay}
-                    onClick={(event) => {
-                      if (event.detail === 0) handleScrub(i);
-                    }}
-                    aria-label={`Posunúť na ${Math.round(ratio * 100)} %`}
-                    className="group flex h-full flex-1 items-center justify-center cursor-pointer disabled:cursor-default"
-                  >
-                    <span
-                      className={`w-[3px] rounded-full transition-colors ${
-                        lit
-                          ? playing
-                            ? "bg-coral"
-                            : "bg-cerebral"
-                          : playing
-                            ? "bg-foreground/35 group-hover:bg-foreground/65"
-                            : "bg-foreground/25 group-hover:bg-foreground/55"
-                      }`}
-                      style={{ height: `${Math.round(18 + amp * 78)}%` }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <VoiceWaveformScrubber
+            peaks={bars}
+            progress={progress}
+            disabled={!canPlay}
+            tone={playing ? "coral" : "accent"}
+            label="Priebeh hlasovej správy"
+            onSeek={handleSeekRatio}
+          />
 
           <button
             type="button"
             onClick={toggleSpeed}
             aria-label="Rýchlosť prehrávania"
-            className="shrink-0 rounded-lg border border-foreground/20 bg-background/60 px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground/75 transition-colors hover:border-accent hover:text-foreground cursor-pointer"
+            className="min-h-11 shrink-0 rounded-lg border border-foreground/20 bg-background/60 px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground transition-colors hover:border-accent cursor-pointer"
           >
             {speed}×
           </button>
         </div>
 
-        <div className="mt-2 flex items-center justify-between text-xs text-foreground/50">
+        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
           <span>{mine ? "Tvoja odpoveď" : "Hlasová správa"}</span>
           <span className="inline-flex items-center gap-1.5 tabular-nums">
             {!mine && listened && (
