@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.108.2";
 import { importPKCS8, SignJWT } from "npm:jose@6.1.3";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { notificationPreviewTitle } from "./notification-copy.ts";
 
 const secret = Deno.env.get("VOICE_REPLY_WEBHOOK_SECRET");
 const serviceAccount = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
@@ -65,7 +66,7 @@ Deno.serve(async (request) => {
       },
     );
     const { data: devices, error } = await supabase.rpc(
-      "claim_android_notification_preview",
+      "claim_android_notification_details",
       {
         p_ticket: ticket,
       },
@@ -80,6 +81,7 @@ Deno.serve(async (request) => {
       token: string;
       is_message: boolean;
       sender_name: string | null;
+      sender_gender: string | null;
       audience: string | null;
     }) => {
       const title = device.is_message ? "Máš novú správu" : "Máš novú odpoveď";
@@ -98,6 +100,11 @@ Deno.serve(async (request) => {
           data: {
             antidote_kind: device.is_message ? "message" : "voice_reply",
             sender_name: device.sender_name ?? "",
+            preview_title: notificationPreviewTitle(
+              device.is_message,
+              device.sender_name,
+              device.sender_gender,
+            ),
             audience: device.audience,
           },
           android: { ttl: "86400s", priority: "HIGH" },

@@ -36,7 +36,7 @@ public class AntidoteMessagingService extends MessagingService {
         boolean isMessage = "message".equals(kind);
         String channel = notificationChannel(manager, isMessage);
         String genericTitle = getString(isMessage ? R.string.new_chat_message : R.string.new_voice_reply);
-        String sender = message.getData().get("sender_name");
+        String previewTitle = message.getData().get("preview_title");
         Intent openApp = new Intent(this, MainActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent open = PendingIntent.getActivity(this, 0, openApp, PendingIntent.FLAG_IMMUTABLE);
@@ -48,9 +48,8 @@ public class AntidoteMessagingService extends MessagingService {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion)
             .setContentTitle(genericTitle);
-        if (sender != null && !sender.trim().isEmpty()) {
-            privateVersion.setContentTitle(sender);
-            privateVersion.setContentText(getString(isMessage ? R.string.chat_message_label : R.string.voice_reply_label));
+        if (previewTitle != null && !previewTitle.trim().isEmpty()) {
+            privateVersion.setContentTitle(previewTitle);
         }
 
         String tag = message.getMessageId();
