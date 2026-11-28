@@ -63,6 +63,7 @@ import {
 } from "@/components/settings/LegalAndSettings";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { PermissionPrimer, type PermissionPrimerKind } from "@/components/PermissionPrimer";
 import { AndroidUpdateProvider, UpdateNotice } from "@/components/UpdateNotice";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -70,9 +71,12 @@ import { shouldShowMessageAlert } from "@/lib/message-notifications";
 import { getVideoBlob, clearVideoBlobs } from "@/lib/indexeddb";
 import { clearVoiceDrafts, readVoiceDraft } from "@/lib/voice-drafts";
 import {
+  acceptNotificationPrimer,
   clearDeliveredVoiceAlerts,
+  dismissNotificationPrimer,
   onStartupNotificationGrant,
   refreshVoiceAlerts,
+  shouldPromptNotificationPrimer,
 } from "@/lib/android-voice-alerts";
 import { introductionFor, toConversationPartner } from "@/lib/match-intro";
 
@@ -135,6 +139,7 @@ function Shell({
   children,
   landing = false,
   mobileLanding = false,
+  primer = false,
   main = false,
   thread = false,
   onboardingScreen,
@@ -143,6 +148,7 @@ function Shell({
   children: React.ReactNode;
   landing?: boolean;
   mobileLanding?: boolean;
+  primer?: boolean;
   main?: boolean;
   thread?: boolean;
   onboardingScreen?: Screen;
@@ -153,9 +159,9 @@ function Shell({
   const onboardingStep = onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen];
   return (
     <div
-      className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : mobileLanding ? "app-mobile-welcome" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
+      className={`relative h-[100dvh] w-full overflow-hidden ${primer ? "bg-background" : main ? "app-main" : mobileLanding ? "app-mobile-welcome" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
     >
-      {landing && !mobileLanding && (
+      {landing && !mobileLanding && !primer && (
         <picture>
           <source srcSet="/antidote-fold.webp" type="image/webp" />
           <img
@@ -171,7 +177,7 @@ function Shell({
       {/* Subtle ambient top cerebral hairline */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cerebral/40 to-transparent z-50" />
       <div
-        className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${mobileLanding ? "mobile-welcome-viewport" : landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}
+        className={`mx-auto h-full max-w-2xl overflow-y-auto overscroll-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${primer ? "permission-primer-viewport" : mobileLanding ? "mobile-welcome-viewport" : landing ? "landing-viewport" : main ? "app-main-viewport" : thread ? "thread-viewport" : onboarding ? "onboarding-viewport" : "pb-28 pt-5"}`}
       >
         {onboarding && (
           <header className="onboarding-header">
@@ -408,6 +414,10 @@ function AntidoteApp() {
 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
+  const [notificationPrimerOpen, setNotificationPrimerOpen] = useState(false);
+  const [locationPrimerOpen, setLocationPrimerOpen] = useState(false);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
+  const [primerBusy, setPrimerBusy] = useState(false);
   const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
@@ -721,7 +731,13 @@ function AntidoteApp() {
 
   // Real-time Geolocation watchPosition Stream
   useEffect(() => {
-    if (!hasProfile || !authUserId || authUserId === "00000000-0000-0000-0000-000000000001") return;
+    if (
+      !locationPermissionGranted ||
+      !hasProfile ||
+      !authUserId ||
+      authUserId === "00000000-0000-0000-0000-000000000001"
+    )
+      return;
     if (typeof window === "undefined" || !("geolocation" in navigator)) return;
 
     let lastSavedCoords = profileRef.current?.coords ?? null;
@@ -786,7 +802,7 @@ function AntidoteApp() {
       active = false;
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [authUserId, geoDensity, hasProfile, profileId]);
+  }, [authUserId, geoDensity, hasProfile, locationPermissionGranted, profileId]);
 
   // Real-time Supabase Profile Channel Subscription
   useEffect(() => {
@@ -824,72 +840,136 @@ function AntidoteApp() {
     };
   }, [authUserId]);
 
-  // Automatic Geolocation Request & Initial Sync on Login/Auth
+  const syncCurrentLocation = useCallback(
+    (targetUserId: string) =>
+      new Promise<boolean>((resolve) => {
+        if (typeof window === "undefined" || !("geolocation" in navigator)) {
+          resolve(false);
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            setLocationPermissionGranted(true);
+            const { latitude, longitude } = pos.coords;
+            console.log("[Onboarding GPS] Initial coordinates resolved:", latitude, longitude);
+
+            let resolvedCity = "Bratislava";
+            try {
+              const r = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=sk`,
+                {
+                  headers: {
+                    "User-Agent": "AntidoteApp/1.0",
+                  },
+                },
+              );
+              if (r.ok) {
+                const data = await r.json();
+                const a = data?.address ?? {};
+                resolvedCity = a.city || a.town || a.village || a.municipality || "Bratislava";
+              }
+            } catch (e) {
+              console.warn("[Onboarding GPS] Reverse geocoding failed, using fallback:", e);
+            }
+
+            setProfile((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                coords: { lat: latitude, lon: longitude },
+                city: resolvedCity,
+              };
+            });
+
+            const { error } = await supabase
+              .from("profiles")
+              .update({
+                latitude,
+                longitude,
+                city: resolvedCity,
+              })
+              .eq("id", targetUserId);
+
+            if (error) {
+              console.error("[Onboarding GPS] Failed to save initial coordinates:", error);
+            } else {
+              console.log("[Onboarding GPS] Initial coordinates and city saved successfully.");
+            }
+            resolve(true);
+          },
+          (err) => {
+            console.warn("[Onboarding GPS] Initial location prompt rejected/failed:", err);
+            resolve(false);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          },
+        );
+      }),
+    [],
+  );
+
+  // Check startup Android notification primer before cold OS prompts appear.
   useEffect(() => {
-    if (!authUserId || authUserId === "00000000-0000-0000-0000-000000000001") return;
+    let active = true;
+    void shouldPromptNotificationPrimer().then((shouldPrompt) => {
+      if (active && shouldPrompt) setNotificationPrimerOpen(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Coordinate startup GPS sync with an explicit location primer when permission is undecided.
+  useEffect(() => {
+    if (!authUserId || authUserId === "00000000-0000-0000-0000-000000000001") {
+      setLocationPrimerOpen(false);
+      setLocationPermissionGranted(false);
+      return;
+    }
     if (typeof window === "undefined" || !("geolocation" in navigator)) return;
 
-    console.log("[Onboarding GPS] Requesting native geolocation permission on startup...");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        console.log("[Onboarding GPS] Initial coordinates resolved:", latitude, longitude);
-
-        let resolvedCity = "Bratislava";
-        try {
-          const r = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&accept-language=sk`,
-            {
-              headers: {
-                "User-Agent": "AntidoteApp/1.0",
-              },
-            },
-          );
-          if (r.ok) {
-            const data = await r.json();
-            const a = data?.address ?? {};
-            resolvedCity = a.city || a.town || a.village || a.municipality || "Bratislava";
-          }
-        } catch (e) {
-          console.warn("[Onboarding GPS] Reverse geocoding failed, using fallback:", e);
+    const targetUserId = authUserId;
+    let active = true;
+    async function checkLocationPermission() {
+      let state: PermissionState = "prompt";
+      try {
+        if (navigator.permissions?.query) {
+          const status = await navigator.permissions.query({ name: "geolocation" });
+          state = status.state;
         }
+      } catch {
+        state = "prompt";
+      }
+      if (!active) return;
 
-        // Update local state reactively if profile exists
-        setProfile((prev) => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            coords: { lat: latitude, lon: longitude },
-            city: resolvedCity,
-          };
-        });
+      if (state === "granted") {
+        setLocationPermissionGranted(true);
+        void syncCurrentLocation(targetUserId);
+        return;
+      }
+      if (state === "denied") return;
 
-        // Update database asynchronously
-        const { error } = await supabase
-          .from("profiles")
-          .update({
-            latitude,
-            longitude,
-            city: resolvedCity,
-          })
-          .eq("id", authUserId);
-
-        if (error) {
-          console.error("[Onboarding GPS] Failed to save initial coordinates:", error);
-        } else {
-          console.log("[Onboarding GPS] Initial coordinates and city saved successfully.");
+      try {
+        const storedChoice = localStorage.getItem("antidote:primer:location");
+        if (storedChoice === "dismissed") return;
+        if (storedChoice === "granted") {
+          void syncCurrentLocation(targetUserId);
+          return;
         }
-      },
-      (err) => {
-        console.warn("[Onboarding GPS] Initial location prompt rejected/failed:", err);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
-    );
-  }, [authUserId]);
+      } catch {
+        return;
+      }
+      setLocationPrimerOpen(true);
+    }
+
+    void checkLocationPermission();
+    return () => {
+      active = false;
+    };
+  }, [authUserId, syncCurrentLocation]);
 
   const [liveCandidates, setLiveCandidates] = useState<RankedMatch[]>([]);
   const [isLoadingMarket, setIsLoadingMarket] = useState(true);
@@ -1221,6 +1301,47 @@ function AntidoteApp() {
   const navActive =
     screen === "messages" ? "messages" : profileScreens.includes(screen) ? "profile" : "home";
 
+  const activePrimer: PermissionPrimerKind | null = notificationPrimerOpen
+    ? "notifications"
+    : !isAuthenticating && authUserId && locationPrimerOpen
+      ? "location"
+      : null;
+
+  const dismissActivePrimer = useCallback(() => {
+    if (notificationPrimerOpen) {
+      dismissNotificationPrimer();
+      setNotificationPrimerOpen(false);
+    } else if (locationPrimerOpen) {
+      try {
+        localStorage.setItem("antidote:primer:location", "dismissed");
+      } catch {
+        // Ignore storage errors if device storage is restricted.
+      }
+      setLocationPrimerOpen(false);
+    }
+  }, [locationPrimerOpen, notificationPrimerOpen]);
+
+  const enableActivePrimer = useCallback(async () => {
+    if (primerBusy) return;
+    setPrimerBusy(true);
+    try {
+      if (notificationPrimerOpen) {
+        await acceptNotificationPrimer(authUserId);
+        setNotificationPrimerOpen(false);
+      } else if (locationPrimerOpen && authUserId) {
+        const granted = await syncCurrentLocation(authUserId);
+        try {
+          localStorage.setItem("antidote:primer:location", granted ? "granted" : "dismissed");
+        } catch {
+          // Ignore storage errors if device storage is restricted.
+        }
+        setLocationPrimerOpen(false);
+      }
+    } finally {
+      setPrimerBusy(false);
+    }
+  }, [authUserId, locationPrimerOpen, notificationPrimerOpen, primerBusy, syncCurrentLocation]);
+
   useEffect(() => {
     if (!Capacitor.isPluginAvailable("App")) return;
     let removed = false;
@@ -1240,6 +1361,11 @@ function AntidoteApp() {
       const voiceBack = document.querySelector<HTMLButtonElement>("[data-voice-back]");
       if (voiceBack) {
         voiceBack.click();
+        return;
+      }
+
+      if (activePrimer) {
+        if (!primerBusy) dismissActivePrimer();
         return;
       }
 
@@ -1274,7 +1400,7 @@ function AntidoteApp() {
       removed = true;
       if (handle) void handle.remove();
     };
-  }, [screen]);
+  }, [activePrimer, dismissActivePrimer, primerBusy, screen]);
 
   if (isAuthenticating) {
     return (
@@ -1308,6 +1434,24 @@ function AntidoteApp() {
   }
 
   const showUpdateNotice = showNav || Capacitor.getPlatform() === "android";
+
+  if (activePrimer) {
+    return (
+      <Shell primer>
+        <Toaster theme={theme} position="top-center" />
+        <OfflineBanner />
+        <AndroidUpdateProvider enabled={showUpdateNotice}>
+          {showUpdateNotice && <UpdateNotice />}
+          <PermissionPrimer
+            kind={activePrimer}
+            busy={primerBusy}
+            onEnable={() => void enableActivePrimer()}
+            onDismiss={dismissActivePrimer}
+          />
+        </AndroidUpdateProvider>
+      </Shell>
+    );
+  }
 
   return (
     <Shell

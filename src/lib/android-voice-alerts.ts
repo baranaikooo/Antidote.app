@@ -18,6 +18,8 @@ const AppChrome = registerPlugin<{
   clearNotificationPreview(): Promise<void>;
 }>("AppChrome");
 const choiceKey = (userId: string) => `antidote:voice-alerts:${userId}`;
+const primerChoiceKey = "antidote:primer:notifications";
+const primerPendingGrantKey = "antidote:primer:notifications:pending";
 const channelId = "voice-replies";
 let registration: Promise<void> | undefined;
 let refreshing: { userId: string; promise: Promise<void> } | undefined;
@@ -92,6 +94,44 @@ async function requestAndroidAlertPermission() {
   return permission.receive === "granted";
 }
 
+export async function shouldPromptNotificationPrimer() {
+  if (!hasAndroidPush()) return false;
+  try {
+    if (localStorage.getItem(primerChoiceKey)) return false;
+  } catch {
+    return false;
+  }
+  const { available } = await AppChrome.hasFirebaseMessaging().catch(() => ({ available: false }));
+  if (!available) return false;
+  const current = await PushNotifications.checkPermissions().catch(() => null);
+  return Boolean(current?.receive.startsWith("prompt"));
+}
+
+export function dismissNotificationPrimer() {
+  try {
+    localStorage.setItem(primerChoiceKey, "dismissed");
+  } catch {
+    // Preference cannot be persisted if device storage is unavailable.
+  }
+}
+
+export async function acceptNotificationPrimer(userId?: string | null) {
+  try {
+    localStorage.setItem(primerChoiceKey, "granted");
+  } catch {
+    // Ignore storage errors and still request OS permission.
+  }
+  const granted = await requestAndroidAlertPermission();
+  if (!granted) return false;
+  try {
+    localStorage.setItem(primerPendingGrantKey, "1");
+  } catch {
+    // Ignore storage errors if registration proceeds immediately.
+  }
+  if (userId) await refreshVoiceAlerts(userId);
+  return true;
+}
+
 export function onStartupNotificationGrant(listener: () => void) {
   return hasAndroidPush() ? AppChrome.addListener("startupNotificationGrant", listener) : undefined;
 }
@@ -112,11 +152,19 @@ async function refreshRegistration(userId: string) {
   const { pending } = await AppChrome.readStartupNotificationGrant().catch(() => ({
     pending: false,
   }));
+  const primerPending = (() => {
+    try {
+      return localStorage.getItem(primerPendingGrantKey) === "1";
+    } catch {
+      return false;
+    }
+  })();
+  const shouldAutoEnable = pending || primerPending;
   const choice = localStorage.getItem(choiceKey(userId));
-  if (!pending && choice !== "enabled") return;
+  if (!shouldAutoEnable && choice !== "enabled") return;
   if ((await PushNotifications.checkPermissions()).receive !== "granted") return;
 
-  if (pending && !choice) {
+  if (shouldAutoEnable && !choice) {
     const { data, error } = await supabase.rpc("android_notification_options");
     if (error) throw error;
     await registerVoiceAlerts(
@@ -130,6 +178,13 @@ async function refreshRegistration(userId: string) {
   }
 
   if (pending) await AppChrome.consumeStartupNotificationGrant();
+  if (primerPending) {
+    try {
+      localStorage.removeItem(primerPendingGrantKey);
+    } catch {
+      // Ignore cleanup errors when storage is unavailable.
+    }
+  }
 }
 
 function registerVoiceAlerts(userId: string, options?: AndroidAlertOptions) {

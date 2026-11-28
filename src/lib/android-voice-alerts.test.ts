@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { refreshVoiceAlerts } from "./android-voice-alerts";
+import {
+  acceptNotificationPrimer,
+  dismissNotificationPrimer,
+  refreshVoiceAlerts,
+  shouldPromptNotificationPrimer,
+} from "./android-voice-alerts";
 
 const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
@@ -7,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   readStartupNotificationGrant: vi.fn(),
   consumeStartupNotificationGrant: vi.fn(),
   checkPermissions: vi.fn(),
+  requestPermissions: vi.fn(),
   register: vi.fn(),
   registrationCallback: undefined as ((token: { value: string }) => void) | undefined,
 }));
@@ -23,6 +29,7 @@ vi.mock("@capacitor/core", () => ({
 vi.mock("@capacitor/push-notifications", () => ({
   PushNotifications: {
     checkPermissions: mocks.checkPermissions,
+    requestPermissions: mocks.requestPermissions,
     register: mocks.register,
     addListener: async (event: string, listener: typeof mocks.registrationCallback) => {
       if (event === "registration") mocks.registrationCallback = listener;
@@ -44,6 +51,7 @@ beforeEach(() => {
   mocks.readStartupNotificationGrant.mockResolvedValue({ pending: true });
   mocks.consumeStartupNotificationGrant.mockResolvedValue(undefined);
   mocks.checkPermissions.mockResolvedValue({ receive: "granted" });
+  mocks.requestPermissions.mockResolvedValue({ receive: "granted" });
   mocks.register.mockImplementation(async () =>
     mocks.registrationCallback?.({ value: "device-token" }),
   );
@@ -51,10 +59,35 @@ beforeEach(() => {
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key),
   });
 });
 
 afterEach(() => vi.unstubAllGlobals());
+
+it("shows the notification primer once when Android permission is still prompt", async () => {
+  mocks.checkPermissions.mockResolvedValue({ receive: "prompt" });
+  expect(await shouldPromptNotificationPrimer()).toBe(true);
+
+  dismissNotificationPrimer();
+  expect(await shouldPromptNotificationPrimer()).toBe(false);
+});
+
+it("requests notification permission from the primer and enrolls the device", async () => {
+  mocks.readStartupNotificationGrant.mockResolvedValue({ pending: false });
+  mocks.checkPermissions
+    .mockResolvedValueOnce({ receive: "prompt" })
+    .mockResolvedValueOnce({ receive: "granted" });
+
+  expect(await acceptNotificationPrimer("me")).toBe(true);
+  expect(mocks.requestPermissions).toHaveBeenCalledOnce();
+  expect(mocks.rpc).toHaveBeenCalledWith("register_android_preview_device", {
+    p_token: "device-token",
+    p_voice_replies: true,
+    p_chat_messages: true,
+    p_preview_audience: "audience",
+  });
+});
 
 it("enables both alert types for a new account after Android grants notifications at startup", async () => {
   await refreshVoiceAlerts("me");
