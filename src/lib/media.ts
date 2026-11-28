@@ -261,7 +261,10 @@ export function recordStreamForMs(
 
     timerId = window.setTimeout(() => {
       try {
-        if (rec.state !== "inactive") rec.stop();
+        if (rec.state !== "inactive") {
+          if (typeof rec.requestData === "function") rec.requestData();
+          rec.stop();
+        }
       } catch (err) {
         finishError(err);
       }

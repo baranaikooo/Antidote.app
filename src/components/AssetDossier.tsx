@@ -137,7 +137,8 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
       return;
     }
 
-    const mime = blob.type || "video/webm";
+    const rawMime = blob.type || "video/webm";
+    const mime = rawMime.split(";")[0].trim() || "video/webm";
     const ext = mime.includes("webm") ? "webm" : mime.includes("quicktime") ? "mov" : "mp4";
     // Upload to Storage
     const filename = `${userId}/slot_${index + 1}_${Date.now()}.${ext}`;
@@ -149,7 +150,6 @@ export function AssetDossier({ user, onUpdateUser, onBack, pendingRadius, onChan
 
     if (error) {
       console.error("[dossier] upload error:", error);
-      toast.error(`Ukladanie zlyhalo: ${error.message}`);
       throw error;
     }
 
