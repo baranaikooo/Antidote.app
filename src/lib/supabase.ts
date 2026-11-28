@@ -494,22 +494,40 @@ export async function removeOwnChatAttachments(userId: string, bucketId: string)
   }
 }
 
+const CHAT_PAGE_SIZE = 30;
+export type ChatMessageCursor = { createdAt: string; id: string };
+
 export async function fetchChatMessages(
   matchId: string,
-  myUserId: string
-): Promise<ChatMessage[]> {
-  const { data, error } = await supabase
+  myUserId: string,
+  before?: ChatMessageCursor,
+): Promise<{ messages: ChatMessage[]; olderCursor: ChatMessageCursor | null }> {
+  const query = supabase
     .from("messages")
-    .select("*")
+    .select("id, sender_id, message_text, reply_context, created_at, media_url, duration")
     .eq("match_id", matchId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(CHAT_PAGE_SIZE + 1);
+  if (before) {
+    query.or(
+      `created_at.lt.${before.createdAt},and(created_at.eq.${before.createdAt},id.lt.${before.id})`,
+    );
+  }
+  const { data, error } = await query;
 
   if (error) {
     throw error;
   }
 
-  const messagesWithSignedUrls = await Promise.all(
-    (data ?? []).map(async (m): Promise<ChatMessage> => {
+  const rows = (data ?? []).slice(0, CHAT_PAGE_SIZE);
+  const oldest = rows.at(-1);
+  const olderCursor =
+    data && data.length > CHAT_PAGE_SIZE && oldest
+      ? { createdAt: oldest.created_at, id: oldest.id }
+      : null;
+  const messages = await Promise.all(
+    rows.reverse().map(async (m): Promise<ChatMessage> => {
       const media = m.duration && m.media_url
         ? { kind: "audio" as const, url: await getSignedMediaUrl("voice-messages", m.media_url), duration: m.duration }
         : readChatGif(m.media_url);
@@ -519,12 +537,13 @@ export async function fetchChatMessages(
         text: m.message_text || (m.media_url && !media ? "Staršia obrazová príloha už nie je dostupná." : ""),
         replyContext: m.reply_context || undefined,
         ts: new Date(m.created_at).getTime(),
+        createdAt: m.created_at,
         media,
       };
     })
   );
 
-  return messagesWithSignedUrls;
+  return { messages, olderCursor };
 }
 
 export async function getOrCreateMatch(myUserId: string, partnerUserId: string, evScore: number) {
