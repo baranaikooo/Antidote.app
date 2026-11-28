@@ -60,7 +60,7 @@ export function ReflectionEditor({
         value={draft}
         disabled={busy}
         onChange={(event) => setDraft(event.target.value)}
-        className="w-full resize-y rounded-lg border border-foreground/35 bg-background px-3 py-2.5 text-base text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+        className="w-full resize-y rounded-2xl border-0 bg-muted px-4 py-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-ring"
       />
       {message && (
         <p

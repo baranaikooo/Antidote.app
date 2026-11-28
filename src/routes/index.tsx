@@ -2437,7 +2437,7 @@ function ProfileForm({
                 if (errorMessage) setErrorMessage("");
               }}
               placeholder="Meno alebo prezývka"
-              className="w-full rounded-xl border border-foreground/20 bg-background px-3.5 py-3 text-base text-foreground focus:border-accent"
+              className="w-full rounded-2xl border-0 bg-muted px-4 py-3.5 text-base text-foreground focus-visible:outline-2 focus-visible:outline-accent"
             />
           </div>
 
@@ -2534,7 +2534,7 @@ function ProfileForm({
           </p>
 
           <div className="text-left space-y-4">
-            <div className="rounded-xl border border-foreground/15 bg-muted p-4">
+            <div className="rounded-2xl bg-muted p-4">
               <p className="font-semibold">Tvoj vek: {age ?? "?"}</p>
             </div>
           </div>
@@ -2612,7 +2612,7 @@ function ProfileForm({
           <div className="text-left space-y-4">
             <div>
               <p className="mb-2 font-semibold">Ja som</p>
-              <div className="personal-segments rounded-xl p-1 gap-1" role="group" aria-label="Ja som">
+              <div className="personal-segments rounded-full p-1 gap-1" role="group" aria-label="Ja som">
                 {(
                   [
                     { value: "male", label: "Muž" },
@@ -2629,7 +2629,7 @@ function ProfileForm({
                       if (errorMessage) setErrorMessage("");
                     }}
                     aria-pressed={gender === g.value}
-                    className="personal-segment rounded-lg"
+                    className="personal-segment"
                   >
                     {g.label}
                   </button>
@@ -2639,7 +2639,7 @@ function ProfileForm({
 
             <div>
               <p className="mb-2 font-semibold">Hľadám</p>
-              <div className="personal-segments rounded-xl p-1 gap-1" role="group" aria-label="Hľadám">
+              <div className="personal-segments rounded-full p-1 gap-1" role="group" aria-label="Hľadám">
                 {(
                   [
                     { value: "male", label: "Mužov" },
@@ -2656,7 +2656,7 @@ function ProfileForm({
                       if (errorMessage) setErrorMessage("");
                     }}
                     aria-pressed={targetMarket === t.value}
-                    className="personal-segment rounded-lg"
+                    className="personal-segment"
                   >
                     {t.label}
                   </button>

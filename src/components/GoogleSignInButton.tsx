@@ -167,7 +167,7 @@ export function GoogleSignInButton({
           type="button"
           disabled={disabled || launching}
           onClick={handleSupabaseSignIn}
-          className="flex w-full items-center justify-center gap-3 rounded-[0.75rem] border border-foreground/20 bg-foreground text-background px-4 py-3.5 transition-[background-color,transform] hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-40"
+          className="flex min-h-12 w-full items-center justify-center gap-3 rounded-full border-0 bg-foreground text-background px-5 py-3.5 transition-[background-color,border-radius,transform] hover:bg-foreground/90 active:rounded-2xl active:scale-[0.98] disabled:opacity-40"
         >
           <GoogleMark />
           <span className="text-sm font-semibold">Pokračovať cez Google</span>
@@ -181,7 +181,7 @@ export function GoogleSignInButton({
     return (
       <div className={`relative w-full ${disabled ? "pointer-events-none opacity-40" : ""}`}>
         <div
-          className="flex w-full items-center justify-center gap-3 rounded-[0.75rem] border border-foreground/20 bg-foreground text-background px-4 py-3.5"
+          className="flex min-h-12 w-full items-center justify-center gap-3 rounded-full border-0 bg-foreground text-background px-5 py-3.5"
           aria-hidden
         >
           <GoogleMark />
@@ -201,7 +201,7 @@ export function GoogleSignInButton({
       type="button"
       disabled={disabled}
       onClick={() => onSuccess({ name: "Google Demo", email: "demo@gmail.com" })}
-      className="flex w-full items-center justify-center gap-3 rounded-[0.75rem] border border-foreground/20 bg-foreground text-background px-4 py-3.5 transition-[background-color,transform] hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-40"
+      className="flex min-h-12 w-full items-center justify-center gap-3 rounded-full border-0 bg-foreground text-background px-5 py-3.5 transition-[background-color,border-radius,transform] hover:bg-foreground/90 active:rounded-2xl active:scale-[0.98] disabled:opacity-40"
     >
       <GoogleMark />
       <span className="text-sm font-semibold">Pokračovať cez Google</span>

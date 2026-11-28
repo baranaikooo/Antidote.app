@@ -25,7 +25,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90"
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90"
           >
             Späť na úvod
           </Link>
@@ -57,13 +57,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 cursor-pointer"
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-90 cursor-pointer"
           >
             Skúsiť znova
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-lg border border-foreground/20 bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-card px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
           >
             Späť na úvod
           </a>

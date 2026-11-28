@@ -147,10 +147,8 @@ export function VoiceBubble({
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
       <div
-        className={`w-full max-w-[85%] rounded-2xl border px-4 py-3 transition-colors ${
-          mine
-            ? "border-accent/25 bg-accent/12 text-foreground"
-            : "border-foreground/15 bg-card text-foreground"
+        className={`w-full max-w-[85%] rounded-[1.5rem] px-4 py-3 transition-colors ${
+          mine ? "bg-accent/14 text-foreground" : "bg-card text-foreground"
         }`}
       >
         <div className="flex items-center gap-3">
@@ -159,12 +157,12 @@ export function VoiceBubble({
             onClick={() => canPlay && onToggle()}
             disabled={!canPlay}
             aria-label={playing ? "Pozastaviť hlasovku" : "Prehrať hlasovku"}
-            className={`grid size-10 shrink-0 place-items-center rounded-full border transition-transform active:scale-95 disabled:opacity-40 cursor-pointer ${
+            className={`grid size-12 shrink-0 place-items-center rounded-full transition-transform active:scale-95 disabled:opacity-40 cursor-pointer ${
               playing
-                ? "border-coral bg-coral text-coral-foreground"
+                ? "bg-coral text-coral-foreground"
                 : mine
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-foreground/15 bg-muted text-foreground hover:border-coral"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-muted text-foreground"
             }`}
           >
             {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-[1px]" />}
@@ -183,7 +181,7 @@ export function VoiceBubble({
             type="button"
             onClick={toggleSpeed}
             aria-label="Rýchlosť prehrávania"
-            className="min-h-11 shrink-0 rounded-lg border border-foreground/20 bg-background/60 px-2.5 py-1 text-xs font-semibold tabular-nums text-foreground transition-colors hover:border-accent cursor-pointer"
+            className="min-h-11 shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-semibold tabular-nums text-foreground transition-colors hover:bg-accent/15 cursor-pointer"
           >
             {speed}×
           </button>
