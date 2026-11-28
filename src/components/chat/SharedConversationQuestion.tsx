@@ -280,14 +280,14 @@ export function SharedConversationQuestion({
       {question.own_answer ? (
         <>
           <dl className={partnerAnswer ? "mt-3 grid grid-cols-2 gap-2" : "mt-3"}>
-            <div className="min-w-0 rounded-lg bg-muted p-3">
+            <div className="min-w-0 rounded-2xl bg-muted p-3">
               <dt className="text-sm font-semibold">Ty</dt>
               <dd className="mt-1 whitespace-pre-wrap break-words text-sm">
                 {question.own_answer}
               </dd>
             </div>
             {partnerAnswer && (
-              <div className="min-w-0 rounded-lg bg-muted p-3">
+              <div className="min-w-0 rounded-2xl bg-muted p-3">
                 <dt className="break-words text-sm font-semibold">{name}</dt>
                 <dd className="mt-1 whitespace-pre-wrap break-words text-sm">{partnerAnswer}</dd>
               </div>

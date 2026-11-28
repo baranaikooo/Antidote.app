@@ -464,7 +464,7 @@ export function MessageThread({
         )}
         {!status && !loadFailed && (
           <div className="space-y-3 py-2" role="status" aria-label="Načítavam rozhovor">
-            <Skeleton className="h-20 w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
             <Skeleton className="h-12 w-3/4 rounded-2xl" />
             <Skeleton className="ml-auto h-12 w-2/3 rounded-2xl" />
           </div>
@@ -490,9 +490,9 @@ export function MessageThread({
               </>
             ) : (
               <div className="space-y-2.5" role="status" aria-label="Načítavam spoločnú otázku">
-                <Skeleton className="h-4 w-36 rounded-md" />
-                <Skeleton className="h-5 w-full rounded-md" />
-                <Skeleton className="h-10 w-44 rounded-lg" />
+                <Skeleton className="h-4 w-36 rounded-full" />
+                <Skeleton className="h-5 w-full rounded-xl" />
+                <Skeleton className="h-10 w-44 rounded-full" />
               </div>
             )}
           </div>
@@ -564,8 +564,8 @@ export function MessageThread({
                     <p role="alert">Videá sa nepodarilo načítať. Skry ich a otvor znova.</p>
                   ) : videos === null ? (
                     <div className="mt-3 grid grid-cols-2 gap-2" role="status" aria-label="Načítavam videá">
-                      <Skeleton className="aspect-[3/4] w-full rounded-lg" />
-                      <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+                      <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
+                      <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
                     </div>
                   ) : videos.length === 0 ? (
                     <p>Profil nemá dostupné videá.</p>
@@ -579,7 +579,7 @@ export function MessageThread({
                           playsInline
                           preload="metadata"
                           aria-label={"Profilové video " + (index + 1)}
-                          className="w-full rounded-lg bg-black"
+                          className="w-full rounded-2xl bg-black"
                         />
                       ))}
                     </div>
@@ -639,7 +639,7 @@ export function MessageThread({
                     alt={message.media.label ?? "GIF"}
                     referrerPolicy="no-referrer"
                     loading="lazy"
-                    className="max-h-80 max-w-full rounded-md object-contain"
+                    className="max-h-80 max-w-full rounded-xl object-contain"
                   />
                 )}
                 {message.replyContext && (
@@ -740,7 +740,7 @@ export function MessageThread({
                       <button
                         type="button"
                         key={gif.url}
-                        className="min-h-11 overflow-hidden rounded-lg border border-foreground/15 bg-muted"
+                        className="min-h-11 overflow-hidden rounded-2xl border-0 bg-muted"
                         disabled={sending}
                         aria-label={`Odoslať GIF – ${gif.label}`}
                         onClick={() => void send(gif)}

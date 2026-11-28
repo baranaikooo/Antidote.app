@@ -80,8 +80,8 @@ function ConsentedVideos({ ownerId, savedVideos }: { ownerId: string; savedVideo
   if (!videos)
     return (
       <div className="grid grid-cols-2 gap-2" role="status" aria-label="Načítavam videá">
-        <Skeleton className="aspect-[3/4] w-full rounded-lg" />
-        <Skeleton className="aspect-[3/4] w-full rounded-lg" />
+        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
+        <Skeleton className="aspect-[3/4] w-full rounded-2xl" />
       </div>
     );
   if (videos === "error") return <p role="alert">Náhľad videí sa nepodarilo načítať.</p>;
@@ -97,7 +97,7 @@ function ConsentedVideos({ ownerId, savedVideos }: { ownerId: string; savedVideo
           playsInline
           preload="metadata"
           aria-label={`Profilové video ${index + 1}`}
-          className="w-full rounded-lg bg-black"
+          className="w-full rounded-2xl bg-black"
         />
       ))}
     </div>

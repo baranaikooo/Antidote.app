@@ -57,8 +57,8 @@ export function MessagesList({
             <div key={item} className="message-list-row pointer-events-none">
               <Skeleton className="size-12 shrink-0 rounded-full" />
               <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-4 w-40 rounded-md" />
-                <Skeleton className="h-3.5 w-56 rounded-md" />
+                <Skeleton className="h-4 w-40 rounded-full" />
+                <Skeleton className="h-3.5 w-56 rounded-full" />
               </div>
             </div>
           ))}
@@ -122,7 +122,7 @@ export function MessagesList({
         </div>
       )}
 
-      <button onClick={onFindNew} className="personal-action mt-4 w-full">
+      <button onClick={onFindNew} className="personal-action mt-4 w-full justify-center">
         Nájsť spojenie
       </button>
     </div>

@@ -169,10 +169,10 @@ export function SnippetsOnboarding({ initialSnippets = [], onDone }: SnippetsOnb
           <SnippetRows snippets={snippets} onRecord={startRecording} onUpload={triggerFileUpload} onRemove={deleteSnippet} slotIndices={[firstSlot]} />
         ) : (
           <div className="mt-3 grid gap-2.5">
-            <button type="button" className="tactile-button min-h-12 bg-coral px-4 font-semibold text-coral-foreground" onClick={() => startRecording(0)}>
+            <button type="button" className="match-card-action justify-center" onClick={() => startRecording(0)}>
               Nahrať kamerou
             </button>
-            <button type="button" className="personal-action min-h-12 font-semibold" onClick={() => triggerFileUpload(0)}>
+            <button type="button" className="personal-action w-full justify-center" onClick={() => triggerFileUpload(0)}>
               Vybrať z galérie
             </button>
           </div>

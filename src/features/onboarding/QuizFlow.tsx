@@ -26,9 +26,9 @@ export function Briefing({ onBegin }: { onBegin: () => void }) {
       <button
         type="button"
         onClick={onBegin}
-        className="tactile-button mt-6 flex min-h-14 w-full items-center justify-between bg-coral p-4 text-left text-coral-foreground"
+        className="match-card-action mt-6"
       >
-        <span className="font-display text-xl font-bold">Začať</span>
+        <span>Začať</span>
         <ChevronRight className="size-5" aria-hidden="true" />
       </button>
     </main>
