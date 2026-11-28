@@ -28,7 +28,7 @@ const NOTIFICATION_CARDS: PreviewCard[] = [
   },
   {
     id: "match",
-    title: "Nové spojenie v okolí",
+    title: "Nové spojenie",
     meta: "pred hodinou",
     body: "Pribudol profil s podobnými hodnotami.",
   },
@@ -44,14 +44,14 @@ const LOCATION_CARDS: PreviewCard[] = [
   },
   {
     id: "city",
-    title: "Mesto doplnené automaticky",
-    meta: "automaticky",
+    title: "Mesto automaticky",
+    meta: "hneď",
     body: "Uložíme aktuálne mesto bez ručného zadávania.",
     icon: Compass,
   },
   {
     id: "privacy",
-    title: "Presná adresa zostáva skrytá",
+    title: "Adresa skrytá",
     meta: "súkromie",
     body: "Druhá strana vidí len mesto a orientačné kilometre.",
     icon: ShieldCheck,
@@ -107,7 +107,7 @@ export function PermissionPrimer({
             <div className="permission-primer-appbar">
               <AntidoteLogo markClassName="h-5" />
               <span className="permission-primer-chip">
-                {isNotifications ? "Správy" : "Do 25 km · Bratislava"}
+                {isNotifications ? "Správy" : "Do 25 km"}
               </span>
             </div>
 

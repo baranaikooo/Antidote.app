@@ -1753,12 +1753,14 @@ html.dark {
   fill: var(--accent);
 }
 .permission-primer-chip {
+  flex: none;
   padding: 0.2rem 0.625rem;
   border-radius: 999px;
   background: var(--muted);
   color: var(--muted-foreground);
   font-size: 0.6875rem;
   font-weight: 650;
+  white-space: nowrap;
 }
 .permission-primer-preview-card {
   display: grid;
@@ -1849,7 +1851,7 @@ html.dark {
   background: var(--app-ink);
   color: var(--app-paper);
 }
-.permission-primer-badge svg circle {
+.permission-primer[data-kind="notifications"] .permission-primer-badge svg circle {
   fill: var(--coral);
 }
 .permission-primer[data-kind="location"] .permission-primer-badge {
