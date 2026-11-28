@@ -150,7 +150,7 @@ function Shell({
   const onboardingStep = onboardingScreen && ONBOARDING_STEP_LABELS[onboardingScreen];
   return (
     <div
-      className={`antidote-shell relative h-full w-full overflow-hidden ${main ? "app-main" : mobileLanding ? "app-mobile-welcome" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
+      className={`relative h-[100dvh] w-full overflow-hidden ${main ? "app-main" : mobileLanding ? "app-mobile-welcome" : landing ? "app-welcome" : onboarding ? "app-onboarding" : ""}`}
     >
       {landing && !mobileLanding && (
         <picture>
@@ -1675,7 +1675,7 @@ function AntidoteApp() {
           />
         )}
         {screen === "legal-cookies" && (
-          <LegalPage title="Cookies" onBack={() => setScreen("settings")} body={COOKIES_BODY} />
+          <LegalPage title="Lokálne úložisko" onBack={() => setScreen("settings")} body={COOKIES_BODY} />
         )}
         {screen === "legal-contact" && (
           <LegalPage title="Kontakt" onBack={() => setScreen("settings")} body={CONTACT_BODY} />

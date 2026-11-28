@@ -148,18 +148,10 @@ export const PRIVACY_BODY: Array<{ h: string; p: string[] }> = [
 
 export const COOKIES_BODY: Array<{ h: string; p: string[] }> = [
   {
-    h: "Aké cookies používame",
+    h: "Čo aplikácia ukladá",
     p: [
-      "Nevyhnutné: udržiavajú tvoje prihlásenie a preferenciu vzhľadu (tmavý/svetlý režim). Bez nich aplikácia nefunguje.",
-      "Funkčné: zapamätajú si jazyk a nastavenia.",
-      "Nepoužívame reklamné ani trackingové cookies tretích strán.",
-    ],
-  },
-  {
-    h: "Lokálne úložisko",
-    p: [
-      "Lokálne úložisko používame na nastavenia aplikácie a obnovenie rozpracovanej registrácie.",
-      "Údaje môžeš kedykoľvek zmazať v Nastaveniach.",
+      "Antidote ukladá v zariadení údaje potrebné na zachovanie prihlásenia, používateľské nastavenia a rozpracovanú registráciu.",
+      "Pri prihlásení cez Google platia pre službu Google jej vlastné pravidlá ochrany súkromia.",
     ],
   },
 ];

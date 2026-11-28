@@ -1317,20 +1317,6 @@ html.dark {
   box-shadow: 0 12px 32px #0002;
 }
 
-body:has(.app-welcome) .cookie-dock {
-  --foreground: #f6efe6;
-  --muted-foreground: #b5b8ce;
-  --card: #1b2034;
-  --muted: #20263c;
-  --accent: #82a2ff;
-  --accent-foreground: #131624;
-  border-color: color-mix(in srgb, #82a2ff 24%, transparent);
-  background: color-mix(in srgb, #131624 90%, transparent);
-  color: #f6efe6;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 12px 36px #00000073;
-}
-
 .landing-subcopy {
   max-width: 24rem;
   color: var(--app-ice-soft);
@@ -1573,33 +1559,6 @@ body:has(.app-welcome) .cookie-dock {
   }
 }
 
-/* The app surface and consent share the viewport on phones. */
-.app-frame { display: flex; height: 100dvh; flex-direction: column; }
-.app-route-content { min-height: 0; flex: 1; }
-.cookie-placement {
-  position: relative;
-  z-index: 60;
-  flex: none;
-  padding: 0.25rem 0.75rem max(0.5rem, env(safe-area-inset-bottom));
-  background: var(--background);
-}
-.cookie-placement .cookie-choice { min-height: 3rem; }
-.cookie-placement .cookie-dock { max-height: min(46dvh, 16rem); box-shadow: none; }
-.cookie-actions { flex-direction: column; align-items: stretch; }
-.cookie-actions > button { justify-content: center; min-height: 3rem; }
-.cookie-decisions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 768px) {
-  .app-frame:not(:has(.app-mobile-welcome)) .cookie-placement {
-    position: fixed;
-    right: 1rem;
-    bottom: 1rem;
-    width: min(calc(100% - 2rem), 28rem);
-    padding: 0;
-    background: transparent;
-  }
-  .app-frame:not(:has(.app-mobile-welcome)) .cookie-dock { max-height: calc(100dvh - 2rem); }
-}
-
 .app-mobile-welcome { background: var(--background); }
 .mobile-welcome-viewport {
   display: flex;
@@ -1661,12 +1620,6 @@ body:has(.app-welcome) .cookie-dock {
   color: var(--accent-foreground);
 }
 .mobile-welcome .landing-option-state { color: var(--accent); }
-
-@media (max-height: 680px) {
-  .app-frame:has(.cookie-placement) .mobile-welcome { gap: 0.75rem; }
-  .app-frame:has(.cookie-placement) .mobile-welcome-intro h1 { font-size: clamp(1.625rem, 7.5vw, 2.25rem); }
-  .app-frame:has(.cookie-placement) .mobile-welcome-brand .mobile-welcome-logo { height: 2.25rem; }
-}
 
 .shared-voice-question {
   padding: clamp(1.25rem, 5vw, 2rem);

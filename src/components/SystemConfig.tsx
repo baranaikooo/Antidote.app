@@ -373,7 +373,7 @@ export function SystemConfig({
           </span>
         </DisclosureSummary>
         {([
-          ["Podmienky používania", onOpenTerms], ["Ochrana súkromia", onOpenPrivacy], ["Cookies", onOpenCookies], ["Kontakt", onOpenContact],
+          ["Podmienky používania", onOpenTerms], ["Ochrana súkromia", onOpenPrivacy], ["Lokálne úložisko", onOpenCookies], ["Kontakt", onOpenContact],
         ] as const).map(([label, action]) => (
           <button key={label} type="button" onClick={() => { haptic("tap"); action(); }} className="personal-link"><span>{label}</span><ChevronRight className="size-5" aria-hidden="true" /></button>
         ))}
