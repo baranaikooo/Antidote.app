@@ -39,7 +39,7 @@ export function VideoRecorderModal({
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [clip, setClip] = useState<CapturedClip | null>(null);
   const [saveError, setSaveError] = useState("");
-  const [attempt, setAttempt] = useState(0);
+  const [retakeTick, setRetakeTick] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const sessionRef = useRef(0);
@@ -70,19 +70,20 @@ export function VideoRecorderModal({
     onCloseRef.current();
   }, [revokeClip]);
 
-  // Reset modal state whenever opened for a slot.
+  const isLivePhase = slotIndex !== null && (phase === "preview" || phase === "recording");
+
+  // Reset modal state whenever opened for a new slot.
   useEffect(() => {
     if (slotIndex === null) return;
     setPhase("preview");
     setSecondsLeft(3);
     setSaveError("");
     revokeClip();
-    setAttempt((a) => a + 1);
   }, [slotIndex, revokeClip]);
 
-  // Acquire uncropped camera stream while in live preview/recording phases.
+  // Acquire uncropped camera stream once for preview + recording without restarting on record start.
   useEffect(() => {
-    if (slotIndex === null || (phase !== "preview" && phase !== "recording")) return;
+    if (!isLivePhase || slotIndex === null) return;
     const session = ++sessionRef.current;
     recordingRef.current = false;
     setCameraReady(false);
@@ -132,12 +133,19 @@ export function VideoRecorderModal({
       stopStream(localStream);
       setStream(null);
     };
-  }, [slotIndex, facingMode, phase, attempt]);
+  }, [slotIndex, isLivePhase, facingMode, retakeTick]);
 
   useEffect(() => {
-    if (slotIndex === null || !stream || !videoRef.current) return;
-    void attachStreamToVideo(videoRef.current, stream);
-  }, [slotIndex, stream]);
+    const el = videoRef.current;
+    if (!isLivePhase || !stream || !el) return;
+    let active = true;
+    void attachStreamToVideo(el, stream).then(() => {
+      if (active) setCameraReady(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isLivePhase, stream]);
 
   // Visual 3s countdown tick during recording.
   useEffect(() => {
@@ -212,7 +220,8 @@ export function VideoRecorderModal({
       onCloseRef.current();
     } catch (err) {
       console.error("[camera] save failed:", err);
-      setSaveError("Video sa nepodarilo uložiť. Skús to znova alebo nahraj nové.");
+      const detail = err instanceof Error && err.message ? ` (${err.message})` : "";
+      setSaveError(`Video sa nepodarilo uložiť${detail}. Skús to znova alebo nahraj nové.`);
       setPhase("review");
     }
   }
@@ -222,7 +231,7 @@ export function VideoRecorderModal({
     revokeClip();
     setSaveError("");
     setPhase("preview");
-    setAttempt((a) => a + 1);
+    setRetakeTick((t) => t + 1);
   }
 
   if (slotIndex === null || typeof document === "undefined") return null;
@@ -296,6 +305,7 @@ export function VideoRecorderModal({
                 playsInline
                 muted
                 onLoadedData={() => setCameraReady(true)}
+                onCanPlay={() => setCameraReady(true)}
                 className={`size-full object-contain ${
                   facingMode === "user" ? "-scale-x-100" : ""
                 }`}

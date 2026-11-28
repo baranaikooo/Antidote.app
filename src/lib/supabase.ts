@@ -137,17 +137,12 @@ export async function uploadSnippetVideo(
     return { url: null, error: "Demo User" };
   }
 
-  const fileName = `${userId}/snippet_${slotIndex}_${Date.now()}.webm`;
-
-  // Self-healing: try to create the bucket in case it is missing (fails silently if no permission/exists)
-  try {
-    await supabase.storage.createBucket("media-snippets", { public: false });
-  } catch (e) {
-    // Ignore error
-  }
+  const baseMime = (blob.type || "video/webm").split(";")[0].trim() || "video/webm";
+  const ext = baseMime.includes("webm") ? "webm" : baseMime.includes("quicktime") ? "mov" : "mp4";
+  const fileName = `${userId}/snippet_${slotIndex}_${Date.now()}.${ext}`;
 
   const { data, error } = await supabase.storage.from("media-snippets").upload(fileName, blob, {
-    contentType: blob.type || "video/webm",
+    contentType: baseMime,
     upsert: true,
   });
 
