@@ -157,7 +157,9 @@ export function Dashboard({
   const nearby = displayedRadius < 500;
   const searchRange = nearby ? `Do ${displayedRadius} km` : "Celý svet";
   const radiusButton = useRef<HTMLButtonElement>(null);
-  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeStart = useRef<{ x: number; y: number; axis: "x" | "y" | null } | null>(null);
+  const swipeTicked = useRef(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
 
   function closeRadiusEditor() {
     setEditingRadius(false);
@@ -324,28 +326,68 @@ export function Dashboard({
           aria-label="Dnešné odporúčania"
           onPointerDown={(e) => {
             if (availableMatches.length < 2) return;
-            swipeStart.current = { x: e.clientX, y: e.clientY };
+            if ((e.target as HTMLElement | null)?.closest("button, summary, a")) return;
+            swipeStart.current = { x: e.clientX, y: e.clientY, axis: null };
+            swipeTicked.current = false;
+            setSwipeOffset(0);
+          }}
+          onPointerMove={(e) => {
+            const start = swipeStart.current;
+            if (!start || availableMatches.length < 2) return;
+            const dx = e.clientX - start.x;
+            const dy = e.clientY - start.y;
+            if (!start.axis) {
+              if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+              start.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? "x" : "y";
+            }
+            if (start.axis !== "x") return;
+            const blockedLeft = activeIndex === 0 && dx > 0;
+            const blockedRight = activeIndex === availableMatches.length - 1 && dx < 0;
+            const damped =
+              blockedLeft || blockedRight
+                ? dx * 0.22
+                : Math.max(-135, Math.min(135, dx));
+            if (!blockedLeft && !blockedRight && Math.abs(dx) >= 56 && !swipeTicked.current) {
+              swipeTicked.current = true;
+              haptic("tick");
+            }
+            setSwipeOffset(damped);
           }}
           onPointerUp={(e) => {
             const start = swipeStart.current;
             swipeStart.current = null;
-            if (!start || availableMatches.length < 2) return;
+            setSwipeOffset(0);
+            if (!start || start.axis !== "x" || availableMatches.length < 2) return;
             const dx = e.clientX - start.x;
             const dy = e.clientY - start.y;
-            if (Math.abs(dx) < 56 || Math.abs(dx) <= Math.abs(dy) * 1.4) return;
+            if (Math.abs(dx) < 56 || Math.abs(dx) <= Math.abs(dy) * 1.2) return;
             if (dx < 0 && activeIndex < availableMatches.length - 1) selectProfile(activeIndex + 1);
             if (dx > 0 && activeIndex > 0) selectProfile(activeIndex - 1);
           }}
+          onPointerCancel={() => {
+            swipeStart.current = null;
+            swipeTicked.current = false;
+            setSwipeOffset(0);
+          }}
         >
-          <MatchCard
-            key={activeMatch.id}
-            match={activeMatch}
-            myPriority={profile.topPriority}
-            radiusKm={profile.radiusKm}
-            position={loading || failed ? undefined : activeIndex + 1}
-            busy={openingMatch}
-            onSelect={() => onSelectMatch(activeMatch)}
-          />
+          <div
+            style={{
+              transform: swipeOffset
+                ? `translate3d(${swipeOffset}px, 0, 0) rotate(${(swipeOffset * 0.025).toFixed(2)}deg)`
+                : undefined,
+              transition: swipeOffset ? "none" : "transform 220ms var(--app-ease)",
+            }}
+          >
+            <MatchCard
+              key={activeMatch.id}
+              match={activeMatch}
+              myPriority={profile.topPriority}
+              radiusKm={profile.radiusKm}
+              position={loading || failed ? undefined : activeIndex + 1}
+              busy={openingMatch}
+              onSelect={() => onSelectMatch(activeMatch)}
+            />
+          </div>
           {openError && (
             <p role="alert" className="mt-2 text-destructive">
               Rozhovor sa nepodarilo otvoriť. Skús to znova.

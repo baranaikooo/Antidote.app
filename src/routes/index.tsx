@@ -1,3 +1,4 @@
+import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor, registerPlugin, SystemBars, SystemBarType } from "@capacitor/core";
 import { createFileRoute } from "@tanstack/react-router";
 import type { User as AuthUser } from "@supabase/supabase-js";
@@ -64,6 +65,7 @@ import {
   CONTACT_BODY,
 } from "@/components/settings/LegalAndSettings";
 import { AntidoteLogo } from "@/components/AntidoteLogo";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { AndroidUpdateProvider, UpdateNotice } from "@/components/UpdateNotice";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
@@ -307,7 +309,7 @@ function useTheme(darkChrome: boolean): [ThemeMode, (m: ThemeMode) => void] {
     applyTheme(systemTheme.matches);
     if (Capacitor.getPlatform() === "android" && Capacitor.isPluginAvailable("SystemBars")) {
       void SystemBars.show({ bar: SystemBarType.StatusBar }).catch(() => {});
-      void SystemBars.hide({ bar: SystemBarType.NavigationBar }).catch(() => {});
+      void SystemBars.show({ bar: SystemBarType.NavigationBar }).catch(() => {});
     }
     try {
       localStorage.setItem("reson:theme", mode);
@@ -1160,6 +1162,54 @@ function AntidoteApp() {
   const navActive =
     screen === "messages" ? "messages" : settingsScreens.includes(screen) ? "settings" : "home";
 
+  useEffect(() => {
+    if (!Capacitor.isPluginAvailable("App")) return;
+    let removed = false;
+    let handle: { remove: () => Promise<void> } | null = null;
+    void CapacitorApp.addListener("backButton", () => {
+      const cameraCancel = document.querySelector<HTMLButtonElement>('[data-camera-cancel="true"]');
+      if (cameraCancel) {
+        cameraCancel.click();
+        return;
+      }
+      const openDialog = document.querySelector<HTMLElement>('[role="dialog"][data-state="open"]');
+      if (openDialog) {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        return;
+      }
+
+      if (screen === "chamber") setScreen("thread");
+      else if (screen === "thread") setScreen("messages");
+      else if (screen === "profile-dossier") setScreen("noOne");
+      else if (
+        screen === "legal-terms" ||
+        screen === "legal-privacy" ||
+        screen === "legal-cookies" ||
+        screen === "legal-contact"
+      ) {
+        setScreen("settings");
+      } else if (screen === "messages" || screen === "settings") {
+        setScreen("noOne");
+      } else if (screen === "profile") {
+        setScreen("liveness");
+      } else if (screen === "snippets-onboarding") {
+        setScreen("profile");
+      } else if (screen === "mirror" || screen === "bankroll" || screen === "pressure") {
+        setScreen("briefing");
+      } else {
+        void CapacitorApp.minimizeApp();
+      }
+    }).then((listener) => {
+      if (removed) void listener.remove();
+      else handle = listener;
+    });
+
+    return () => {
+      removed = true;
+      if (handle) void handle.remove();
+    };
+  }, [screen]);
+
   if (isAuthenticating) {
     return (
       <Shell>
@@ -1202,6 +1252,7 @@ function AntidoteApp() {
       resumedOnboarding={resumedOnboarding === screen}
     >
       <Toaster theme={theme} position="top-center" />
+      <OfflineBanner />
       <AndroidUpdateProvider enabled={showUpdateNotice}>
         {showUpdateNotice && <UpdateNotice />}
         <Suspense fallback={<AppSplash />}>
